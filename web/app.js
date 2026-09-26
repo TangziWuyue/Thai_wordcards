@@ -7,7 +7,18 @@
 
   const R = window.ThaiRules;
   // 词表结构变动时递增版本号，避免读到旧版不兼容的勾选记录
-  const STORE_KEY = 'thai-wordcards.v2';
+  const STORE_KEY = 'thai-wordcards.v3';
+
+  const FONTS = [
+    { id: 'sarabun', label: '标准体', sample: 'ก' },
+    { id: 'serif', label: '印刷衬线', sample: 'ข' },
+    { id: 'system', label: '系统体', sample: 'ค' },
+  ];
+  const THEMES = [
+    { id: 'auto', label: '跟随系统' },
+    { id: 'light', label: '浅色' },
+    { id: 'dark', label: '深色' },
+  ];
 
   // 默认勾选全部辅音，只留 ฃ ฅ 这两个废弃字母让人手动开
   const DEFAULT_CONSONANTS = R.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
@@ -19,6 +30,8 @@
     allowFinal: true,
     strict: true,
     autoSpeak: false,
+    font: 'sarabun',
+    theme: 'auto',
     parts: null,
   };
 
@@ -30,6 +43,9 @@
     toneHint: document.getElementById('toneHint'),
     consonants: document.getElementById('consonants'),
     vowels: document.getElementById('vowels'),
+    vowelHint: document.getElementById('vowelHint'),
+    fontSeg: document.getElementById('fontSeg'),
+    themeSeg: document.getElementById('themeSeg'),
     randomBtn: document.getElementById('randomBtn'),
     speakBtn: document.getElementById('speakBtn'),
     voiceInfo: document.getElementById('voiceInfo'),
@@ -49,6 +65,8 @@
         allowFinal: state.allowFinal,
         strict: state.strict,
         autoSpeak: state.autoSpeak,
+        font: state.font,
+        theme: state.theme,
       }));
     } catch { /* 无痕模式等场景下忽略 */ }
   }
@@ -71,6 +89,8 @@
       if (typeof data.allowFinal === 'boolean') state.allowFinal = data.allowFinal;
       if (typeof data.strict === 'boolean') state.strict = data.strict;
       if (typeof data.autoSpeak === 'boolean') state.autoSpeak = data.autoSpeak;
+      if (FONTS.some((f) => f.id === data.font)) state.font = data.font;
+      if (THEMES.some((t) => t.id === data.theme)) state.theme = data.theme;
     } catch { /* 数据坏了就用默认值 */ }
   }
 
@@ -116,17 +136,83 @@
 
   function buildVowels() {
     el.vowels.replaceChildren();
-    for (const v of R.VOWELS) {
-      const title = [v.label, v.roman && `近似 ${v.roman}`,
-        !v.allowsFinal && '不能带尾辅音',
-        v.requiresFinal && '必须带尾辅音'].filter(Boolean).join(' · ');
-      el.vowels.append(chip(vowelForm(v), state.vowels.has(v.id), title, 'vowel-chip', () => {
-        if (state.vowels.has(v.id)) state.vowels.delete(v.id);
-        else state.vowels.add(v.id);
-        buildVowels();
-        save();
-      }));
+    for (const group of R.VOWEL_GROUPS) {
+      const inGroup = R.VOWELS.filter((v) => v.group === group.id);
+      if (!inGroup.length) continue;
+      const head = document.createElement('div');
+      head.className = 'vowel-group';
+      const name = document.createElement('b');
+      name.textContent = group.thai;
+      const zh = document.createElement('span');
+      zh.textContent = `${group.label} ${inGroup.length}`;
+      head.append(name, zh);
+      const row = document.createElement('div');
+      row.className = 'chips';
+      for (const v of inGroup) {
+        row.append(vowelChip(v));
+      }
+      el.vowels.append(head, row);
     }
+    const counted = R.VOWELS.filter((v) => v.group !== 'variant').length;
+    const variants = R.VOWELS.filter((v) => v.group === 'variant').length;
+    el.vowelHint.textContent = `${counted} 个 + ${variants} 个变体写法`;
+  }
+
+  function vowelChip(v) {
+    const notes = [
+      v.label,
+      v.roman && `近似 ${v.roman}`,
+      !v.allowsFinal && !v.requiresFinal && '不能带尾辅音',
+      v.requiresFinal && '必须带尾辅音',
+      v.noTone && '不写声调符号',
+    ].filter(Boolean);
+    return chip(vowelForm(v), state.vowels.has(v.id), notes.join(' · '), 'vowel-chip', () => {
+      if (state.vowels.has(v.id)) state.vowels.delete(v.id);
+      else state.vowels.add(v.id);
+      buildVowels();
+      save();
+    });
+  }
+
+  // ── 字体与外观 ──────────────────────────────────────────────────────
+  function buildSeg(container, items, current, onPick) {
+    container.replaceChildren(...items.map((item) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = item.label;
+      if (item.sample) {
+        const span = document.createElement('span');
+        span.className = 'sample';
+        span.textContent = item.sample;
+        btn.append(span);
+      }
+      btn.setAttribute('aria-pressed', String(item.id === current));
+      btn.addEventListener('click', () => onPick(item.id));
+      return btn;
+    }));
+  }
+
+  function applyFont() {
+    document.documentElement.dataset.font = state.font;
+  }
+
+  function applyTheme() {
+    document.documentElement.dataset.theme = state.theme;
+  }
+
+  function renderSettings() {
+    buildSeg(el.fontSeg, FONTS, state.font, (id) => {
+      state.font = id;
+      applyFont();
+      renderSettings();
+      save();
+    });
+    buildSeg(el.themeSeg, THEMES, state.theme, (id) => {
+      state.theme = id;
+      applyTheme();
+      renderSettings();
+      save();
+    });
   }
 
   // ── 渲染卡片 ────────────────────────────────────────────────────────
@@ -305,9 +391,12 @@
   });
 
   load();
+  applyFont();
+  applyTheme();
   buildConsonants();
   buildVowels();
   buildTones();
+  renderSettings();
   renderCard();
   refreshVoices();
   if ('speechSynthesis' in window) {

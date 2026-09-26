@@ -1,15 +1,58 @@
-/* 极简：只有黑白灰，不用阴影，线条只出现在卡片和分组处 */
+/* 极简：只有黑白灰，不用阴影，线条只出现在卡片和分组处。
+   暗色由 <html data-theme="dark|light|auto"> 控制，auto 跟随系统。 */
 :root {
   color-scheme: light;
   --bg: #fbfbfa;
+  --card: #fff;
   --fg: #1b1b1b;
   --muted: #8d8d88;
   --line: #e8e8e4;
   --soft: #f1f1ee;
-  --on-dark: #fff;
+  --dot: #d2d2cc;
+  --inv-bg: #1b1b1b;
+  --inv-fg: #fff;
   --radius: 14px;
-  --thai: "Sukhumvit Set", "Noto Sans Thai", "Thonburi", "Leelawadee UI", ui-sans-serif, sans-serif;
+
+  /* 泰文字体栈：<html data-font> 决定第一顺位 */
+  --thai-sarabun: "Sarabun", "TH Sarabun New", "Sukhumvit Set", "Noto Sans Thai", sans-serif;
+  --thai-serif: "Noto Serif Thai", "Noto Serif", "Sathu", "Thonburi", ui-serif, serif;
+  --thai-system: "Sukhumvit Set", "Thonburi", "Leelawadee UI", "Noto Sans Thai", ui-sans-serif, sans-serif;
+  --thai: var(--thai-sarabun);
+
   --ui: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
+}
+
+html[data-font="sarabun"] { --thai: var(--thai-sarabun); }
+html[data-font="serif"] { --thai: var(--thai-serif); }
+html[data-font="system"] { --thai: var(--thai-system); }
+
+html[data-theme="auto"] { color-scheme: light dark; }
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #131312;
+  --card: #1a1a19;
+  --fg: #f0f0ec;
+  --muted: #8d8d88;
+  --line: #2b2b29;
+  --soft: #232322;
+  --dot: #3d3d39;
+  --inv-bg: #f0f0ec;
+  --inv-fg: #131312;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    --bg: #131312;
+    --card: #1a1a19;
+    --fg: #f0f0ec;
+    --muted: #8d8d88;
+    --line: #2b2b29;
+    --soft: #232322;
+    --dot: #3d3d39;
+    --inv-bg: #f0f0ec;
+    --inv-fg: #131312;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -56,7 +99,7 @@ button { font: inherit; color: inherit; }
   gap: 14px;
   min-height: 250px;
   padding: 40px 24px 34px;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: 20px;
   text-align: center;
@@ -66,7 +109,7 @@ button { font: inherit; color: inherit; }
   margin: 0;
   font-family: var(--thai);
   font-size: clamp(60px, 17vw, 104px);
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.12;
   letter-spacing: 0.01em;
   word-break: keep-all;
@@ -91,7 +134,7 @@ button { font: inherit; color: inherit; }
 .parts span + span::before {
   content: "·";
   margin-right: 12px;
-  color: #d2d2cc;
+  color: var(--dot);
 }
 
 .parts b {
@@ -153,8 +196,8 @@ button { font: inherit; color: inherit; }
 .tone:hover { background: var(--soft); }
 
 .tone[aria-pressed="true"] {
-  background: var(--fg);
-  color: var(--on-dark);
+  background: var(--inv-bg);
+  color: var(--inv-fg);
 }
 
 .tone:disabled {
@@ -170,7 +213,7 @@ button { font: inherit; color: inherit; }
 }
 
 .tone .name { font-size: 11px; color: var(--muted); }
-.tone[aria-pressed="true"] .name { color: var(--on-dark); opacity: 0.7; }
+.tone[aria-pressed="true"] .name { color: var(--inv-fg); opacity: 0.7; }
 
 /* ── 按钮 ───────────────────────────────── */
 .actions {
@@ -182,7 +225,7 @@ button { font: inherit; color: inherit; }
 
 .btn {
   padding: 13px 16px;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   cursor: pointer;
@@ -191,12 +234,12 @@ button { font: inherit; color: inherit; }
 .btn:hover { background: var(--soft); }
 
 .btn.primary {
-  background: var(--fg);
-  border-color: var(--fg);
-  color: var(--on-dark);
+  background: var(--inv-bg);
+  border-color: var(--inv-bg);
+  color: var(--inv-fg);
 }
 
-.btn.primary:hover { background: #000; }
+.btn.primary:hover { opacity: 0.86; }
 
 kbd {
   margin-left: 8px;
@@ -209,7 +252,7 @@ kbd {
   font-size: 10px;
 }
 
-.btn.primary kbd { background: rgba(255, 255, 255, 0.16); color: var(--on-dark); }
+.btn.primary kbd { background: rgba(127, 127, 127, 0.28); color: var(--inv-fg); }
 
 /* ── 折叠面板 ───────────────────────────── */
 .panel { margin-top: 32px; border-top: 1px solid var(--line); }
@@ -282,9 +325,55 @@ kbd {
 
 .chip:hover { background: var(--soft); }
 
-.chip[aria-pressed="true"] { background: var(--fg); color: var(--on-dark); }
+.chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
 
 .vowel-chip { font-size: 15px; }
+
+/* 元音分组小标题 */
+.vowel-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 14px 0 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.vowel-group:first-child { margin-top: 0; }
+
+.vowel-group b { font-weight: 600; color: var(--fg); }
+
+/* ── 分段选择（字体 / 外观）──────────────────────── */
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--soft);
+  border-radius: 10px;
+}
+
+.seg button {
+  padding: 5px 11px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--fg);
+}
+
+.sample {
+  margin-left: 10px;
+  font-family: var(--thai);
+  font-size: 17px;
+  color: var(--fg);
+}
 
 .switch {
   display: flex;

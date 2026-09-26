@@ -1,9 +1,11 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-font="sarabun" data-theme="auto">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>泰语组合练习</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b1b1b'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23fff'%3E%E0%B8%81%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -42,7 +44,7 @@
         <div id="consonants"></div>
         <div class="label-row">
           <span class="label">元音</span>
-          <span class="hint">28 个：前引 · 后置 · 复合</span>
+          <span class="hint" id="vowelHint"></span>
         </div>
         <div class="chips" id="vowels"></div>
       </div>
@@ -51,6 +53,17 @@
     <details class="panel">
       <summary>选项</summary>
       <div class="panel-body">
+        <div class="label-row">
+          <span class="label">字体</span>
+          <span class="hint">标准体为泰国政府文书字体</span>
+        </div>
+        <div class="seg" id="fontSeg" role="group" aria-label="泰文字体"></div>
+
+        <div class="label-row">
+          <span class="label">外观</span>
+        </div>
+        <div class="seg" id="themeSeg" role="group" aria-label="外观"></div>
+
         <label class="switch">
           <input type="checkbox" id="optClusters">
           <span>允许辅音簇（กร กล คร …）</span>
