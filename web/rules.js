@@ -194,7 +194,7 @@ const ThaiRules = (() => {
       if (tone.id === 'none') return { ...tone, allowed: true, reason: '' };
       if (!strict) return { ...tone, allowed: true, reason: '' };
       if (tone.midOnly && cls !== 'mid') {
-        return { ...tone, allowed: false, reason: `${tone.shortName} 只用于中类辅音` };
+        return { ...tone, allowed: false, reason: 'ตรี / จัตวา 只用于中类辅音' };
       }
       if (vowel && isShortVowel(vowel, hasFinal) && !hasFinal) {
         return { ...tone, allowed: false, reason: '短元音开音节不能标声调' };
