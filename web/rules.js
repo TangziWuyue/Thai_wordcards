@@ -2,11 +2,13 @@
  * 泰语拼写规则引擎（纯逻辑，无 DOM 依赖）
  *
  * 一个音节按泰文码点顺序拼装：
- *   [前引元音] [首辅音] [辅音簇第二字] [后置元音] [声调符号] [尾辅音]
- *      เ แ โ ใ ไ                                            ่ ้ ๊ ๋
+ *   [前引元音] [首辅音] [辅音簇第二字] [元音前段] [声调符号] [元音后段] [尾辅音]
+ *      เ แ โ ใ ไ                        า ิ ี ึ ื ุ ู  ่ ้ ๊ ๋   ะ ำ อ า ย ว
  *
  * 注意：前引元音在码点里排在辅音前面，但显示在左半边，所以拼装顺序
  * 必须是「先前引、再辅音」，写成字符串才不会被拆开渲染。
+ * 声调符号的位置则在「元音前段之后、元音后段与尾辅音之前」：
+ *   น้ำ = น + ้ + ำ ，เปล่า = เ + ป + ล + ่ + า ，ชั่ว = ช + ั + ่ + ว
  *
  * 引擎不校验组合是否是真实存在的泰语词，只保证码点顺序合法、不叠字。
  */
@@ -69,47 +71,76 @@ const ThaiRules = (() => {
 
   // ── 元音 ────────────────────────────────────────────────────────────
   // lead   = 写在辅音左边的部分（前引元音）
-  // follow = 写在辅音右边/上下的部分（后置元音）
+  // follow = 紧跟在辅音后、声调符号之前的元音段
+  // tail   = 声调符号之后、尾辅音之前的元音段（ะ ำ อ า ย ว 都是这一段的常客）
   // roman / romanClosed = 开音节 / 带尾辅音时的参考注音
   // short  = 短元音；allowsFinal = 能否带尾辅音；requiresFinal = 必须带尾辅音
+  // noTone = 该元音不写声调符号（写声调时要换写法）
+  // dropFollowWithFinal = 带尾辅音时省掉 follow 段（ัว 的 ั 会消失：สวย / ช่วง）
   const VOWELS = [
-    { id: 'implicit', lead: '', follow: '', roman: 'o', romanClosed: 'o',
-      short: false, allowsFinal: true, label: '— （无元音符号）' },
-    { id: 'a', lead: '', follow: 'ะ', roman: 'a', romanClosed: null,
-      short: true, allowsFinal: false, label: 'ะ ·a 短' },
-    { id: 'aa', lead: '', follow: 'า', roman: 'aa', romanClosed: 'aa',
-      short: false, allowsFinal: true, label: 'า ·aa 长' },
-    { id: 'i', lead: '', follow: 'ิ', roman: 'i', romanClosed: 'i',
-      short: true, allowsFinal: true, label: 'ิ ·i 短' },
-    { id: 'ii', lead: '', follow: 'ี', roman: 'ii', romanClosed: 'ii',
-      short: false, allowsFinal: true, label: 'ี ·ii 长' },
-    { id: 'ue', lead: '', follow: 'ึ', roman: 'ue', romanClosed: 'ue',
-      short: true, allowsFinal: true, label: 'ึ ·ue 短' },
-    { id: 'uue', lead: '', follow: 'ื', roman: 'uue', romanClosed: 'uue',
-      short: false, allowsFinal: true, label: 'ื ·uue 长' },
-    { id: 'u', lead: '', follow: 'ุ', roman: 'u', romanClosed: 'u',
-      short: true, allowsFinal: true, label: 'ุ ·u 短' },
-    { id: 'uu', lead: '', follow: 'ู', roman: 'uu', romanClosed: 'uu',
-      short: false, allowsFinal: true, label: 'ู ·uu 长' },
-    { id: 'e', lead: 'เ', follow: '', roman: 'ee', romanClosed: 'e',
-      short: false, allowsFinal: true, label: 'เ·  ee 长' },
-    { id: 'ae', lead: 'แ', follow: '', roman: 'ɛɛ', romanClosed: 'ɛ',
-      short: false, allowsFinal: true, label: 'แ·  ɛɛ 长' },
-    { id: 'o', lead: 'โ', follow: '', roman: 'oo', romanClosed: 'o',
-      short: false, allowsFinal: true, label: 'โ·  oo 长' },
-    { id: 'ai_mai', lead: 'ใ', follow: '', roman: 'ai', romanClosed: null,
-      short: false, allowsFinal: false, label: 'ใ·  ai' },
-    { id: 'ai', lead: 'ไ', follow: '', roman: 'ai', romanClosed: null,
-      short: false, allowsFinal: false, label: 'ไ·  ai' },
-    { id: 'e_short', lead: 'เ', follow: 'ะ', roman: 'e', romanClosed: null,
-      short: true, allowsFinal: false, label: 'เ-ะ ·e 短' },
-    { id: 'ae_short', lead: 'แ', follow: 'ะ', roman: 'ɛ', romanClosed: null,
-      short: true, allowsFinal: false, label: 'แ-ะ ·ɛ 短' },
-    { id: 'o_short', lead: 'โ', follow: 'ะ', roman: 'o', romanClosed: null,
-      short: true, allowsFinal: false, label: 'โ-ะ ·o 短' },
-    { id: 'e_closed', lead: 'เ', follow: 'ิ', roman: 'e', romanClosed: 'e',
-      short: true, allowsFinal: true, requiresFinal: true,
+    { id: 'implicit', lead: '', follow: '', tail: '',
+      roman: 'o', romanClosed: 'o', short: false, allowsFinal: true,
+      label: '— （无元音符号）' },
+    { id: 'a', lead: '', follow: '', tail: 'ะ',
+      roman: 'a', romanClosed: null, short: true, allowsFinal: false,
+      label: 'ะ ·a 短' },
+    { id: 'aa', lead: '', follow: 'า', tail: '',
+      roman: 'aa', romanClosed: 'aa', short: false, allowsFinal: true,
+      label: 'า ·aa 长' },
+    { id: 'a_short', lead: '', follow: 'ั', tail: '',
+      roman: 'a', romanClosed: 'a', short: true, allowsFinal: true, requiresFinal: true,
+      label: 'ั ·a 短（必带尾辅音）' },
+    { id: 'am', lead: '', follow: '', tail: 'ำ',
+      roman: 'am', romanClosed: null, short: true, allowsFinal: false,
+      label: 'ำ ·am' },
+    { id: 'i', lead: '', follow: 'ิ', tail: '',
+      roman: 'i', romanClosed: 'i', short: true, allowsFinal: true, label: 'ิ ·i 短' },
+    { id: 'ii', lead: '', follow: 'ี', tail: '',
+      roman: 'ii', romanClosed: 'ii', short: false, allowsFinal: true, label: 'ี ·ii 长' },
+    { id: 'ue', lead: '', follow: 'ึ', tail: '',
+      roman: 'ue', romanClosed: 'ue', short: true, allowsFinal: true, label: 'ึ ·ue 短' },
+    { id: 'uue', lead: '', follow: 'ื', tail: '',
+      roman: 'uue', romanClosed: 'uue', short: false, allowsFinal: true, label: 'ื ·uue 长' },
+    { id: 'u', lead: '', follow: 'ุ', tail: '',
+      roman: 'u', romanClosed: 'u', short: true, allowsFinal: true, label: 'ุ ·u 短' },
+    { id: 'uu', lead: '', follow: 'ู', tail: '',
+      roman: 'uu', romanClosed: 'uu', short: false, allowsFinal: true, label: 'ู ·uu 长' },
+    { id: 'e', lead: 'เ', follow: '', tail: '',
+      roman: 'ee', romanClosed: 'e', short: false, allowsFinal: true, label: 'เ·  ee 长' },
+    { id: 'ae', lead: 'แ', follow: '', tail: '',
+      roman: 'ɛɛ', romanClosed: 'ɛ', short: false, allowsFinal: true, label: 'แ·  ɛɛ 长' },
+    { id: 'o', lead: 'โ', follow: '', tail: '',
+      roman: 'oo', romanClosed: 'o', short: false, allowsFinal: true, label: 'โ·  oo 长' },
+    { id: 'ai_mai', lead: 'ใ', follow: '', tail: '',
+      roman: 'ai', romanClosed: 'ai', short: false, allowsFinal: true, label: 'ใ·  ai' },
+    { id: 'ai', lead: 'ไ', follow: '', tail: '',
+      roman: 'ai', romanClosed: 'ai', short: false, allowsFinal: true, label: 'ไ·  ai' },
+    { id: 'e_short', lead: 'เ', follow: '', tail: 'ะ',
+      roman: 'e', romanClosed: null, short: true, allowsFinal: false, label: 'เ-ะ ·e 短' },
+    { id: 'ae_short', lead: 'แ', follow: '', tail: 'ะ',
+      roman: 'ɛ', romanClosed: null, short: true, allowsFinal: false, label: 'แ-ะ ·ɛ 短' },
+    { id: 'o_short', lead: 'โ', follow: '', tail: 'ะ',
+      roman: 'o', romanClosed: null, short: true, allowsFinal: false, label: 'โ-ะ ·o 短' },
+    { id: 'o_short_open', lead: 'เ', follow: '', tail: 'าะ',
+      roman: 'ɔ', romanClosed: null, short: true, allowsFinal: false, label: 'เ-าะ ·ɔ 短' },
+    { id: 'oe', lead: 'เ', follow: '', tail: 'อ',
+      roman: 'əə', romanClosed: null, short: false, allowsFinal: false, label: 'เ-อ ·əə 长' },
+    { id: 'oe_short', lead: 'เ', follow: '', tail: 'อะ',
+      roman: 'ə', romanClosed: null, short: true, allowsFinal: false, label: 'เ-อะ ·ə 短' },
+    { id: 'ua', lead: '', follow: 'ั', tail: 'ว', dropFollowWithFinal: true,
+      roman: 'ua', romanClosed: 'ua', short: true, allowsFinal: true, label: 'ัว ·ua' },
+    { id: 'ia', lead: 'เ', follow: 'ี', tail: 'ย',
+      roman: 'ia', romanClosed: 'ia', short: false, allowsFinal: true, label: 'เ-ีย ·ia' },
+    { id: 'uea', lead: 'เ', follow: 'ื', tail: 'อ',
+      roman: 'uea', romanClosed: 'uea', short: false, allowsFinal: true, label: 'เ-ือ ·uea' },
+    { id: 'ao', lead: 'เ', follow: '', tail: 'า',
+      roman: 'ao', romanClosed: 'ao', short: false, allowsFinal: true, label: 'เ-า ·ao' },
+    { id: 'e_closed', lead: 'เ', follow: 'ิ', tail: '',
+      roman: 'e', romanClosed: 'e', short: true, allowsFinal: true, requiresFinal: true,
       label: 'เ-ิ ·e 短（必带尾辅音）' },
+    { id: 'e_taikhu', lead: 'เ', follow: '็', tail: '',
+      roman: 'e', romanClosed: 'e', short: true, allowsFinal: true, requiresFinal: true, noTone: true,
+      label: 'เ-็ ·e 短（不标声调）' },
   ];
 
   // ── 声调符号 ────────────────────────────────────────────────────────
@@ -129,28 +160,32 @@ const ThaiRules = (() => {
     ['พ', 'ร'], ['พ', 'ล'], ['ฟ', 'ร'], ['ด', 'ร'],
   ];
 
-  // ── 可作尾辅音的辅音 ────────────────────────────────────────────────
-  // sonorant = 响音（ง น ม ย ว ล），其余为塞音尾
-  const FINALS = {
-    'ง': { roman: 'ng', sonorant: true },
-    'น': { roman: 'n', sonorant: true },
-    'ม': { roman: 'm', sonorant: true },
-    'ย': { roman: 'y', sonorant: true },
-    'ว': { roman: 'o', sonorant: true },
-    'ล': { roman: 'n', sonorant: true },
-    'ก': { roman: 'k', sonorant: false },
-    'ข': { roman: 'k', sonorant: false },
-    'ค': { roman: 'k', sonorant: false },
-    'ด': { roman: 't', sonorant: false },
-    'ต': { roman: 't', sonorant: false },
-    'บ': { roman: 'p', sonorant: false },
-    'ป': { roman: 'p', sonorant: false },
-    'พ': { roman: 'p', sonorant: false },
-    'ฟ': { roman: 'p', sonorant: false },
-    'ส': { roman: 't', sonorant: false },
-    'ศ': { roman: 't', sonorant: false },
-    'ษ': { roman: 't', sonorant: false },
+  // ── 尾辅音（ตัวสะกด）────────────────────────────────────────────────
+  // 44 个辅音里只有 ฃ ฅ ผ ฝ ห อ ฮ 不能作尾辅音，其余按实际读音归类：
+  //   แม่กก(k)  ก ข ค ฆ        แม่กด(t)  จ ฉ ช ซ ฌ ฎ ฏ ฐ ฑ ฒ ด ต ถ ท ธ ศ ษ ส
+  //   แม่กบ(p)  บ ป พ ฟ ภ      แม่กน(n)  ญ ณ น ร ล ฬ
+  //   แม่กง(ng) ง               แม่กม(m)  ม
+  //   แม่เกย(y) ย               แม่เกอว(w) ว
+  // sonorant = 响音尾（读长音、活音节），其余为塞音尾
+  const FINAL_GROUPS = {
+    k: ['ก', 'ข', 'ค', 'ฆ'],
+    t: ['จ', 'ฉ', 'ช', 'ซ', 'ฌ', 'ฎ', 'ฏ', 'ฐ', 'ฑ', 'ฒ', 'ด', 'ต', 'ถ', 'ท', 'ธ', 'ศ', 'ษ', 'ส'],
+    p: ['บ', 'ป', 'พ', 'ฟ', 'ภ'],
+    n: ['ญ', 'ณ', 'น', 'ร', 'ล', 'ฬ'],
+    ng: ['ง'],
+    m: ['ม'],
+    y: ['ย'],
+    w: ['ว'],
   };
+
+  const FINALS = (() => {
+    const table = {};
+    for (const [roman, chars] of Object.entries(FINAL_GROUPS)) {
+      const sonorant = ['n', 'ng', 'm', 'y', 'w'].includes(roman);
+      for (const ch of chars) table[ch] = { roman, sonorant };
+    }
+    return table;
+  })();
 
   const CONSONANT_MAP = new Map(CONSONANTS.map((c) => [c.ch, c]));
   const VOWEL_MAP = new Map(VOWELS.map((v) => [v.id, v]));
@@ -159,6 +194,10 @@ const ThaiRules = (() => {
   const LEAD_VOWEL_CHARS = ['เ', 'แ', 'โ', 'ใ', 'ไ'];
   const FOLLOW_VOWEL_CHARS = ['ะ', 'า', 'ิ', 'ี', 'ึ', 'ื', 'ุ', 'ู'];
   const TONE_CHARS = TONES.map((t) => t.mark).filter(Boolean);
+  // 所有出现在元音各段里的字符（新增元音时自动生效，不用再手改名单）
+  const VOWEL_CHARS = new Set(
+    VOWELS.flatMap((v) => [...((v.lead || '') + (v.follow || '') + (v.tail || ''))]),
+  );
 
   function isConsonant(ch) {
     return CONSONANT_MAP.has(ch);
@@ -174,45 +213,59 @@ const ThaiRules = (() => {
     return t ? t.mark : '';
   }
 
-  /** 该元音在这个音节里是否算短元音（影响能否标声调） */
+  /** 该元音在这个音节里是否算短元音（供界面/说明使用） */
   function isShortVowel(vowel, hasFinal) {
     if (vowel.id === 'implicit') return hasFinal;
     return !!vowel.short;
   }
 
   /**
+   * 把元音摊成实际拼装的样子：parts 只记「选了什么」，
+   * 每个字符落在哪个位置由元音表决定。
+   */
+  function layout(parts) {
+    const vowel = VOWEL_MAP.get(parts.vowelId) || {};
+    const follow = vowel.dropFollowWithFinal && parts.final ? '' : (vowel.follow || '');
+    return {
+      lead: vowel.lead || '',
+      onset: parts.onset || '',
+      cluster: parts.cluster || '',
+      follow,
+      tone: toneMark(parts.tone),
+      tail: vowel.tail || '',
+      final: parts.final || '',
+    };
+  }
+
+  /**
    * 声调可选性。
    * strict = true 时按泰语规则禁用：
    *   - ๊ / ๋ 仅限中类首辅音
-   *   - 声调符号需要「有尾辅音」或「长元音」，短元音开音节不能标
+   *   - ็ 类元音不写声调符号（要标声调得换写法，如 เก็ง → เก่ง）
    */
   function toneOptions(parts, strict) {
     const vowel = VOWEL_MAP.get(parts.vowelId);
     const cls = classOf(parts.onset);
-    const hasFinal = !!parts.final;
     return TONES.map((tone) => {
       if (tone.id === 'none') return { ...tone, allowed: true, reason: '' };
       if (!strict) return { ...tone, allowed: true, reason: '' };
       if (tone.midOnly && cls !== 'mid') {
         return { ...tone, allowed: false, reason: 'ตรี / จัตวา 只用于中类辅音' };
       }
-      if (vowel && isShortVowel(vowel, hasFinal) && !hasFinal) {
-        return { ...tone, allowed: false, reason: '短元音开音节不能标声调' };
+      if (vowel && vowel.noTone) {
+        return { ...tone, allowed: false, reason: '该元音不写声调符号，标声调时要换写法' };
       }
       return { ...tone, allowed: true, reason: '' };
     });
   }
 
-  /** 按泰文码点顺序拼装成字符串 */
+  /**
+   * 按泰文码点顺序拼装成字符串：
+   * 前引元音 → 首辅音 → 辅音簇 → 元音前段 → 声调符号 → 元音后段 → 尾辅音
+   */
   function assemble(parts) {
-    return (
-      (parts.lead || '') +
-      parts.onset +
-      (parts.cluster || '') +
-      (parts.follow || '') +
-      toneMark(parts.tone) +
-      (parts.final || '')
-    );
+    const l = layout(parts);
+    return l.lead + l.onset + l.cluster + l.follow + l.tone + l.tail + l.final;
   }
 
   /** 参考注音（近似，不含声调） */
@@ -238,25 +291,23 @@ const ThaiRules = (() => {
     const vowel = VOWEL_MAP.get(parts.vowelId);
 
     const unknown = chars.filter(
-      (ch) =>
-        !isConsonant(ch) &&
-        !LEAD_VOWEL_CHARS.includes(ch) &&
-        !FOLLOW_VOWEL_CHARS.includes(ch) &&
-        !TONE_CHARS.includes(ch),
+      (ch) => !isConsonant(ch) && !VOWEL_CHARS.has(ch) && !TONE_CHARS.includes(ch),
     );
     if (unknown.length) issues.push(`未知字符 ${unknown.join('')}`);
 
     const toneCount = chars.filter((ch) => TONE_CHARS.includes(ch)).length;
     if (toneCount > 1) issues.push('出现多个声调符号');
 
-    // 按 canonical 顺序把 parts 铺到字符串上，得到每个字符的角色
+    // 按 canonical 顺序把各段铺到字符串上，得到每个字符的角色
+    const l = layout(parts);
     const pieces = [
-      ['lead', parts.lead || ''],
-      ['onset', parts.onset || ''],
-      ['cluster', parts.cluster || ''],
-      ['follow', parts.follow || ''],
-      ['tone', toneMark(parts.tone)],
-      ['final', parts.final || ''],
+      ['lead', l.lead],
+      ['onset', l.onset],
+      ['cluster', l.cluster],
+      ['follow', l.follow],
+      ['tone', l.tone],
+      ['tail', l.tail],
+      ['final', l.final],
     ];
     const roles = [];
     let cursor = 0;
@@ -273,6 +324,8 @@ const ThaiRules = (() => {
     const at = (role) => roles.indexOf(role);
     const firstConsonant = chars.findIndex(isConsonant);
 
+    if (!isConsonant(parts.onset)) issues.push('首辅音不是辅音');
+
     // 前引元音必须排在首个辅音之前（码点顺序错就会渲染错位）
     if (at('lead') !== -1 && at('lead') > firstConsonant) {
       issues.push('前引元音排在辅音之后');
@@ -285,12 +338,11 @@ const ThaiRules = (() => {
     }
 
     if (at('tone') !== -1) {
-      if (at('follow') !== -1 && at('follow') > at('tone')) issues.push('声调符号排在后置元音之前');
+      if (at('follow') !== -1 && at('follow') > at('tone')) issues.push('声调符号排在元音前段之前');
+      if (at('tail') !== -1 && at('tail') < at('tone')) issues.push('声调符号排在元音后段之后');
       if (at('final') !== -1 && at('final') < at('tone')) issues.push('尾辅音排在声调符号之前');
       if (at('tone') < firstConsonant) issues.push('声调符号排在辅音之前');
-      if (vowel && isShortVowel(vowel, !!parts.final) && !parts.final) {
-        issues.push('短元音开音节标了声调');
-      }
+      if (vowel && vowel.noTone) issues.push('该元音不写声调符号');
       if (TONE_MAP.get(parts.tone)?.midOnly && classOf(parts.onset) !== 'mid') {
         issues.push('ตรี/จัตวา 用在了非中类辅音上');
       }
@@ -364,15 +416,8 @@ const ThaiRules = (() => {
       if (vowel.requiresFinal || rng() < 0.5) final = pick(finalCandidates, rng);
     }
 
-    const parts = {
-      vowelId: vowel.id,
-      lead: vowel.lead,
-      onset,
-      cluster,
-      follow: vowel.follow,
-      tone: 'none',
-      final,
-    };
+    // parts 只记「选了什么」，各段位置由元音表在 layout() 里决定
+    const parts = { vowelId: vowel.id, onset, cluster, tone: 'none', final };
 
     const tones = allowedTones(parts, strict);
     // 无音调权重高一点，避免每张卡都带符号
@@ -407,15 +452,18 @@ const ThaiRules = (() => {
     TONES,
     CLUSTERS,
     FINALS,
+    FINAL_GROUPS,
     CLASS_LABEL,
     LEAD_VOWEL_CHARS,
     FOLLOW_VOWEL_CHARS,
+    VOWEL_CHARS,
     TONE_CHARS,
     isConsonant,
     classOf,
     toneMark,
     toneOptions,
     allowedTones,
+    layout,
     assemble,
     romanize,
     check,
