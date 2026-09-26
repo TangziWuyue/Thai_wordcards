@@ -335,6 +335,8 @@ kbd {
 .vowel-chip { font-size: 15px; }
 
 /* 元音分组小标题 */
+.vowel-list { display: block; }
+
 .vowel-group {
   display: flex;
   align-items: baseline;
