@@ -103,8 +103,6 @@
             </div>
             <div class="seg" id="themeSeg" role="group" aria-label="外观"></div>
 
-            <p class="hint options-hint" id="optionsHint"></p>
-
             <label class="switch" id="rowClusters">
               <input type="checkbox" id="optClusters">
               <span>允许辅音簇（กร กล คร …）</span>
@@ -119,12 +117,14 @@
             </label>
             <label class="switch" id="rowStrict">
               <input type="checkbox" id="optStrict" checked>
-              <span>遵守拼写规则：禁用该组合用不上的声调</span>
+              <span>遵守拼写规则：单选元/辅音时用อ补位（仅针对固定模式界面生效）</span>
             </label>
             <label class="switch" id="rowAutoSpeak">
               <input type="checkbox" id="optAutoSpeak">
               <span>随机后自动朗读</span>
             </label>
+
+            <p class="hint options-hint" id="optionsHint"></p>
           </div>
         </details>
       </div>

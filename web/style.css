@@ -540,7 +540,7 @@ kbd {
 }
 
 .options-hint {
-  margin: 10px 0 2px;
+  margin: 12px 0 0;
   font-size: 11px;
   text-align: left;
   line-height: 1.5;
