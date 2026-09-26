@@ -362,6 +362,10 @@
       strict: state.strict,
     });
     if (!parts) {
+      // 清掉上一张卡，避免「卡片上还留着上一个音节的字形」和提示互相矛盾
+      state.parts = null;
+      renderCard();
+      el.syllable.textContent = '—';
       el.roman.textContent = '当前词表组不出音节，试试多勾几个字母';
       return;
     }
