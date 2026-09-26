@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>泰语组合练习</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="head">
+      <h1>泰语组合练习</h1>
+      <p class="sub">随机组合辅音与元音，自己挑声调，跟着念出声。</p>
+    </header>
+
+    <section class="card">
+      <p class="syllable" id="syllable" aria-live="polite">—</p>
+      <p class="roman" id="roman">点「随机组合」开始</p>
+      <p class="parts" id="parts"></p>
+    </section>
+
+    <section class="block">
+      <div class="label-row">
+        <span class="label">声调</span>
+      </div>
+      <div class="tones" id="tones" role="group" aria-label="选择声调"></div>
+      <p class="hint tone-hint" id="toneHint"></p>
+    </section>
+
+    <section class="actions">
+      <button type="button" class="btn primary" id="randomBtn">随机组合<kbd>空格</kbd></button>
+      <button type="button" class="btn" id="speakBtn">播放发音<kbd>⏎</kbd></button>
+    </section>
+
+    <details class="panel" open>
+      <summary>词表</summary>
+      <div class="panel-body">
+        <div class="label-row">
+          <span class="label">辅音</span>
+          <span class="hint">按音调类别分组，叉掉不想练的</span>
+        </div>
+        <div id="consonants"></div>
+        <div class="label-row">
+          <span class="label">元音</span>
+          <span class="hint">含前引元音与后置元音</span>
+        </div>
+        <div class="chips" id="vowels"></div>
+      </div>
+    </details>
+
+    <details class="panel">
+      <summary>选项</summary>
+      <div class="panel-body">
+        <label class="switch">
+          <input type="checkbox" id="optClusters">
+          <span>允许辅音簇（กร กล คร …）</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="optFinal" checked>
+          <span>允许尾辅音（约一半概率）</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="optStrict" checked>
+          <span>遵守声调规则：禁用该组合用不上的声调</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="optAutoSpeak">
+          <span>随机后自动朗读</span>
+        </label>
+      </div>
+    </details>
+
+    <footer class="foot">
+      <span id="voiceInfo">语音：检测中…</span>
+      <span class="note">组合多为无意义音节，只练拼读</span>
+    </footer>
+  </main>
+
+  <script src="rules.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
