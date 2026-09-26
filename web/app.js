@@ -482,7 +482,13 @@
       btn.dataset.tone = t.id;
       const mark = document.createElement('span');
       mark.className = 'mark';
-      mark.textContent = t.mark || '—';
+      // 声调符号是组合符号，单独放会浮在右上角。用一个淡显的 อ 当底座，
+      // 五个按钮就都是「淡 อ (+ 符号)」，高度和位置才一致。
+      const base = document.createElement('span');
+      base.className = 'ghost-base';
+      base.textContent = 'อ';
+      base.setAttribute('aria-hidden', 'true');
+      mark.append(base, document.createTextNode(t.mark || ''));
       const name = document.createElement('span');
       name.className = 'name';
       name.textContent = t.shortName;

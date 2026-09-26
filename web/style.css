@@ -267,9 +267,36 @@ html.js .js-fallback { display: none; }
 /* ── 按钮 ───────────────────────────────── */
 .actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   margin-top: 20px;
+}
+
+/* 「随机组合」+「模式切换」合成一个按钮：中间一条细缝分开两个点击区 */
+.split {
+  display: flex;
+  gap: 1px;
+  background: var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.split .btn {
+  border: 0;
+  border-radius: 0;
+}
+
+.split .split-main { flex: 1; }
+
+.split .split-toggle {
+  padding: 13px 15px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.split .split-toggle[aria-pressed="true"] {
+  background: var(--inv-bg);
+  color: var(--inv-fg);
 }
 
 .btn {
@@ -308,19 +335,6 @@ kbd {
 }
 
 .btn.primary kbd { background: rgba(127, 127, 127, 0.28); color: var(--inv-fg); }
-
-/* 随机 / 固定 的模式切换钮 */
-.btn.mode {
-  padding: 13px 15px;
-  font-size: 15px;
-  line-height: 1;
-}
-
-.btn.mode[aria-pressed="true"] {
-  background: var(--inv-bg);
-  border-color: var(--inv-bg);
-  color: var(--inv-fg);
-}
 
 /* ── 折叠面板 ───────────────────────────── */
 .panel { margin-top: 32px; border-top: 1px solid var(--line); }

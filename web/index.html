@@ -50,10 +50,12 @@
         </section>
 
         <section class="actions">
-          <button type="button" class="btn primary" id="randomBtn">随机组合<kbd>空格</kbd></button>
+          <div class="split">
+            <button type="button" class="btn primary split-main" id="randomBtn">随机组合<kbd>空格</kbd></button>
+            <button type="button" class="btn primary split-toggle" id="modeBtn" aria-pressed="false"
+                    title="切换：随机组合 / 自己挑选搭配" aria-label="切换随机模式与固定模式">⇄</button>
+          </div>
           <button type="button" class="btn" id="speakBtn">播放发音<kbd>⏎</kbd></button>
-          <button type="button" class="btn mode" id="modeBtn" aria-pressed="false"
-                  title="切换：随机组合 / 自己挑选搭配" aria-label="切换随机模式与固定模式">⇄</button>
         </section>
       </div>
 
