@@ -21,4 +21,12 @@
 
 - 只打包了 Thai 与 Latin 两个 subset，各约 10KB。
 - 二者都可自由使用、修改、再分发，条件是不得单独出售字体本身、保留版权声明。详见 `OFL.txt`。
-- 界面里的「系统体」选项不打包字体，直接用你机器上的泰文字体（macOS 通常是 Sukhumvit Set / Thonburi）。
+- 泰文只提供这两种打包字体，不再提供「系统体」选项，避免换机器后字形跑到别处去。
+
+## Noto Sans SC（界面中文）
+
+- 文件：`noto-sans-sc-400-00.woff2` … `noto-sans-sc-400-15.woff2`
+- 版权：Noto Sans SC 由 Google 发布，源自 Adobe 的 Source Han Sans（思源黑体）
+- 来源：https://fonts.google.com/noto/specimen/Noto+Sans+SC
+- 授权：SIL Open Font License 1.1（全文见同目录 `OFL.txt`）
+- 生成方式：`node web/fonts/build-cjk-subset.mjs`——只下载「界面里真正出现过的中文字符」所在的子集，而不是几 MB 的全量中文字体。**改动界面文案后要重跑这个脚本**，否则新出现的字会退回系统字体。
