@@ -291,6 +291,9 @@ kbd {
 .panel-body .label-row:first-child { margin-top: 0; }
 
 /* ── 字块 ───────────────────────────────── */
+/* 辅音三行（中/高/低类）是三个独立行，行与行之间的空隙要单独给 */
+#consonants { display: flex; flex-direction: column; gap: 6px; }
+
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -318,6 +321,11 @@ kbd {
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
   padding: 4px 8px;
   background: transparent;
   border: 0;
@@ -325,7 +333,7 @@ kbd {
   color: var(--muted);
   font-family: var(--thai);
   font-size: 19px;
-  line-height: 1.35;
+  line-height: 1.2;
   cursor: pointer;
 }
 
@@ -333,7 +341,10 @@ kbd {
 
 .chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
 
-.vowel-chip { font-size: 15px; }
+.vowel-chip { font-size: 15px; min-width: 32px; }
+
+/* 组合符号的载体：淡显一个 อ，符号就落在正常位置，字块也不空 */
+.ghost-base { opacity: 0.45; }
 
 /* 元音分组小标题 */
 .vowel-list { display: block; }

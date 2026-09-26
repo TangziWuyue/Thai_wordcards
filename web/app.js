@@ -103,11 +103,12 @@
   }
 
   // ── 词表 ────────────────────────────────────────────────────────────
-  function chip(text, pressed, title, extraClass, onClick) {
+  function chip(content, pressed, title, extraClass, onClick) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = extraClass ? `chip ${extraClass}` : 'chip';
-    btn.textContent = text;
+    if (Array.isArray(content)) btn.append(...content);
+    else btn.textContent = content;
     btn.title = title;
     btn.setAttribute('aria-pressed', String(pressed));
     btn.addEventListener('click', onClick);
@@ -137,9 +138,24 @@
     }
   }
 
+  // 只有组合符号的元音（ั ิ ี ึ ื ุ ู）单独显示时会偏到左上角。
+  // 用一个透明的 อ 当底座（和课本里「สระ อิ」的写法一致），符号就会落在正常位置。
+  const COMBINING_ONLY = /^[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/;
+
   function vowelForm(v) {
     if (v.id === 'o_implied') return '无';
     return `${v.lead ? `${v.lead}-` : ''}${v.follow || ''}${v.tail || ''}`;
+  }
+
+  /** 字块里的内容：组合符号前面补一个看不见的 อ */
+  function vowelChipContent(v) {
+    const form = vowelForm(v);
+    if (!COMBINING_ONLY.test(form)) return form;
+    const base = document.createElement('span');
+    base.className = 'ghost-base';
+    base.textContent = 'อ';
+    base.setAttribute('aria-hidden', 'true');
+    return [base, document.createTextNode(form)];
   }
 
   function buildVowels() {
@@ -178,7 +194,7 @@
       v.noTone && '不写声调符号',
       v.note,
     ].filter(Boolean);
-    return chip(vowelForm(v), state.vowels.has(v.id), notes.join(' · '), 'vowel-chip', () => {
+    return chip(vowelChipContent(v), state.vowels.has(v.id), notes.join(' · '), 'vowel-chip', () => {
       if (state.vowels.has(v.id)) state.vowels.delete(v.id);
       else state.vowels.add(v.id);
       buildVowels();
