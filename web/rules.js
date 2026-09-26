@@ -251,7 +251,11 @@ const ThaiRules = (() => {
   /** 单个辅音的国际音标写法（供界面显示） */
   function consonantIPA(ch) {
     const c = CONSONANT_MAP.get(ch);
-    return c ? CONSONANT_IPA[c.roman] ?? c.roman : '';
+    if (!c) return '';
+    // 不用 ?? / ?. ：老版本 iOS Safari 不支持，会让整个脚本报语法错误
+    return Object.prototype.hasOwnProperty.call(CONSONANT_IPA, c.roman)
+      ? CONSONANT_IPA[c.roman]
+      : c.roman;
   }
 
   /** 复合声母的注音说明（没有特殊情况时返回空字符串） */
@@ -440,7 +444,10 @@ const ThaiRules = (() => {
     const letter = (ch) => {
       const c = CONSONANT_MAP.get(ch);
       if (!c) return '';
-      return useIPA ? CONSONANT_IPA[c.roman] ?? c.roman : c.roman;
+      if (!useIPA) return c.roman;
+      return Object.prototype.hasOwnProperty.call(CONSONANT_IPA, c.roman)
+        ? CONSONANT_IPA[c.roman]
+        : c.roman;
     };
     const vowelRoman = useIPA ? vowel.ipa : vowel.roman;
 
@@ -529,7 +536,8 @@ const ThaiRules = (() => {
       if (at('final') !== -1 && at('final') < at('tone')) issues.push('尾辅音排在声调符号之前');
       if (at('tone') < firstConsonant) issues.push('声调符号排在辅音之前');
       if (vowel && vowel.noTone) issues.push('该元音不写声调符号');
-      if (TONE_MAP.get(parts.tone)?.midOnly && classOf(parts.onset) !== 'mid') {
+      const usedTone = TONE_MAP.get(parts.tone);
+      if (usedTone && usedTone.midOnly && classOf(parts.onset) !== 'mid') {
         issues.push('ตรี/จัตวา 用在了非中类辅音上');
       }
     }

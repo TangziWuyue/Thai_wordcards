@@ -6,6 +6,15 @@
   'use strict';
 
   const R = window.ThaiRules;
+  // rules.js 没跑起来时（老浏览器 / 被预览器拦掉）给出明确提示，而不是留个空页面
+  if (!R) {
+    const box = document.createElement('div');
+    box.className = 'notice';
+    box.innerHTML = '<p class="notice-title">规则引擎没有加载</p>'
+      + '<p>页面需要用浏览器打开（不要用「预览」），麻烦截图发我。</p>';
+    (document.querySelector('.app') || document.body).prepend(box);
+    return;
+  }
   // 词表结构变动时递增版本号，避免读到旧版不兼容的勾选记录
   const STORE_KEY = 'thai-wordcards.v3';
 
@@ -107,6 +116,12 @@
   }
 
   // ── 词表 ────────────────────────────────────────────────────────────
+  /** 清空并放进新内容。不用 replaceChildren：老版本 iOS Safari 没有这个方法 */
+  function setChildren(parent, ...nodes) {
+    while (parent.firstChild) parent.firstChild.remove();
+    if (nodes.length) parent.append(...nodes);
+  }
+
   /** 悬浮卡片：放大字形 + 注释合并在一起 */
   const tip = document.createElement('div');
   tip.className = 'tip';
@@ -134,7 +149,7 @@
       dd.textContent = value;
       list.append(dt, dd);
     }
-    tip.replaceChildren(glyph, list);
+    setChildren(tip, glyph, list);
     tip.hidden = false;
 
     const r = btn.getBoundingClientRect();
@@ -204,7 +219,7 @@
 
   function buildConsonants() {
     hideTip();
-    el.consonants.replaceChildren();
+    setChildren(el.consonants);
     for (const cls of ['mid', 'high', 'low']) {
       const row = document.createElement('div');
       row.className = 'row';
@@ -253,7 +268,7 @@
 
   function buildVowels() {
     hideTip();
-    el.vowels.replaceChildren();
+    setChildren(el.vowels);
     for (const group of R.VOWEL_GROUPS) {
       const inGroup = R.VOWELS.filter((v) => v.group === group.id);
       if (!inGroup.length) continue;
@@ -316,7 +331,7 @@
 
   // ── 字体与外观 ──────────────────────────────────────────────────────
   function buildSeg(container, items, current, onPick) {
-    container.replaceChildren(...items.map((item) => {
+    setChildren(container, ...items.map((item) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = item.label;
@@ -363,7 +378,7 @@
 
   // ── 渲染卡片 ────────────────────────────────────────────────────────
   function buildTones() {
-    el.tones.replaceChildren(...R.TONES.map((t) => {
+    setChildren(el.tones, ...R.TONES.map((t) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'tone';
@@ -403,7 +418,7 @@
     if (!state.parts) {
       el.syllable.textContent = '—';
       el.roman.textContent = '点「随机组合」开始';
-      el.parts.replaceChildren();
+      setChildren(el.parts);
       el.toneHint.textContent = '';
       for (const btn of el.tones.children) {
         btn.disabled = true;
@@ -431,7 +446,7 @@
     breakdown.push(renderPart('元音', `${info.vowelName}（${info.vowelLength}）`));
     if (state.parts.final) breakdown.push(renderPart('尾辅音', state.parts.final));
     breakdown.push(renderPart('声调', info.toneName));
-    el.parts.replaceChildren(...breakdown);
+    setChildren(el.parts, ...breakdown);
 
     const disabledReasons = [];
     for (const btn of el.tones.children) {
@@ -561,17 +576,36 @@
   }, true);
   window.addEventListener('scroll', hideTip, { passive: true });
 
-  load();
-  applyFont();
-  applyTheme();
-  buildConsonants();
-  buildVowels();
-  buildTones();
-  renderSettings();
-  renderCard();
-  refreshVoices();
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
-    setTimeout(refreshVoices, 600);
+  /** 出错时直接把原因写在页面上，方便对方截图反馈，而不是只看到空页面 */
+  function showFatal(message) {
+    const box = document.createElement('div');
+    box.className = 'notice';
+    const title = document.createElement('p');
+    title.className = 'notice-title';
+    title.textContent = '页面出错了';
+    const text = document.createElement('p');
+    text.textContent = `${message} —— 麻烦把这一屏截图发我，我照着修。`;
+    box.append(title, text);
+    const host = document.querySelector('.app') || document.body;
+    host.prepend(box);
+  }
+
+  try {
+    load();
+    applyFont();
+    applyTheme();
+    buildConsonants();
+    buildVowels();
+    buildTones();
+    renderSettings();
+    renderCard();
+    refreshVoices();
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+      setTimeout(refreshVoices, 600);
+    }
+  } catch (err) {
+    showFatal(`初始化失败：${(err && err.message) || err}`);
+    throw err;
   }
 })();

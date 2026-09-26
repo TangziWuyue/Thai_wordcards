@@ -81,6 +81,25 @@ button { font: inherit; color: inherit; }
 .col-main, .col-side { min-width: 0; }
 
 /* ── 头部 ───────────────────────────────── */
+.notice {
+  margin: 0 0 28px;
+  padding: 14px 16px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.notice p { margin: 0 0 6px; }
+.notice p:last-child { margin-bottom: 0; }
+.notice-title { font-weight: 600; }
+.notice ul { margin: 6px 0; padding-left: 1.2em; }
+.notice li { margin: 2px 0; }
+
+/* 脚本跑起来了就不用看这段提示（head 里的脚本会给 html 加 .js） */
+html.js .js-fallback { display: none; }
+
 .head { margin-bottom: 28px; }
 
 .head h1 {

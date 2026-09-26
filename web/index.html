@@ -8,9 +8,26 @@
   <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="fonts-cjk.css">
   <link rel="stylesheet" href="style.css">
+  <!-- 脚本能跑就给 html 加个标记，用来隐藏下面那段「没能运行起来」的提示。
+       放在 head 里执行，正常打开时不会有闪烁；不执行脚本的预览器则会一直显示提示。 -->
+  <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
   <main class="app">
+    <!-- 「预览」模式（iOS「文件」App、微信内置预览等）不执行脚本，页面上只会剩静态文字。
+         这段提示默认显示，脚本跑起来后会被隐藏掉。 -->
+    <div class="notice js-fallback">
+      <p class="notice-title">这个页面没能运行起来</p>
+      <p>页面要靠浏览器执行脚本才能显示内容。你现在用的是「预览」，它不执行脚本，所以只看到几个空标题。</p>
+      <p><b>请改用下面任意一种方式打开：</b></p>
+      <ul>
+        <li>电脑：把文件存到桌面，双击它（Windows 选 Chrome 或 Edge，Mac 用 Safari）</li>
+        <li>iPhone：「文件」App 里预览就是这个样子，请改用电脑打开</li>
+        <li>安卓：微信里点「用其他应用打开」→ 选浏览器</li>
+      </ul>
+      <p>不需要联网，也不需要安装字体。</p>
+    </div>
+
     <header class="head">
       <h1>泰语组合练习</h1>
       <p class="sub">随机组合辅音与元音，自己挑声调，跟着念出声。</p>
