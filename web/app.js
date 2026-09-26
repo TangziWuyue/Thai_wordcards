@@ -538,27 +538,32 @@
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
     // 固定模式下只选了元音时，卡片上的 อ 是自动补的载体，不是使用者选的，淡显出来
+    // 固定模式下有两处「自动补出来」的内容要标出来：
+    //   只选元音 → 前面补的 อ 是载体
+    //   只选辅音 → 后面补的 อ（สระออ）是载体，按需求只在「不遵守拼写规则」时标
     const carrierOnly = state.mode === 'fixed' && !state.fixedOnset && !!state.parts;
-    if (carrierOnly) {
+    const autoTail = state.mode === 'fixed' && !!state.fixedOnset && !state.fixedVowelId
+      && !!state.parts && !state.strict;
+    if (carrierOnly || autoTail) {
       const l = R.layout(state.parts);
       const nodes = [];
-      const push = (text, faded) => {
-        if (!text) return;
-        if (!faded) {
-          nodes.push(document.createTextNode(text));
+      const push = (t, placeholder) => {
+        if (!t) return;
+        if (!placeholder) {
+          nodes.push(document.createTextNode(t));
           return;
         }
         const span = document.createElement('span');
         span.className = 'placeholder';
-        span.textContent = text;
+        span.textContent = t;
         nodes.push(span);
       };
       push(l.lead, false);
-      push(l.onset, true);      // 载体 อ
+      push(l.onset, carrierOnly);   // 载体 อ
       push(l.cluster, false);
       push(l.follow, false);
       push(l.tone, false);
-      push(l.tail, false);
+      push(l.tail, autoTail);       // 自动补的 สระออ
       push(l.final, false);
       setChildren(el.syllable, ...nodes);
     } else {
