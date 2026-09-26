@@ -214,12 +214,49 @@ const ThaiRules = (() => {
     { id: 'chattawa', mark: '๋', name: 'ไม้จัตวา', shortName: 'จัตวา', midOnly: true },
   ];
 
-  // ── 辅音簇（首辅音 + ร/ล/ว）────────────────────────────────────────
-  const CLUSTERS = [
+  // ── 复合声母 ────────────────────────────────────────────────────────
+  // ① อักษรควบแท้（真簇）：两个字母都要读出来
+  //    กร กล ขร ขล คร คล ตร ปร ปล พร พล ฟร กว ขว คว
+  const TRUE_CLUSTERS = [
     ['ก', 'ร'], ['ก', 'ล'], ['ข', 'ร'], ['ข', 'ล'], ['ค', 'ร'], ['ค', 'ล'],
-    ['จ', 'ร'], ['ป', 'ร'], ['ป', 'ล'], ['ต', 'ร'], ['บ', 'ร'], ['ผ', 'ล'],
-    ['พ', 'ร'], ['พ', 'ล'], ['ฟ', 'ร'], ['ด', 'ร'],
+    ['ต', 'ร'], ['ป', 'ร'], ['ป', 'ล'], ['พ', 'ร'], ['พ', 'ล'], ['ฟ', 'ร'],
+    ['ก', 'ว'], ['ข', 'ว'], ['ค', 'ว'],
   ];
+
+  // ② อักษรนำ（前引辅音）：ห 打头、后面跟响音时 ห 不发音，只把后面那个低类辅音变成高类
+  //    หมา = ma   หรู = ru   หนู = nu   ใหญ่ = yai
+  const LEADING_H_CLUSTERS = [
+    ['ห', 'ง'], ['ห', 'ญ'], ['ห', 'น'], ['ห', 'ม'], ['ห', 'ย'], ['ห', 'ร'], ['ห', 'ล'], ['ห', 'ว'],
+  ];
+
+  // ③ อักษรควบไม่แท้（假簇）：第二个字母不按字面读
+  //    จริง = jing（ร 不发音）   ศรี = sii（ร 不发音）    ทราย = saai（整体读 s）
+  const SILENT_SECOND_CLUSTERS = [
+    ['จ', 'ร'], ['ศ', 'ร'],
+  ];
+  const REPLACED_CLUSTERS = {
+    'ทร': { book: 's', ipa: 's' },
+  };
+
+  const CLUSTERS = [...TRUE_CLUSTERS, ...LEADING_H_CLUSTERS, ...SILENT_SECOND_CLUSTERS, ...Object.keys(REPLACED_CLUSTERS).map((pair) => [...pair])];
+
+  const SILENT_H_PAIRS = new Set(LEADING_H_CLUSTERS.map((pair) => pair.join('')));
+  const SILENT_SECOND_PAIRS = new Set(SILENT_SECOND_CLUSTERS.map((pair) => pair.join('')));
+
+  /** 这个声母 + 辅音簇是不是「前引 ห」组合（ห 不发音） */
+  function isLeadingH(onset, cluster) {
+    return SILENT_H_PAIRS.has(`${onset}${cluster || ''}`);
+  }
+
+  /** 复合声母的注音说明（没有特殊情况时返回空字符串） */
+  function clusterNote(onset, cluster) {
+    if (!cluster) return '';
+    const pair = `${onset}${cluster}`;
+    if (SILENT_H_PAIRS.has(pair)) return '前引 ห 不发音';
+    if (SILENT_SECOND_PAIRS.has(pair)) return `${cluster} 不发音`;
+    if (REPLACED_CLUSTERS[pair]) return `${pair} 整体读 ${REPLACED_CLUSTERS[pair].book}`;
+    return '';
+  }
 
   // ── 尾辅音（ตัวสะกด）────────────────────────────────────────────────
   // 44 个辅音里只有 ฃ ฅ ผ ฝ ห อ ฮ 不能作尾辅音，其余按实际读音归类：
@@ -239,11 +276,34 @@ const ThaiRules = (() => {
     w: ['ว'],
   };
 
+  // 国际音标写法：辅音（按课本注音推导）、尾辅音、元音
+  // 尾辅音在课本音标里的写法：แม่เกย 写 i（ไทย = thai）、แม่เกอว 写 o（แมว = maeo）
+  const FINAL_ROMAN = { k: 'k', t: 't', p: 'p', n: 'n', ng: 'ng', m: 'm', y: 'i', w: 'o' };
+
+  const CONSONANT_IPA = {
+    k: 'k', kh: 'kʰ', ch: 'tɕʰ', th: 'tʰ', ph: 'pʰ', f: 'f', s: 's', h: 'h',
+    ng: 'ŋ', n: 'n', m: 'm', y: 'j', r: 'r', l: 'l', w: 'w',
+    j: 'tɕ', d: 'd', b: 'b', p: 'p', t: 't', '': 'ʔ',
+  };
+  const FINAL_IPA = { k: 'k', t: 't', p: 'p', n: 'n', ng: 'ŋ', m: 'm', y: 'j', w: 'w' };
+  const VOWEL_IPA = {
+    a: 'a', aa: 'aː', i: 'i', ii: 'iː', ue: 'ɯ', uue: 'ɯː', u: 'u', uu: 'uː',
+    e_short: 'e', e: 'eː', ae_short: 'ɛ', ae: 'ɛː', o_short: 'o', o: 'oː',
+    o_short_open: 'ɔ', o_long: 'ɔː', oe_short: 'ɤ', oe: 'ɤː',
+    // 复合元音按泰语习惯不标长音符号，长短由「短音/长音」提示体现
+    ua_short: 'ua', ua: 'ua', ia_short: 'ia', ia: 'ia', uea_short: 'ɯa', uea: 'ɯa',
+    rue: 'rɯ', ruee: 'rɯː', lue: 'lɯ', luee: 'lɯː',
+    am: 'am', ai_mai: 'aj', ai: 'aj', ao: 'aw',
+    a_short: 'a', e_closed: 'ɤ', e_taikhu: 'e', o_implied: 'o',
+  };
+
   const FINALS = (() => {
     const table = {};
-    for (const [roman, chars] of Object.entries(FINAL_GROUPS)) {
-      const sonorant = ['n', 'ng', 'm', 'y', 'w'].includes(roman);
-      for (const ch of chars) table[ch] = { roman, sonorant };
+    for (const [sound, chars] of Object.entries(FINAL_GROUPS)) {
+      const sonorant = ['n', 'ng', 'm', 'y', 'w'].includes(sound);
+      for (const ch of chars) {
+        table[ch] = { roman: FINAL_ROMAN[sound], ipa: FINAL_IPA[sound], sonorant };
+      }
     }
     return table;
   })();
@@ -251,6 +311,14 @@ const ThaiRules = (() => {
   const CONSONANT_MAP = new Map(CONSONANTS.map((c) => [c.ch, c]));
   const VOWEL_MAP = new Map(VOWELS.map((v) => [v.id, v]));
   const TONE_MAP = new Map(TONES.map((t) => [t.id, t]));
+  // 每个元音都带上国际音标写法
+  for (const v of VOWELS) v.ipa = VOWEL_IPA[v.id] || v.roman;
+
+  /** 卡片注音可选的两种写法 */
+  const ROMAN_SYSTEMS = [
+    { id: 'book', label: '课本音标', note: '《基础泰语（1）》的音标列，不区分长短音' },
+    { id: 'ipa', label: '国际音标', note: 'IPA 写法，长音用 ː 标出' },
+  ];
   const VOWEL_GROUPS = [
     { id: 'single', label: '单元音', thai: 'สระเดี่ยว' },
     { id: 'compound', label: '复合元音', thai: 'สระประสม' },
@@ -335,13 +403,38 @@ const ThaiRules = (() => {
     return l.lead + l.onset + l.cluster + l.follow + l.tone + l.tail + l.final;
   }
 
-  /** 参考注音（近似，不含声调）：写法与课本「音标」列一致 */
-  function romanize(parts) {
+  /**
+   * 参考注音（不含声调）。
+   * system = 'book' 用课本「音标」列写法；system = 'ipa' 用国际音标。
+   */
+  function romanize(parts, system = 'book') {
+    const useIPA = system === 'ipa';
     const vowel = VOWEL_MAP.get(parts.vowelId);
-    const onset = (CONSONANT_MAP.get(parts.onset) || { roman: '' }).roman;
-    const cluster = parts.cluster ? (CONSONANT_MAP.get(parts.cluster) || { roman: '' }).roman : '';
-    const final = parts.final ? (FINALS[parts.final] || { roman: '' }).roman : '';
-    return onset + cluster + vowel.roman + final;
+    const letter = (ch) => {
+      const c = CONSONANT_MAP.get(ch);
+      if (!c) return '';
+      return useIPA ? CONSONANT_IPA[c.roman] ?? c.roman : c.roman;
+    };
+    const vowelRoman = useIPA ? vowel.ipa : vowel.roman;
+
+    const pair = `${parts.onset}${parts.cluster || ''}`;
+    const replaced = REPLACED_CLUSTERS[pair];
+    // 整体换读音的假簇（ทราย = saai）
+    if (replaced) {
+      const final = parts.final ? (useIPA ? FINALS[parts.final].ipa : FINALS[parts.final].roman) : '';
+      return (useIPA ? replaced.ipa : replaced.book) + vowelRoman + final;
+    }
+
+    const onset = SILENT_H_PAIRS.has(pair) ? '' : letter(parts.onset);
+    const cluster = parts.cluster && !SILENT_SECOND_PAIRS.has(pair) ? letter(parts.cluster) : '';
+
+    let final = '';
+    if (parts.final) {
+      const entry = FINALS[parts.final];
+      // ไทย / สวย 这类：尾辅音读出来跟元音结尾同一个音，就只写一次
+      final = vowel.ipa.endsWith(entry.ipa) ? '' : (useIPA ? entry.ipa : entry.roman);
+    }
+    return onset + cluster + vowelRoman + final;
   }
 
   /**
@@ -514,14 +607,17 @@ const ThaiRules = (() => {
   }
 
   /** 生成结果的完整快照，供界面渲染 */
-  function describe(parts, strict = true) {
+  function describe(parts, strict = true, system = 'book') {
     const vowel = VOWEL_MAP.get(parts.vowelId);
     const consonant = CONSONANT_MAP.get(parts.onset) || {};
     const tone = TONE_MAP.get(parts.tone) || TONE_MAP.get('none');
     return {
       parts,
       text: assemble(parts),
-      roman: romanize(parts),
+      roman: romanize(parts, system),
+      romanSystem: system,
+      romanBook: romanize(parts, 'book'),
+      romanIPA: romanize(parts, 'ipa'),
       toneName: tone.name,
       onsetClass: consonant.cls,
       onsetClassLabel: CLASS_LABEL[consonant.cls] || '',
@@ -529,10 +625,13 @@ const ThaiRules = (() => {
       onsetLabel: parts.onset
         ? `${parts.onset} ${CLASS_LABEL[consonant.cls] || ''}`.trim()
         : '元音充当声母',
+      leadingH: isLeadingH(parts.onset, parts.cluster),
+      clusterNote: clusterNote(parts.onset, parts.cluster),
       vowelLabel: vowel ? vowel.label : '',
       vowelName: vowel ? vowel.name : '',
       vowelEn: vowel ? vowel.en : '',
       vowelRoman: vowel ? vowel.roman : '',
+      vowelIPA: vowel ? vowel.ipa : '',
       vowelExample: vowel ? vowel.example || '' : '',
       vowelLength: vowel ? (vowel.short ? '短音' : '长音') : '',
       vowelGroup: vowel ? vowel.group : '',
@@ -547,6 +646,11 @@ const ThaiRules = (() => {
     CONSONANTS,
     VOWELS,
     VOWEL_GROUPS,
+    ROMAN_SYSTEMS,
+    TRUE_CLUSTERS,
+    LEADING_H_CLUSTERS,
+    SILENT_SECOND_CLUSTERS,
+    REPLACED_CLUSTERS,
     TONES,
     CLUSTERS,
     FINALS,
@@ -564,6 +668,8 @@ const ThaiRules = (() => {
     layout,
     assemble,
     romanize,
+    isLeadingH,
+    clusterNote,
     check,
     generate,
     describe,

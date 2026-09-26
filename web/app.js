@@ -18,6 +18,7 @@
     { id: 'light', label: '浅色' },
     { id: 'dark', label: '深色' },
   ];
+  const ROMAN_SEGS = R.ROMAN_SYSTEMS.map((s) => ({ id: s.id, label: s.label }));
 
   // 默认勾选全部辅音，只留 ฃ ฅ 这两个废弃字母让人手动开
   const DEFAULT_CONSONANTS = R.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
@@ -32,6 +33,7 @@
     autoSpeak: false,
     font: 'sarabun',
     theme: 'auto',
+    romanSystem: 'book',
     parts: null,
   };
 
@@ -46,6 +48,7 @@
     vowelHint: document.getElementById('vowelHint'),
     fontSeg: document.getElementById('fontSeg'),
     themeSeg: document.getElementById('themeSeg'),
+    romanSeg: document.getElementById('romanSeg'),
     randomBtn: document.getElementById('randomBtn'),
     speakBtn: document.getElementById('speakBtn'),
     voiceInfo: document.getElementById('voiceInfo'),
@@ -69,6 +72,7 @@
         autoSpeak: state.autoSpeak,
         font: state.font,
         theme: state.theme,
+        romanSystem: state.romanSystem,
       }));
     } catch { /* 无痕模式等场景下忽略 */ }
   }
@@ -94,6 +98,7 @@
       if (typeof data.autoSpeak === 'boolean') state.autoSpeak = data.autoSpeak;
       if (FONTS.some((f) => f.id === data.font)) state.font = data.font;
       if (THEMES.some((t) => t.id === data.theme)) state.theme = data.theme;
+      if (R.ROMAN_SYSTEMS.some((s) => s.id === data.romanSystem)) state.romanSystem = data.romanSystem;
     } catch { /* 数据坏了就用默认值 */ }
   }
 
@@ -164,7 +169,7 @@
   function vowelChip(v) {
     const notes = [
       `${v.name} · ${v.en}`,
-      `音标 ${v.roman}`,
+      `课本音标 ${v.roman} · 国际音标 ${v.ipa}`,
       v.short ? '短音' : '长音',
       v.example && `例：${v.example}`,
       v.canBeOnset && '可单独作声母',
@@ -212,6 +217,12 @@
       state.font = id;
       applyFont();
       renderSettings();
+      save();
+    });
+    buildSeg(el.romanSeg, ROMAN_SEGS, state.romanSystem, (id) => {
+      state.romanSystem = id;
+      renderSettings();
+      renderCard();
       save();
     });
     buildSeg(el.themeSeg, THEMES, state.theme, (id) => {
@@ -274,17 +285,21 @@
       return;
     }
 
-    const info = R.describe(state.parts, state.strict);
+    const info = R.describe(state.parts, state.strict, state.romanSystem);
     // 关闭规则检查时允许生成「规则上不合法」的组合，这种情况不算异常
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
     el.syllable.textContent = info.text;
-    el.roman.textContent = `/${info.roman}/ · 课本音标写法，不含声调`;
+    const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '课本音标';
+    el.roman.textContent = `/${info.roman}/ · ${systemLabel}，不含声调`;
 
     const breakdown = [];
     if (info.isVowelOnset) breakdown.push(renderPart('声母', '元音充当声母'));
     else breakdown.push(renderPart('首辅音', `${state.parts.onset} ${info.onsetClassLabel}`));
-    if (state.parts.cluster) breakdown.push(renderPart('辅音簇', `${state.parts.onset}${state.parts.cluster}`));
+    if (state.parts.cluster) {
+      const cluster = `${state.parts.onset}${state.parts.cluster}`;
+      breakdown.push(renderPart('辅音簇', info.clusterNote ? `${cluster}（${info.clusterNote}）` : cluster));
+    }
     breakdown.push(renderPart('元音', `${info.vowelName}（${info.vowelLength}）`));
     if (state.parts.final) breakdown.push(renderPart('尾辅音', state.parts.final));
     breakdown.push(renderPart('声调', info.toneName));
