@@ -46,6 +46,10 @@
     consonants: document.getElementById('consonants'),
     vowels: document.getElementById('vowels'),
     vowelHint: document.getElementById('vowelHint'),
+    consAll: document.getElementById('consAll'),
+    consNone: document.getElementById('consNone'),
+    vowelAll: document.getElementById('vowelAll'),
+    vowelNone: document.getElementById('vowelNone'),
     fontSeg: document.getElementById('fontSeg'),
     themeSeg: document.getElementById('themeSeg'),
     romanSeg: document.getElementById('romanSeg'),
@@ -180,6 +184,19 @@
     const counted = R.VOWELS.filter((v) => v.group !== 'variant').length;
     const variants = R.VOWELS.filter((v) => v.group === 'variant').length;
     el.vowelHint.textContent = `${counted} 个 + ${variants} 个变体写法`;
+  }
+
+  // ── 一键全选 / 全不选 ───────────────────────────────────────────────
+  function setAllConsonants(on) {
+    state.consonants = new Set(on ? R.CONSONANTS.map((c) => c.ch) : []);
+    buildConsonants();
+    save();
+  }
+
+  function setAllVowels(on) {
+    state.vowels = new Set(on ? R.VOWELS.map((v) => v.id) : []);
+    buildVowels();
+    save();
   }
 
   function vowelChip(v) {
@@ -405,6 +422,10 @@
   // ── 绑定 ────────────────────────────────────────────────────────────
   el.randomBtn.addEventListener('click', randomize);
   el.speakBtn.addEventListener('click', speak);
+  el.consAll.addEventListener('click', () => setAllConsonants(true));
+  el.consNone.addEventListener('click', () => setAllConsonants(false));
+  el.vowelAll.addEventListener('click', () => setAllVowels(true));
+  el.vowelNone.addEventListener('click', () => setAllVowels(false));
 
   const bindings = [
     [el.optClusters, 'allowClusters'],

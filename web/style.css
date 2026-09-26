@@ -169,6 +169,26 @@ button { font: inherit; color: inherit; }
   letter-spacing: 0.08em;
 }
 
+.row-end {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* 「全选 / 全不选」这类小操作按钮 */
+.mini {
+  padding: 2px 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mini:hover { background: var(--soft); color: var(--fg); }
+
 .hint {
   color: var(--muted);
   font-size: 12px;

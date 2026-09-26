@@ -44,12 +44,20 @@
           <div class="panel-body">
             <div class="label-row">
               <span class="label">辅音</span>
-              <span class="hint">44 个，默认全开（仅 ฃ ฅ 废弃）</span>
+              <span class="row-end">
+                <span class="hint">44 个</span>
+                <button type="button" class="mini" id="consAll">全选</button>
+                <button type="button" class="mini" id="consNone">全不选</button>
+              </span>
             </div>
             <div id="consonants"></div>
             <div class="label-row">
               <span class="label">元音</span>
-              <span class="hint" id="vowelHint"></span>
+              <span class="row-end">
+                <span class="hint" id="vowelHint"></span>
+                <button type="button" class="mini" id="vowelAll">全选</button>
+                <button type="button" class="mini" id="vowelNone">全不选</button>
+              </span>
             </div>
             <!-- 容器本身不能带 chips：分组标题和每组字块要各占一行 -->
             <div class="vowel-list" id="vowels"></div>
