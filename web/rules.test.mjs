@@ -525,7 +525,7 @@ test('真辅音簇：ปลา / ความ / กร 都按两个字读', () =
   assert.equal(ThaiRules.romanize(parts('ai', 'ท', { final: 'ย' }), 'latin'), 'thai');
 });
 
-test('两套转写：拉丁转写与国际音标都要对得上', () => {
+test('两套注音：罗马注音与国际音标都要对得上', () => {
   const cases = [
     ['aa', 'ก', {}, 'ka', 'kaː'],
     ['aa', 'ก', { final: 'น' }, 'kan', 'kaːn'],
@@ -541,19 +541,42 @@ test('两套转写：拉丁转写与国际音标都要对得上', () => {
   ];
   for (const [vowelId, onset, extra, latin, ipa] of cases) {
     const p = parts(vowelId, onset, extra);
-    assert.equal(ThaiRules.romanize(p, 'latin'), latin, `${vowelId} 拉丁转写`);
+    assert.equal(ThaiRules.romanize(p, 'latin'), latin, `${vowelId} 罗马注音`);
     assert.equal(ThaiRules.romanize(p, 'ipa'), ipa, `${vowelId} 国际音标`);
   }
-  // 不传参数时默认走拉丁转写
+  // 不传参数时默认走罗马注音
   assert.equal(ThaiRules.romanize(parts('aa', 'ก')), 'ka');
   // 每个元音都要有 IPA 字段，每个尾辅音也要有
   for (const v of ThaiRules.VOWELS) assert.ok(v.ipa, `${v.id} 缺 IPA`);
   for (const ch of Object.keys(ThaiRules.FINALS)) {
     assert.ok(ThaiRules.FINALS[ch].ipa, `${ch} 缺 IPA`);
   }
-  // 两套转写不能完全一样（否则说明数据没填好）
+  // 两套注音不能完全一样（否则说明数据没填好）
   const differs = ThaiRules.VOWELS.filter((v) => v.ipa !== v.roman);
-  assert.ok(differs.length >= 10, `IPA 与拉丁转写应有明显差别，实际只有 ${differs.length} 个不同`);
+  assert.ok(differs.length >= 10, `IPA 与罗马注音应有明显差别，实际只有 ${differs.length} 个不同`);
+});
+
+test('辅音表：44 个字母都有传统例词与中文释义', () => {
+  assert.equal(ThaiRules.CONSONANTS.length, 44);
+  for (const c of ThaiRules.CONSONANTS) {
+    assert.ok(c.example, `${c.ch} 缺传统例词`);
+    assert.ok(c.gloss, `${c.ch} 缺中文释义`);
+  }
+  const byCh = new Map(ThaiRules.CONSONANTS.map((c) => [c.ch, c]));
+  const spot = {
+    ก: ['ไก่', '鸡'], ข: ['ไข่', '蛋'], ง: ['งู', '蛇'], ญ: ['หญิง', '女人'],
+    ร: ['เรือ', '船'], ฮ: ['นกฮูก', '猫头鹰'], ฬ: ['จุฬา', '风筝'],
+  };
+  for (const [ch, [word, gloss]] of Object.entries(spot)) {
+    assert.equal(byCh.get(ch).example, word, `${ch} 例词`);
+    assert.equal(byCh.get(ch).gloss, gloss, `${ch} 释义`);
+  }
+  // 辅音的国际音标（给悬浮卡片用）
+  assert.equal(ThaiRules.consonantIPA('ก'), 'k');
+  assert.equal(ThaiRules.consonantIPA('ข'), 'kʰ');
+  assert.equal(ThaiRules.consonantIPA('จ'), 'tɕ');
+  assert.equal(ThaiRules.consonantIPA('อ'), 'ʔ');
+  assert.equal(ThaiRules.consonantIPA('ง'), 'ŋ');
 });
 
 // ── 分布类回归（曾经出过 bug：元音当声母把结果吃光）─────────────────

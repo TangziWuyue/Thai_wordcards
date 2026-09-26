@@ -40,7 +40,9 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 - 前端：原生 HTML/CSS/JS，无构建步骤、无第三方依赖；用普通 `<script>` 加载（不用 ES module），保证双击 `web/index.html` 也能打开。
 - 字体全部打包在仓库里，不依赖系统装了什么：泰文用 Sarabun（默认，泰国政府文书标准体）与 Noto Serif Thai；界面中文用 Noto Sans SC 的子集。都是 SIL OFL 1.1，版权与来源见 `web/fonts/NOTICE.md`。**不要再加「系统字体」选项**，也不要在字体栈里放系统泰文字体名，否则换机器字形会变。
 - 中文字体子集由 `node web/fonts/build-cjk-subset.mjs` 生成（需要联网），只取 `index.html` / `app.js` / `rules.js` 里真正出现过的中文。**改完界面文案要重跑**，否则新字会退回系统字体。
-- 元音数据带课本字段：`name`（สระ อา）、`en`（sara aa）、`roman`（拉丁转写，同时是卡片注音）、`example`（例词）、`short`（长/短音）。改这些字段前先对一遍课本，测试里有逐条比对。
+- 元音数据带课本字段：`name`（สระ อา）、`en`（sara aa）、`roman`（罗马注音，同时是卡片注音）、`example`（例词）、`short`（长/短音）。改这些字段前先对一遍课本，测试里有逐条比对。
+- 辅音的传统例词在 `CONSONANT_EXAMPLES`（`ก ไก่` …），字段是 `example` + `gloss`；测试要求 44 个字母都有，漏一个会失败。
+- 词表字块的悬浮卡片（`.tip`）由 `app.js` 里 `chip()` 的 `tipData` 驱动：`{ glyph | glyphNodes, rows }`，鼠标悬浮和键盘聚焦都会弹，定位会自动避开视口边缘；重建词表（`buildConsonants`/`buildVowels`）时要先 `hideTip()`。
 - 排版：单列是默认，`@media (min-width: 820px)` 变两栏，`@media (max-height: 560px)` 收紧留白；字号用 `clamp(52px, min(17vw, 19vh), 104px)` 同时看宽度和高度。改布局要在这三档尺寸下各看一眼。
 - 主题：`<html data-theme="auto|light|dark">` + `data-font`，全部走 CSS 变量（`--bg / --card / --fg / --muted / --line / --soft / --inv-bg / --inv-fg`）。加新颜色时同时补 light、dark 两组值，不要在组件里写死颜色。
 - 规则引擎同时兼容浏览器与 Node：文件末尾分别导出 `window.ThaiRules` 与 `module.exports`。
@@ -75,7 +77,7 @@ uv run python
 - 元音按教科书的 สระ 32 รูป 分组：单元音 18 + 复合元音 6 + 超额元音 8 = 32，另有 4 个拼写变体（`ั` `เ-ิ` `เ-็` 无元音符号）不入这 32。改动元音表时要保持 `group` 与 `name` 正确，测试里有分组数量断言。
 - `ฤ ฤๅ ฦ ฦๅ` 按「跟在辅音后面的元音」收录（`กฤ`、`พฤกษ์`）；它们单独成音节（`ฤดู` 里 ฤ 自带 ร 声母）没有建模。
 - 复合声母分三类，别混：`TRUE_CLUSTERS`（真簇，两个字母都读）、`LEADING_H_CLUSTERS`（前引 ห，`ห` 不发音）、`SILENT_SECOND_CLUSTERS` + `REPLACED_CLUSTERS`（假簇，第二个字母不发音或整体变音）。加新组合时要想清楚它属于哪类，`clusterNote()` 会自动生成卡片上的提示。
-- 注音有两套：`romanize(parts, 'latin')` 拉丁转写（罗马字，与教材音标列一致）、`romanize(parts, 'ipa')` 国际音标。加新元音/尾辅音时 `ipa` 字段必须一起填，测试里有断言。
+- 注音有两套：`romanize(parts, 'latin')` 罗马注音（拉丁字母拼读，与教材音标列一致）、`romanize(parts, 'ipa')` 国际音标。加新元音/尾辅音时 `ipa` 字段必须一起填，测试里有断言。
 - 规则引擎保持纯逻辑、不碰 DOM；界面只消费 `generate()` / `describe()` 的返回值。以后若搬到后端，接口不变，前端改成 fetch 即可。
 - 改动规则引擎必须补测试并跑 `node --test web/`；新数据表（如新增元音）也要加断言，最好拿真实词做码点抽查（写期望值时用 `String.fromCodePoint`，泰文形近字符肉眼分不出来）。
 - 卡片上的拉丁注音是近似转写、不含声调，不要当成准确读音。

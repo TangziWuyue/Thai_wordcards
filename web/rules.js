@@ -248,6 +248,12 @@ const ThaiRules = (() => {
     return SILENT_H_PAIRS.has(`${onset}${cluster || ''}`);
   }
 
+  /** 单个辅音的国际音标写法（供界面显示） */
+  function consonantIPA(ch) {
+    const c = CONSONANT_MAP.get(ch);
+    return c ? CONSONANT_IPA[c.roman] ?? c.roman : '';
+  }
+
   /** 复合声母的注音说明（没有特殊情况时返回空字符串） */
   function clusterNote(onset, cluster) {
     if (!cluster) return '';
@@ -309,6 +315,27 @@ const ThaiRules = (() => {
   })();
 
   const CONSONANT_MAP = new Map(CONSONANTS.map((c) => [c.ch, c]));
+
+  // 44 个字母的传统例词（ก ไก่ ข ไข่ …），[例词, 中文义]
+  const CONSONANT_EXAMPLES = {
+    ก: ['ไก่', '鸡'], จ: ['จาน', '盘子'], ฎ: ['ชฎา', '尖顶冠'], ฏ: ['ปฏัก', '刺棒'],
+    ด: ['เด็ก', '小孩'], ต: ['เต่า', '乌龟'], บ: ['ใบไม้', '树叶'], ป: ['ปลา', '鱼'],
+    อ: ['อ่าง', '盆'],
+    ข: ['ไข่', '蛋'], ฃ: ['ขวด', '瓶子'], ฉ: ['ฉิ่ง', '小钹'], ฐ: ['ฐาน', '基座'],
+    ถ: ['ถุง', '袋子'], ผ: ['ผึ้ง', '蜜蜂'], ฝ: ['ฝา', '盖子'], ศ: ['ศาลา', '凉亭'],
+    ษ: ['ฤๅษี', '修行者'], ส: ['เสือ', '老虎'], ห: ['หีบ', '箱子'],
+    ค: ['ควาย', '水牛'], ฅ: ['ฅน', '人'], ฆ: ['ระฆัง', '钟'], ง: ['งู', '蛇'],
+    ช: ['ช้าง', '大象'], ซ: ['โซ่', '链子'], ฌ: ['เฌอ', '树'], ญ: ['หญิง', '女人'],
+    ฑ: ['มณโฑ', '《拉玛坚》人物'], ฒ: ['ผู้เฒ่า', '老人'], ณ: ['เณร', '小沙弥'], ท: ['ทหาร', '士兵'],
+    ธ: ['ธง', '旗子'], น: ['หนู', '老鼠'], พ: ['พาน', '托盘'], ฟ: ['ฟัน', '牙齿'],
+    ภ: ['สำเภา', '帆船'], ม: ['ม้า', '马'], ย: ['ยักษ์', '夜叉'], ร: ['เรือ', '船'],
+    ล: ['ลิง', '猴子'], ว: ['แหวน', '戒指'], ฬ: ['จุฬา', '风筝'], ฮ: ['นกฮูก', '猫头鹰'],
+  };
+  for (const c of CONSONANTS) {
+    const [word, gloss] = CONSONANT_EXAMPLES[c.ch] || [];
+    c.example = word || '';
+    c.gloss = gloss || '';
+  }
   const VOWEL_MAP = new Map(VOWELS.map((v) => [v.id, v]));
   const TONE_MAP = new Map(TONES.map((t) => [t.id, t]));
   // 每个元音都带上国际音标写法
@@ -316,7 +343,7 @@ const ThaiRules = (() => {
 
   /** 卡片注音可选的两种转写方式 */
   const ROMAN_SYSTEMS = [
-    { id: 'latin', label: '拉丁转写', note: '用拉丁字母拼读，与《基础泰语（1）》音标列一致；不区分长短音' },
+    { id: 'latin', label: '罗马注音', note: '用拉丁字母拼读，与《基础泰语（1）》音标列一致；不区分长短音' },
     { id: 'ipa', label: '国际音标', note: 'IPA 写法，长音用 ː 标出' },
   ];
   const VOWEL_GROUPS = [
@@ -405,7 +432,7 @@ const ThaiRules = (() => {
 
   /**
    * 参考注音（不含声调）。
-   * system = 'latin' 用拉丁转写；system = 'ipa' 用国际音标。
+   * system = 'latin' 用罗马注音；system = 'ipa' 用国际音标。
    */
   function romanize(parts, system = 'latin') {
     const useIPA = system === 'ipa';
@@ -670,6 +697,7 @@ const ThaiRules = (() => {
     assemble,
     romanize,
     isLeadingH,
+    consonantIPA,
     clusterNote,
     check,
     generate,

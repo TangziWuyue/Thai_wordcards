@@ -107,19 +107,68 @@
   }
 
   // ── 词表 ────────────────────────────────────────────────────────────
-  function chip(content, pressed, title, extraClass, onClick) {
+  /** 悬浮卡片：放大字形 + 注释合并在一起 */
+  const tip = document.createElement('div');
+  tip.className = 'tip';
+  tip.hidden = true;
+  tip.setAttribute('role', 'tooltip');
+  document.body.append(tip);
+
+  function tipText(data) {
+    return [data.glyph, ...data.rows.map(([k, v]) => `${k} ${v}`)].join(' · ');
+  }
+
+  function showTip(btn) {
+    const data = btn._tipData;
+    if (!data) return;
+    const glyph = document.createElement('div');
+    glyph.className = 'glyph';
+    if (typeof data.glyphNodes === 'function') glyph.append(...data.glyphNodes());
+    else glyph.textContent = data.glyph;
+
+    const list = document.createElement('dl');
+    for (const [label, value] of data.rows) {
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      dd.textContent = value;
+      list.append(dt, dd);
+    }
+    tip.replaceChildren(glyph, list);
+    tip.hidden = false;
+
+    const r = btn.getBoundingClientRect();
+    const t = tip.getBoundingClientRect();
+    let top = r.top - t.height - 10;
+    if (top < 8) top = r.bottom + 10;
+    const left = Math.max(8, Math.min(r.left + r.width / 2 - t.width / 2, window.innerWidth - t.width - 8));
+    tip.style.top = `${top + window.scrollY}px`;
+    tip.style.left = `${left + window.scrollX}px`;
+  }
+
+  function hideTip() {
+    tip.hidden = true;
+  }
+
+  function chip(content, pressed, tipData, extraClass, onClick) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = extraClass ? `chip ${extraClass}` : 'chip';
     if (Array.isArray(content)) btn.append(...content);
     else btn.textContent = content;
-    btn.title = title;
+    btn._tipData = tipData;
+    btn.setAttribute('aria-label', tipText(tipData));
     btn.setAttribute('aria-pressed', String(pressed));
+    btn.addEventListener('mouseenter', () => showTip(btn));
+    btn.addEventListener('mouseleave', hideTip);
+    btn.addEventListener('focus', () => showTip(btn));
+    btn.addEventListener('blur', hideTip);
     btn.addEventListener('click', onClick);
     return btn;
   }
 
   function buildConsonants() {
+    hideTip();
     el.consonants.replaceChildren();
     for (const cls of ['mid', 'high', 'low']) {
       const row = document.createElement('div');
@@ -130,8 +179,13 @@
       row.append(tag);
       for (const c of R.CONSONANTS.filter((x) => x.cls === cls)) {
         const flags = [c.rare && '罕用', c.obsolete && '已废弃'].filter(Boolean);
-        const title = [c.ch, R.CLASS_LABEL[cls], c.roman, ...flags].filter(Boolean).join(' · ');
-        row.append(chip(c.ch, state.consonants.has(c.ch), title, '', () => {
+        const rows = [
+          ['类别', [R.CLASS_LABEL[cls], ...flags].join(' · ')],
+          ['罗马注音', c.roman || '—'],
+          ['国际音标', R.consonantIPA(c.ch)],
+          ['例词', c.example ? `${c.ch} ${c.example}${c.gloss ? `（${c.gloss}）` : ''}` : ''],
+        ].filter(([, v]) => v);
+        row.append(chip(c.ch, state.consonants.has(c.ch), { glyph: c.ch, rows }, '', () => {
           if (state.consonants.has(c.ch)) state.consonants.delete(c.ch);
           else state.consonants.add(c.ch);
           buildConsonants();
@@ -163,6 +217,7 @@
   }
 
   function buildVowels() {
+    hideTip();
     el.vowels.replaceChildren();
     for (const group of R.VOWEL_GROUPS) {
       const inGroup = R.VOWELS.filter((v) => v.group === group.id);
@@ -201,17 +256,22 @@
 
   function vowelChip(v) {
     const notes = [
-      `${v.name} · ${v.en}`,
-      `拉丁转写 ${v.roman} · 国际音标 ${v.ipa}`,
-      v.short ? '短音' : '长音',
-      v.example && `例：${v.example}`,
       v.canBeOnset && '可单独作声母',
       !v.allowsFinal && !v.requiresFinal && '不能带尾辅音',
       v.requiresFinal && '必须带尾辅音',
       v.noTone && '不写声调符号',
       v.note,
     ].filter(Boolean);
-    return chip(vowelChipContent(v), state.vowels.has(v.id), notes.join(' · '), 'vowel-chip', () => {
+    const rows = [
+      ['名称', `${v.name} · ${v.en}`],
+      ['罗马注音', v.roman],
+      ['国际音标', v.ipa],
+      ['长短', v.short ? '短音' : '长音'],
+      ['例词', v.example],
+      ['说明', notes.join(' · ')],
+    ].filter(([, value]) => value);
+    const tipData = { glyph: '', glyphNodes: () => vowelChipContent(v), rows };
+    return chip(vowelChipContent(v), state.vowels.has(v.id), tipData, 'vowel-chip', () => {
       if (state.vowels.has(v.id)) state.vowels.delete(v.id);
       else state.vowels.add(v.id);
       buildVowels();
@@ -323,7 +383,7 @@
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
     el.syllable.textContent = info.text;
-    const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '拉丁转写';
+    const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '罗马注音';
     el.roman.textContent = `/${info.roman}/ · ${systemLabel}，不含声调`;
 
     const breakdown = [];
