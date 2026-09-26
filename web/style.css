@@ -13,18 +13,16 @@
   --inv-fg: #fff;
   --radius: 14px;
 
-  /* 泰文字体栈：<html data-font> 决定第一顺位 */
-  --thai-sarabun: "Sarabun", "TH Sarabun New", "Sukhumvit Set", "Noto Sans Thai", sans-serif;
-  --thai-serif: "Noto Serif Thai", "Noto Serif", "Sathu", "Thonburi", ui-serif, serif;
-  --thai-system: "Sukhumvit Set", "Thonburi", "Leelawadee UI", "Noto Sans Thai", ui-sans-serif, sans-serif;
+  /* 泰文字体只用打包进来的两种，不依赖系统是否装了泰文字体 */
+  --thai-sarabun: "Sarabun", sans-serif;
+  --thai-serif: "Noto Serif Thai", serif;
   --thai: var(--thai-sarabun);
 
-  --ui: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
+  --ui: "Noto Sans SC", -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
 }
 
 html[data-font="sarabun"] { --thai: var(--thai-sarabun); }
 html[data-font="serif"] { --thai: var(--thai-serif); }
-html[data-font="system"] { --thai: var(--thai-system); }
 
 html[data-theme="auto"] { color-scheme: light dark; }
 
@@ -75,6 +73,11 @@ button { font: inherit; color: inherit; }
   padding: 56px 20px 72px;
 }
 
+/* 单列：窄屏 / 竖屏 / 手机 */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); }
+
+.col-main, .col-side { min-width: 0; }
+
 /* ── 头部 ───────────────────────────────── */
 .head { margin-bottom: 28px; }
 
@@ -97,7 +100,8 @@ button { font: inherit; color: inherit; }
   flex-direction: column;
   justify-content: center;
   gap: 14px;
-  min-height: 250px;
+  /* 高度跟着视窗走：矮屏不会把卡片撑出屏幕，高屏也不会太空 */
+  min-height: clamp(190px, 32vh, 300px);
   padding: 40px 24px 34px;
   background: var(--card);
   border: 1px solid var(--line);
@@ -108,7 +112,8 @@ button { font: inherit; color: inherit; }
 .syllable {
   margin: 0;
   font-family: var(--thai);
-  font-size: clamp(60px, 17vw, 104px);
+  /* 取「视窗宽 vw」和「视窗高 vh」里较小的那个，横屏/矮屏也不会溢出 */
+  font-size: clamp(52px, min(17vw, 19vh), 104px);
   font-weight: 400;
   line-height: 1.12;
   letter-spacing: 0.01em;
@@ -177,7 +182,7 @@ button { font: inherit; color: inherit; }
 /* ── 声调 ───────────────────────────────── */
 .tones {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -395,8 +400,35 @@ kbd {
   font-size: 12px;
 }
 
+/* ── 宽屏：左右两栏，卡片在左、词表在右 ──────────────── */
+@media (min-width: 820px) {
+  .app { max-width: 1060px; padding: 48px 32px 80px; }
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    column-gap: 48px;
+  }
+  .head { margin-bottom: 32px; }
+  .card { min-height: clamp(240px, 40vh, 340px); padding: 48px 32px 40px; }
+  .col-side .panel:first-child { margin-top: 0; border-top: 0; }
+  .col-side .panel-body { padding-bottom: 24px; }
+  .foot { grid-column: 1 / -1; padding-top: 28px; margin-top: 40px; border-top: 1px solid var(--line); }
+}
+
+/* ── 矮屏（横屏手机 / 小窗口）：收紧留白，卡片不再撑高 ── */
+@media (max-height: 560px) {
+  .app { padding-top: 24px; padding-bottom: 40px; }
+  .head { margin-bottom: 16px; }
+  .card { min-height: 150px; padding: 22px 20px 20px; gap: 8px; }
+  .syllable { font-size: clamp(44px, min(14vw, 26vh), 84px); }
+  .block { margin-top: 18px; }
+}
+
 @media (max-width: 420px) {
   .app { padding: 36px 16px 64px; }
   .tones { gap: 2px; }
   .tone .mark { font-size: 26px; }
+  .tone .name { font-size: 10px; }
+  .parts { gap: 4px 8px; }
+  .vowel-chip { font-size: 14px; }
+  .chip { font-size: 17px; padding: 3px 6px; }
 }

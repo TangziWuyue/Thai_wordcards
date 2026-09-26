@@ -12,7 +12,6 @@
   const FONTS = [
     { id: 'sarabun', label: '标准体', sample: 'ก' },
     { id: 'serif', label: '印刷衬线', sample: 'ข' },
-    { id: 'system', label: '系统体', sample: 'ค' },
   ];
   const THEMES = [
     { id: 'auto', label: '跟随系统' },
@@ -28,6 +27,7 @@
     vowels: new Set(R.VOWELS.map((v) => v.id)),
     allowClusters: false,
     allowFinal: true,
+    allowVowelOnset: false,
     strict: true,
     autoSpeak: false,
     font: 'sarabun',
@@ -51,6 +51,7 @@
     voiceInfo: document.getElementById('voiceInfo'),
     optClusters: document.getElementById('optClusters'),
     optFinal: document.getElementById('optFinal'),
+    optVowelOnset: document.getElementById('optVowelOnset'),
     optStrict: document.getElementById('optStrict'),
     optAutoSpeak: document.getElementById('optAutoSpeak'),
   };
@@ -63,6 +64,7 @@
         vowels: [...state.vowels],
         allowClusters: state.allowClusters,
         allowFinal: state.allowFinal,
+        allowVowelOnset: state.allowVowelOnset,
         strict: state.strict,
         autoSpeak: state.autoSpeak,
         font: state.font,
@@ -87,6 +89,7 @@
       if (vows.length) state.vowels = new Set(vows);
       if (typeof data.allowClusters === 'boolean') state.allowClusters = data.allowClusters;
       if (typeof data.allowFinal === 'boolean') state.allowFinal = data.allowFinal;
+      if (typeof data.allowVowelOnset === 'boolean') state.allowVowelOnset = data.allowVowelOnset;
       if (typeof data.strict === 'boolean') state.strict = data.strict;
       if (typeof data.autoSpeak === 'boolean') state.autoSpeak = data.autoSpeak;
       if (FONTS.some((f) => f.id === data.font)) state.font = data.font;
@@ -160,11 +163,15 @@
 
   function vowelChip(v) {
     const notes = [
-      v.label,
-      v.roman && `近似 ${v.roman}`,
+      `${v.name} · ${v.en}`,
+      `音标 ${v.roman}`,
+      v.short ? '短音' : '长音',
+      v.example && `例：${v.example}`,
+      v.canBeOnset && '可单独作声母',
       !v.allowsFinal && !v.requiresFinal && '不能带尾辅音',
       v.requiresFinal && '必须带尾辅音',
       v.noTone && '不写声调符号',
+      v.note,
     ].filter(Boolean);
     return chip(vowelForm(v), state.vowels.has(v.id), notes.join(' · '), 'vowel-chip', () => {
       if (state.vowels.has(v.id)) state.vowels.delete(v.id);
@@ -272,11 +279,13 @@
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
     el.syllable.textContent = info.text;
-    el.roman.textContent = `/${info.roman}/ · 近似读音，不含声调`;
+    el.roman.textContent = `/${info.roman}/ · 课本音标写法，不含声调`;
 
-    const breakdown = [renderPart('首辅音', `${state.parts.onset} ${info.onsetClassLabel}`)];
+    const breakdown = [];
+    if (info.isVowelOnset) breakdown.push(renderPart('声母', '元音充当声母'));
+    else breakdown.push(renderPart('首辅音', `${state.parts.onset} ${info.onsetClassLabel}`));
     if (state.parts.cluster) breakdown.push(renderPart('辅音簇', `${state.parts.onset}${state.parts.cluster}`));
-    breakdown.push(renderPart('元音', info.vowelName));
+    breakdown.push(renderPart('元音', `${info.vowelName}（${info.vowelLength}）`));
     if (state.parts.final) breakdown.push(renderPart('尾辅音', state.parts.final));
     breakdown.push(renderPart('声调', info.toneName));
     el.parts.replaceChildren(...breakdown);
@@ -304,7 +313,9 @@
 
   // ── 动作 ────────────────────────────────────────────────────────────
   function randomize() {
-    if (!state.consonants.size || !state.vowels.size) {
+    const vowelOnsetAvailable = state.allowVowelOnset
+      && R.VOWELS.some((v) => v.canBeOnset && state.vowels.has(v.id));
+    if (!state.vowels.size || (!state.consonants.size && !vowelOnsetAvailable)) {
       state.parts = null;
       renderCard();
       el.syllable.textContent = '—';
@@ -316,6 +327,7 @@
       vowels: [...state.vowels],
       allowClusters: state.allowClusters,
       allowFinal: state.allowFinal,
+      allowVowelOnset: state.allowVowelOnset,
       strict: state.strict,
     });
     if (!parts) {
@@ -362,6 +374,7 @@
   const bindings = [
     [el.optClusters, 'allowClusters'],
     [el.optFinal, 'allowFinal'],
+    [el.optVowelOnset, 'allowVowelOnset'],
     [el.optAutoSpeak, 'autoSpeak'],
   ];
   for (const [input, key] of bindings) {
