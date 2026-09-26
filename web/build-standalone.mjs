@@ -9,6 +9,7 @@
  *   node web/build-standalone.mjs
  * 产物：
  *   dist/泰语组合练习.html
+ *   dist/使用说明.txt（随文件一起发给人看怎么打开）
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -17,6 +18,8 @@ const WEB = import.meta.dirname;
 const ROOT = path.resolve(WEB, '..');
 const OUT_DIR = path.join(ROOT, 'dist');
 const OUT_FILE = path.join(OUT_DIR, '泰语组合练习.html');
+const GUIDE_SRC = path.join(ROOT, 'docs', '使用说明.txt');
+const GUIDE_OUT = path.join(OUT_DIR, '使用说明.txt');
 
 const read = (name) => fs.readFile(path.join(WEB, name), 'utf8');
 
@@ -75,7 +78,10 @@ if (problems.length) {
 `;
   await fs.mkdir(OUT_DIR, { recursive: true });
   await fs.writeFile(OUT_FILE, banner + html);
+  // 使用说明一起放到 dist/，发文件时两个一起发过去
+  await fs.copyFile(GUIDE_SRC, GUIDE_OUT);
   const kb = (n) => `${(n / 1024).toFixed(0)}KB`;
   console.log(`已生成 ${path.relative(ROOT, OUT_FILE)}`);
+  console.log(`已生成 ${path.relative(ROOT, GUIDE_OUT)}`);
   console.log(`内联 ${count} 个字体文件（${kb(bytes)}），产物大小 ${kb(Buffer.byteLength(banner + html))}`);
 }
