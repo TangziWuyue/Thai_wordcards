@@ -102,15 +102,15 @@ test('拼装顺序：辅音簇紧贴首辅音', () => {
   assert.deepEqual(ThaiRules.check(p), []);
 });
 
-test('参考注音：开音节 / 闭音节取不同元音读法', () => {
-  const open = parts('aa', 'ก');
-  const closed = { ...open, final: 'น' };
-  assert.equal(ThaiRules.romanize(open), 'kaa');
-  assert.equal(ThaiRules.romanize(closed), 'kaan');
-  const e = parts('e', 'ก', { final: 'ง' });
-  assert.equal(ThaiRules.romanize(e), 'keng');
-  const cluster = parts('a', 'ก', { cluster: 'ร' });
-  assert.equal(ThaiRules.romanize(cluster), 'kra');
+test('参考注音：与课本「音标」写法一致', () => {
+  assert.equal(ThaiRules.romanize(parts('aa', 'ก')), 'ka');           // มา = ma
+  assert.equal(ThaiRules.romanize(parts('aa', 'ก', { final: 'น' })), 'kan');
+  assert.equal(ThaiRules.romanize(parts('e', 'ก', { final: 'ง' })), 'keng');
+  assert.equal(ThaiRules.romanize(parts('a', 'ก', { cluster: 'ร' })), 'kra');
+  assert.equal(ThaiRules.romanize(parts('o_short', 'ต')), 'to');      // โตะ = to
+  assert.equal(ThaiRules.romanize(parts('am', 'น')), 'nam');          // นำ = nam
+  assert.equal(ThaiRules.romanize(parts('ai', 'ท')), 'thai');         // ไท = thai
+  assert.equal(ThaiRules.romanize(parts('uea', 'ก')), 'kuae');        // เลือก = luaek
 });
 
 test('strict 模式：๊ / ๋ 只允许中类辅音', () => {
@@ -337,6 +337,88 @@ test('超额元音与复合元音短形：ฤ ฦ ออ เอียะ อั�
   // ฤ 系列不写声调符号
   const rue = parts('rue', 'ก');
   assert.deepEqual(ThaiRules.toneOptions(rue, true).filter((t) => t.allowed).map((t) => t.id), ['none']);
+});
+
+test('元音表：名称 / 英文名 / 音标 / 例词与课本一致', () => {
+  const byId = new Map(ThaiRules.VOWELS.map((v) => [v.id, v]));
+  const expected = {
+    a: ['สระ อะ', 'sara a', 'a', 'ปะ = pa'],
+    aa: ['สระ อา', 'sara aa', 'a', 'มา = ma'],
+    i: ['สระ อิ', 'sara i', 'i', 'มิ = mi'],
+    ii: ['สระ อี', 'sara ii', 'i', 'มีด = mit'],
+    ue: ['สระ อึ', 'sara ue', 'ue', 'นึก = nuek'],
+    uue: ['สระ อือ', 'sara uee', 'ue', 'หรือ = rue'],
+    u: ['สระ อุ', 'sara u', 'u'],
+    uu: ['สระ อู', 'sara uu', 'u', 'หรู = ru'],
+    e_short: ['สระ เอะ', 'sara eh', 'e', 'เละ = le'],
+    e: ['สระ เอ', 'sara e', 'e', 'เลน = len'],
+    ae_short: ['สระ แอะ', 'sara aeh', 'ae', 'และ = lae'],
+    ae: ['สระ แอ', 'sara ae', 'ae', 'แสง = saeng'],
+    o_short: ['สระ โอะ', 'sara oh', 'o', 'โละ = lo'],
+    o: ['สระ โอ', 'sara o', 'o', 'โล้ = lo'],
+    o_short_open: ['สระ เอาะ', 'sara orh', 'o', 'เลาะ = lo'],
+    o_long: ['สระ ออ', 'sara or', 'o', 'ลอม = lom'],
+    oe_short: ['สระ เออะ', 'sara oeh', 'oe', 'เลอะ = loe'],
+    oe: ['สระ เออ', 'sara oe', 'oe', 'เธอ = thoe'],
+    ua_short: ['สระ อัวะ', 'sara uah', 'ua', 'ผัวะ = phua'],
+    ua: ['สระ อัว', 'sara ua', 'ua', 'มัว = mua'],
+    ia_short: ['สระ เอียะ', 'sara iah', 'ia', 'เผียะ = phia'],
+    ia: ['สระ เอีย', 'sara ia', 'ia', 'เลียน = lian'],
+    uea: ['สระ เอือ', 'sara uea', 'uae', 'เลือก = luaek'],
+    rue: ['สระ รึ', 'sara rue', 'rue', 'ฤดู = ruedu'],
+    ruee: ['สระ รือ', 'sara ruee', 'rue', 'ฤษี = ruesi'],
+    lue: ['สระ ลึ', 'sara lue', 'lue'],
+    luee: ['สระ ลือ', 'sara luee', 'lue'],
+    am: ['สระ อำ', 'sara am', 'am', 'รำ = ram'],
+    ai_mai: ['สระ ใอ', 'sara ai mai muan', 'ai', 'ใย = yai'],
+    ai: ['สระ ไอ', 'sara ai mai malai', 'ai', 'ไทย = thai'],
+    ao: ['สระ เอา', 'sara ao', 'ao', 'เมา = mao'],
+  };
+  assert.equal(Object.keys(expected).length, 31, '课本 32 行里 เอือะ 的例词栏是 ---');
+  for (const [id, [name, en, roman, example]] of Object.entries(expected)) {
+    const v = byId.get(id);
+    assert.ok(v, `缺少元音 ${id}`);
+    assert.equal(v.name, name, `${id} 名称`);
+    assert.equal(v.en, en, `${id} 英文名`);
+    assert.equal(v.roman, roman, `${id} 音标`);
+    if (example) assert.equal(v.example, example, `${id} 例词`);
+  }
+  // 每个元音都要有名称与音标，例词格式统一
+  for (const v of ThaiRules.VOWELS) {
+    assert.ok(v.name && v.en && v.roman, `${v.id} 字段不全`);
+    if (v.example) assert.match(v.example, /^.+ = .+$/u, `${v.id} 例词格式`);
+  }
+});
+
+test('元音充当声母：ฤ ฤๅ ฦ ฦๅ 可以自己成音节', () => {
+  for (const [id, text] of [['rue', 'ฤ'], ['ruee', 'ฤๅ'], ['lue', 'ฦ'], ['luee', 'ฦๅ']]) {
+    const p = parts(id, null);
+    assert.equal(ThaiRules.assemble(p), text);
+    assert.deepEqual(ThaiRules.check(p), [], `${id} 自检`);
+    assert.equal(ThaiRules.describe(p).onsetLabel, '元音充当声母');
+  }
+  // 没开启这个模式时，没有辅音就生成不出来
+  assert.equal(ThaiRules.generate({ consonants: [], vowels: ['rue', 'aa'], rng: seededRng(1) }), null);
+  // 开启后，即使一个辅音都没勾，也能生成 ฤ 类音节
+  const rng = seededRng(3);
+  let sawVowelOnset = false;
+  for (let i = 0; i < 200; i += 1) {
+    const p = ThaiRules.generate({
+      consonants: [], vowels: ['rue', 'ruee', 'lue', 'luee'], allowVowelOnset: true, rng,
+    });
+    assert.ok(p, '应该能生成');
+    assert.equal(p.onset, null);
+    assert.ok(['ฤ', 'ฤๅ', 'ฦ', 'ฦๅ'].includes(ThaiRules.assemble(p)));
+    sawVowelOnset = true;
+  }
+  assert.ok(sawVowelOnset);
+  // 关掉模式后仍然只用辅音当声母
+  for (let i = 0; i < 200; i += 1) {
+    const p = ThaiRules.generate({
+      consonants: ['ก', 'ม'], vowels: ['rue', 'aa'], allowVowelOnset: false, rng,
+    });
+    assert.ok(p.onset, '关闭模式时必须有辅音声母');
+  }
 });
 
 test('完整词表：非废弃辅音 42 个，元音按教科书 32 รูป 分组', () => {

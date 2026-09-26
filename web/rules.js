@@ -70,108 +70,138 @@ const ThaiRules = (() => {
   const CLASS_LABEL = { mid: '中类', high: '高类', low: '低类' };
 
   // ── 元音（สระ 32 รูป）──────────────────────────────────────────────
-  // 按教科书的分类：单元音 18 + 复合元音 6 + 超额元音 8 = 32，
-  // 另外单列 4 个「拼写变体」（不单独计入 32）：ั / เ-ิ / เ-็ / 无元音符号。
+  // 分组与名称、音标、例词对齐《基础泰语（1）》的元音表：
+  //   单元音 18（สระเดี่ยว）+ 复合元音 6（สระประสม）+ 超额元音 8（สระเกิน）= 32，
+  // 另外单列 4 个「拼写变体」（课本不单独计入 32）：ั / เ-ิ / เ-็ / 无元音符号。
   //
+  // name   = 课本的泰文名称（สระ อา）
+  // en     = 课本的英文名称（sara aa）
+  // roman  = 课本「音标」列，也用作卡片上的参考注音
+  // example= 课本「例词」列（个别课本留空的，用常见词补）
   // lead   = 写在辅音左边的部分（前引元音）
   // follow = 紧跟在辅音后、声调符号之前的元音段
   // tail   = 声调符号之后、尾辅音之前的元音段（ะ ำ อ า ย ว 都是这一段的常客）
-  // roman / romanClosed = 开音节 / 带尾辅音时的参考注音
-  // short  = 短元音；allowsFinal = 能否带尾辅音；requiresFinal = 必须带尾辅音
+  // short  = 短音；allowsFinal = 能否带尾辅音；requiresFinal = 必须带尾辅音
   // noTone = 该元音不写声调符号（写声调时要换写法）
   // dropFollowWithFinal = 带尾辅音时省掉 follow 段（ัว 的 ั 会消失：สวย / ช่วง）
+  // canBeOnset = 可以单独当声母用（ฤ ฤๅ ฦ ฦๅ，如 ฤดู / ฤษี）
   const VOWELS = [
     // ── 单元音 18 ──
-    { id: 'a', group: 'single', name: 'อะ', lead: '', follow: '', tail: 'ะ',
-      roman: 'a', romanClosed: null, short: true, allowsFinal: false,
-      label: 'ะ ·a 短（如 จ๊ะ）' },
-    { id: 'aa', group: 'single', name: 'อา', lead: '', follow: 'า', tail: '',
-      roman: 'aa', romanClosed: 'aa', short: false, allowsFinal: true,
-      label: 'า ·aa 长' },
-    { id: 'i', group: 'single', name: 'อิ', lead: '', follow: 'ิ', tail: '',
-      roman: 'i', romanClosed: 'i', short: true, allowsFinal: true, label: 'ิ ·i 短' },
-    { id: 'ii', group: 'single', name: 'อี', lead: '', follow: 'ี', tail: '',
-      roman: 'ii', romanClosed: 'ii', short: false, allowsFinal: true, label: 'ี ·ii 长' },
-    { id: 'ue', group: 'single', name: 'อึ', lead: '', follow: 'ึ', tail: '',
-      roman: 'ue', romanClosed: 'ue', short: true, allowsFinal: true, label: 'ึ ·ue 短' },
-    { id: 'uue', group: 'single', name: 'อือ', lead: '', follow: 'ื', tail: '',
-      roman: 'uue', romanClosed: 'uue', short: false, allowsFinal: true, label: 'ื ·uue 长' },
-    { id: 'u', group: 'single', name: 'อุ', lead: '', follow: 'ุ', tail: '',
-      roman: 'u', romanClosed: 'u', short: true, allowsFinal: true, label: 'ุ ·u 短' },
-    { id: 'uu', group: 'single', name: 'อู', lead: '', follow: 'ู', tail: '',
-      roman: 'uu', romanClosed: 'uu', short: false, allowsFinal: true, label: 'ู ·uu 长' },
-    { id: 'e_short', group: 'single', name: 'เอะ', lead: 'เ', follow: '', tail: 'ะ',
-      roman: 'e', romanClosed: null, short: true, allowsFinal: false, label: 'เ-ะ ·e 短' },
-    { id: 'e', group: 'single', name: 'เอ', lead: 'เ', follow: '', tail: '',
-      roman: 'ee', romanClosed: 'e', short: false, allowsFinal: true, label: 'เ·  ee 长' },
-    { id: 'ae_short', group: 'single', name: 'แอะ', lead: 'แ', follow: '', tail: 'ะ',
-      roman: 'ɛ', romanClosed: null, short: true, allowsFinal: false, label: 'แ-ะ ·ɛ 短' },
-    { id: 'ae', group: 'single', name: 'แอ', lead: 'แ', follow: '', tail: '',
-      roman: 'ɛɛ', romanClosed: 'ɛ', short: false, allowsFinal: true, label: 'แ·  ɛɛ 长' },
-    { id: 'o_short', group: 'single', name: 'โอะ', lead: 'โ', follow: '', tail: 'ะ',
-      roman: 'o', romanClosed: null, short: true, allowsFinal: false, label: 'โ-ะ ·o 短（如 โต๊ะ）' },
-    { id: 'o', group: 'single', name: 'โอ', lead: 'โ', follow: '', tail: '',
-      roman: 'oo', romanClosed: 'o', short: false, allowsFinal: true, label: 'โ·  oo 长' },
-    { id: 'o_short_open', group: 'single', name: 'เอาะ', lead: 'เ', follow: '', tail: 'าะ',
-      roman: 'ɔ', romanClosed: null, short: true, allowsFinal: false, label: 'เ-าะ ·ɔ 短' },
-    { id: 'o_long', group: 'single', name: 'ออ', lead: '', follow: '', tail: 'อ',
-      roman: 'ɔɔ', romanClosed: 'ɔ', short: false, allowsFinal: true,
-      label: 'อ ·ɔɔ 长（如 พ่อ / ก่อน）' },
-    { id: 'oe_short', group: 'single', name: 'เออะ', lead: 'เ', follow: '', tail: 'อะ',
-      roman: 'ə', romanClosed: null, short: true, allowsFinal: false, label: 'เ-อะ ·ə 短' },
-    { id: 'oe', group: 'single', name: 'เออ', lead: 'เ', follow: '', tail: 'อ',
-      roman: 'əə', romanClosed: null, short: false, allowsFinal: false, label: 'เ-อ ·əə 长' },
+    { id: 'a', group: 'single', name: 'สระ อะ', en: 'sara a', roman: 'a',
+      example: 'ปะ = pa', lead: '', follow: '', tail: 'ะ',
+      short: true, allowsFinal: false },
+    { id: 'aa', group: 'single', name: 'สระ อา', en: 'sara aa', roman: 'a',
+      example: 'มา = ma', lead: '', follow: 'า', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'i', group: 'single', name: 'สระ อิ', en: 'sara i', roman: 'i',
+      example: 'มิ = mi', lead: '', follow: 'ิ', tail: '',
+      short: true, allowsFinal: true },
+    { id: 'ii', group: 'single', name: 'สระ อี', en: 'sara ii', roman: 'i',
+      example: 'มีด = mit', lead: '', follow: 'ี', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'ue', group: 'single', name: 'สระ อึ', en: 'sara ue', roman: 'ue',
+      example: 'นึก = nuek', lead: '', follow: 'ึ', tail: '',
+      short: true, allowsFinal: true },
+    { id: 'uue', group: 'single', name: 'สระ อือ', en: 'sara uee', roman: 'ue',
+      example: 'หรือ = rue', lead: '', follow: 'ื', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'u', group: 'single', name: 'สระ อุ', en: 'sara u', roman: 'u',
+      example: 'คุณ = khun', lead: '', follow: 'ุ', tail: '',
+      short: true, allowsFinal: true },
+    { id: 'uu', group: 'single', name: 'สระ อู', en: 'sara uu', roman: 'u',
+      example: 'หรู = ru', lead: '', follow: 'ู', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'e_short', group: 'single', name: 'สระ เอะ', en: 'sara eh', roman: 'e',
+      example: 'เละ = le', lead: 'เ', follow: '', tail: 'ะ',
+      short: true, allowsFinal: false },
+    { id: 'e', group: 'single', name: 'สระ เอ', en: 'sara e', roman: 'e',
+      example: 'เลน = len', lead: 'เ', follow: '', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'ae_short', group: 'single', name: 'สระ แอะ', en: 'sara aeh', roman: 'ae',
+      example: 'และ = lae', lead: 'แ', follow: '', tail: 'ะ',
+      short: true, allowsFinal: false },
+    { id: 'ae', group: 'single', name: 'สระ แอ', en: 'sara ae', roman: 'ae',
+      example: 'แสง = saeng', lead: 'แ', follow: '', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'o_short', group: 'single', name: 'สระ โอะ', en: 'sara oh', roman: 'o',
+      example: 'โละ = lo', lead: 'โ', follow: '', tail: 'ะ',
+      short: true, allowsFinal: false },
+    { id: 'o', group: 'single', name: 'สระ โอ', en: 'sara o', roman: 'o',
+      example: 'โล้ = lo', lead: 'โ', follow: '', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'o_short_open', group: 'single', name: 'สระ เอาะ', en: 'sara orh', roman: 'o',
+      example: 'เลาะ = lo', lead: 'เ', follow: '', tail: 'าะ',
+      short: true, allowsFinal: false },
+    { id: 'o_long', group: 'single', name: 'สระ ออ', en: 'sara or', roman: 'o',
+      example: 'ลอม = lom', lead: '', follow: '', tail: 'อ',
+      short: false, allowsFinal: true },
+    { id: 'oe_short', group: 'single', name: 'สระ เออะ', en: 'sara oeh', roman: 'oe',
+      example: 'เลอะ = loe', lead: 'เ', follow: '', tail: 'อะ',
+      short: true, allowsFinal: false },
+    { id: 'oe', group: 'single', name: 'สระ เออ', en: 'sara oe', roman: 'oe',
+      example: 'เธอ = thoe', lead: 'เ', follow: '', tail: 'อ',
+      short: false, allowsFinal: false },
     // ── 复合元音 6 ──
-    { id: 'ia', group: 'compound', name: 'เอีย', lead: 'เ', follow: 'ี', tail: 'ย',
-      roman: 'ia', romanClosed: 'ia', short: false, allowsFinal: true, label: 'เ-ีย ·ia' },
-    { id: 'ia_short', group: 'compound', name: 'เอียะ', lead: 'เ', follow: 'ี', tail: 'ยะ',
-      roman: 'ia', romanClosed: null, short: true, allowsFinal: false, noTone: true,
-      label: 'เ-ียะ ·ia 短（不写声调）' },
-    { id: 'uea', group: 'compound', name: 'เอือ', lead: 'เ', follow: 'ื', tail: 'อ',
-      roman: 'uea', romanClosed: 'uea', short: false, allowsFinal: true, label: 'เ-ือ ·uea' },
-    { id: 'uea_short', group: 'compound', name: 'เอือะ', lead: 'เ', follow: 'ื', tail: 'อะ',
-      roman: 'uea', romanClosed: null, short: true, allowsFinal: false, noTone: true,
-      label: 'เ-ือะ ·uea 短（不写声调）' },
-    { id: 'ua', group: 'compound', name: 'อัว', lead: '', follow: 'ั', tail: 'ว', dropFollowWithFinal: true,
-      roman: 'ua', romanClosed: 'ua', short: true, allowsFinal: true, label: 'ัว ·ua' },
-    { id: 'ua_short', group: 'compound', name: 'อัวะ', lead: '', follow: 'ั', tail: 'วะ',
-      roman: 'ua', romanClosed: null, short: true, allowsFinal: false, noTone: true,
-      label: 'ัวะ ·ua 短（不写声调）' },
+    { id: 'ua_short', group: 'compound', name: 'สระ อัวะ', en: 'sara uah', roman: 'ua',
+      example: 'ผัวะ = phua', lead: '', follow: 'ั', tail: 'วะ',
+      short: true, allowsFinal: false, noTone: true },
+    { id: 'ua', group: 'compound', name: 'สระ อัว', en: 'sara ua', roman: 'ua',
+      example: 'มัว = mua', lead: '', follow: 'ั', tail: 'ว', dropFollowWithFinal: true,
+      short: false, allowsFinal: true },
+    { id: 'ia_short', group: 'compound', name: 'สระ เอียะ', en: 'sara iah', roman: 'ia',
+      example: 'เผียะ = phia', lead: 'เ', follow: 'ี', tail: 'ยะ',
+      short: true, allowsFinal: false, noTone: true },
+    { id: 'ia', group: 'compound', name: 'สระ เอีย', en: 'sara ia', roman: 'ia',
+      example: 'เลียน = lian', lead: 'เ', follow: 'ี', tail: 'ย',
+      short: false, allowsFinal: true },
+    { id: 'uea_short', group: 'compound', name: 'สระ เอือะ', en: 'sara uaeh', roman: 'uae',
+      lead: 'เ', follow: 'ื', tail: 'อะ',
+      short: true, allowsFinal: false, noTone: true },
+    { id: 'uea', group: 'compound', name: 'สระ เอือ', en: 'sara uea', roman: 'uae',
+      example: 'เลือก = luaek', lead: 'เ', follow: 'ื', tail: 'อ',
+      short: false, allowsFinal: true },
     // ── 超额元音 8 ──
-    { id: 'am', group: 'extra', name: 'อำ', lead: '', follow: '', tail: 'ำ',
-      roman: 'am', romanClosed: null, short: true, allowsFinal: false,
-      label: 'ำ ·am（如 น้ำ）' },
-    { id: 'ai_mai', group: 'extra', name: 'ใอ', lead: 'ใ', follow: '', tail: '',
-      roman: 'ai', romanClosed: 'ai', short: false, allowsFinal: true, label: 'ใ·  ai（如 ใหม่）' },
-    { id: 'ai', group: 'extra', name: 'ไอ', lead: 'ไ', follow: '', tail: '',
-      roman: 'ai', romanClosed: 'ai', short: false, allowsFinal: true, label: 'ไ·  ai（如 ไทย）' },
-    { id: 'ao', group: 'extra', name: 'เอา', lead: 'เ', follow: '', tail: 'า',
-      roman: 'ao', romanClosed: 'ao', short: false, allowsFinal: true, label: 'เ-า ·ao（如 เปล่า）' },
-    { id: 'rue', group: 'extra', name: 'ฤ', lead: '', follow: 'ฤ', tail: '',
-      roman: 'rue', romanClosed: null, short: true, allowsFinal: false, noTone: true,
-      label: 'ฤ ·rue（如 พฤกษ์）' },
-    { id: 'ruee', group: 'extra', name: 'ฤๅ', lead: '', follow: 'ฤๅ', tail: '',
-      roman: 'ruee', romanClosed: null, short: false, allowsFinal: false, noTone: true,
-      label: 'ฤๅ ·ruee' },
-    { id: 'lue', group: 'extra', name: 'ฦ', lead: '', follow: 'ฦ', tail: '',
-      roman: 'lue', romanClosed: null, short: true, allowsFinal: false, noTone: true,
-      label: 'ฦ ·lue' },
-    { id: 'luee', group: 'extra', name: 'ฦๅ', lead: '', follow: 'ฦๅ', tail: '',
-      roman: 'luee', romanClosed: null, short: false, allowsFinal: false, noTone: true,
-      label: 'ฦๅ ·luee' },
+    { id: 'rue', group: 'extra', name: 'สระ รึ', en: 'sara rue', roman: 'rue',
+      example: 'ฤดู = ruedu', lead: '', follow: 'ฤ', tail: '',
+      short: true, allowsFinal: false, noTone: true, canBeOnset: true },
+    { id: 'ruee', group: 'extra', name: 'สระ รือ', en: 'sara ruee', roman: 'rue',
+      example: 'ฤษี = ruesi', lead: '', follow: 'ฤๅ', tail: '',
+      short: false, allowsFinal: false, noTone: true, canBeOnset: true },
+    { id: 'lue', group: 'extra', name: 'สระ ลึ', en: 'sara lue', roman: 'lue',
+      lead: '', follow: 'ฦ', tail: '',
+      short: true, allowsFinal: false, noTone: true, canBeOnset: true },
+    { id: 'luee', group: 'extra', name: 'สระ ลือ', en: 'sara luee', roman: 'lue',
+      lead: '', follow: 'ฦๅ', tail: '',
+      short: false, allowsFinal: false, noTone: true, canBeOnset: true },
+    { id: 'am', group: 'extra', name: 'สระ อำ', en: 'sara am', roman: 'am',
+      example: 'รำ = ram', lead: '', follow: '', tail: 'ำ',
+      short: true, allowsFinal: false },
+    { id: 'ai_mai', group: 'extra', name: 'สระ ใอ', en: 'sara ai mai muan', roman: 'ai',
+      example: 'ใย = yai', lead: 'ใ', follow: '', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'ai', group: 'extra', name: 'สระ ไอ', en: 'sara ai mai malai', roman: 'ai',
+      example: 'ไทย = thai', lead: 'ไ', follow: '', tail: '',
+      short: false, allowsFinal: true },
+    { id: 'ao', group: 'extra', name: 'สระ เอา', en: 'sara ao', roman: 'ao',
+      example: 'เมา = mao', lead: 'เ', follow: '', tail: 'า',
+      short: false, allowsFinal: true },
     // ── 拼写变体 4（不单独计入 32）──
-    { id: 'a_short', group: 'variant', name: 'ไม้หันอากาศ', lead: '', follow: 'ั', tail: '',
-      roman: 'a', romanClosed: 'a', short: true, allowsFinal: true, requiresFinal: true,
-      label: 'ั ·a 短（闭音节里的 อะ，必带尾辅音）' },
-    { id: 'e_closed', group: 'variant', name: 'เออ（闭音节）', lead: 'เ', follow: 'ิ', tail: '',
-      roman: 'e', romanClosed: 'e', short: true, allowsFinal: true, requiresFinal: true,
-      label: 'เ-ิ ·e 短（闭音节里的 เออ，必带尾辅音，如 เกิด）' },
-    { id: 'e_taikhu', group: 'variant', name: 'ไม้ไต่คู้', lead: 'เ', follow: '็', tail: '',
-      roman: 'e', romanClosed: 'e', short: true, allowsFinal: true, requiresFinal: true, noTone: true,
-      label: 'เ-็ ·e 短（闭音节里的 เอ/แอ，不写声调，如 เก็ง）' },
-    { id: 'o_implied', group: 'variant', name: 'โอะ（无元音符号）', lead: '', follow: '', tail: '',
-      roman: 'o', romanClosed: 'o', short: true, allowsFinal: true, requiresFinal: true,
-      label: '— ·o 短（没有元音符号的闭音节，如 กบ / ต้ม）' },
+    { id: 'a_short', group: 'variant', name: 'ไม้หันอากาศ', en: 'mai han akat', roman: 'a',
+      example: 'กัน = kan', lead: '', follow: 'ั', tail: '',
+      short: true, allowsFinal: true, requiresFinal: true,
+      note: '闭音节里的 สระ อะ' },
+    { id: 'e_closed', group: 'variant', name: 'สระ เออ (เ-ิ)', en: 'sara oe (closed)', roman: 'oe',
+      example: 'เกิด = koet', lead: 'เ', follow: 'ิ', tail: '',
+      short: true, allowsFinal: true, requiresFinal: true,
+      note: '闭音节里的 สระ เออ' },
+    { id: 'e_taikhu', group: 'variant', name: 'ไม้ไต่คู้', en: 'mai taikhu', roman: 'e',
+      example: 'เก็ง = keng', lead: 'เ', follow: '็', tail: '',
+      short: true, allowsFinal: true, requiresFinal: true, noTone: true,
+      note: '闭音节里的 สระ เอ / แอ，不写声调符号' },
+    { id: 'o_implied', group: 'variant', name: 'สระ โอะ (ไม่มีรูป)', en: 'sara oh (implied)', roman: 'o',
+      example: 'กบ = kop', lead: '', follow: '', tail: '',
+      short: true, allowsFinal: true, requiresFinal: true,
+      note: '没有元音符号的闭音节' },
   ];
 
   // ── 声调符号 ────────────────────────────────────────────────────────
@@ -305,16 +335,13 @@ const ThaiRules = (() => {
     return l.lead + l.onset + l.cluster + l.follow + l.tone + l.tail + l.final;
   }
 
-  /** 参考注音（近似，不含声调） */
+  /** 参考注音（近似，不含声调）：写法与课本「音标」列一致 */
   function romanize(parts) {
     const vowel = VOWEL_MAP.get(parts.vowelId);
     const onset = (CONSONANT_MAP.get(parts.onset) || { roman: '' }).roman;
     const cluster = parts.cluster ? (CONSONANT_MAP.get(parts.cluster) || { roman: '' }).roman : '';
-    const hasFinal = !!parts.final;
-    let v = vowel.roman;
-    if (hasFinal && vowel.romanClosed) v = vowel.romanClosed;
-    const final = hasFinal ? (FINALS[parts.final] || { roman: '' }).roman : '';
-    return onset + cluster + v + final;
+    const final = parts.final ? (FINALS[parts.final] || { roman: '' }).roman : '';
+    return onset + cluster + vowel.roman + final;
   }
 
   /**
@@ -361,7 +388,9 @@ const ThaiRules = (() => {
     const at = (role) => roles.indexOf(role);
     const firstConsonant = chars.findIndex(isConsonant);
 
-    if (!isConsonant(parts.onset)) issues.push('首辅音不是辅音');
+    if (parts.onset && !isConsonant(parts.onset)) issues.push('首辅音不是辅音');
+    // 只有 ฤ ฤๅ ฦ ฦๅ 可以自己当声母（ฤษี / ฤดู）
+    if (!parts.onset && !(vowel && vowel.canBeOnset)) issues.push('缺少首辅音');
 
     // 前引元音必须排在首个辅音之前（码点顺序错就会渲染错位）
     if (at('lead') !== -1 && at('lead') > firstConsonant) {
@@ -415,6 +444,7 @@ const ThaiRules = (() => {
    * @param {boolean} [options.allowClusters] 是否允许辅音簇
    * @param {boolean} [options.allowFinal]    是否可能带尾辅音
    * @param {boolean} [options.strict]        是否遵守声调规则
+   * @param {boolean} [options.allowVowelOnset] 允许 ฤ ฤๅ ฦ ฦๅ 自己当声母（ฤษี / ฤดู）
    * @param {function} [options.rng]          随机源，便于测试
    */
   function generate(options = {}) {
@@ -424,12 +454,22 @@ const ThaiRules = (() => {
       allowClusters = false,
       allowFinal = true,
       strict = true,
+      allowVowelOnset = false,
       rng = Math.random,
     } = options;
 
     const onsets = consonants.filter(isConsonant);
     const vowelList = vowels.map((id) => VOWEL_MAP.get(id)).filter(Boolean);
-    if (!onsets.length || !vowelList.length) return null;
+    if (!vowelList.length) return null;
+
+    // 可选声母：普通辅音 + （开启时）能自己当声母的元音
+    const choices = onsets.map((ch) => ({ onset: ch }));
+    if (allowVowelOnset) {
+      for (const v of vowelList.filter((x) => x.canBeOnset)) {
+        choices.push({ onset: null, vowelId: v.id });
+      }
+    }
+    if (!choices.length) return null;
 
     const finalCandidates = allowFinal ? onsets.filter((ch) => FINALS[ch]) : [];
 
@@ -439,7 +479,16 @@ const ThaiRules = (() => {
     );
     if (!usableVowels.length) return null;
 
-    const onset = pick(onsets, rng);
+    const choice = pick(choices, rng);
+
+    // 元音自己当声母：这个音节只有那个元音
+    if (choice.onset === null) {
+      const parts = { vowelId: choice.vowelId, onset: null, cluster: null, tone: 'none', final: null };
+      parts.tone = allowedTones(parts, strict)[0] || 'none';
+      return parts;
+    }
+
+    const onset = choice.onset;
     let cluster = null;
     if (allowClusters) {
       const pairs = CLUSTERS.filter(([a, b]) => a === onset && consonants.includes(b));
@@ -476,8 +525,16 @@ const ThaiRules = (() => {
       toneName: tone.name,
       onsetClass: consonant.cls,
       onsetClassLabel: CLASS_LABEL[consonant.cls] || '',
+      isVowelOnset: !parts.onset,
+      onsetLabel: parts.onset
+        ? `${parts.onset} ${CLASS_LABEL[consonant.cls] || ''}`.trim()
+        : '元音充当声母',
       vowelLabel: vowel ? vowel.label : '',
       vowelName: vowel ? vowel.name : '',
+      vowelEn: vowel ? vowel.en : '',
+      vowelRoman: vowel ? vowel.roman : '',
+      vowelExample: vowel ? vowel.example || '' : '',
+      vowelLength: vowel ? (vowel.short ? '短音' : '长音') : '',
       vowelGroup: vowel ? vowel.group : '',
       vowelForm: vowel ? `${vowel.lead || ''}${vowel.follow || ''}${vowel.tail || ''}` : '',
       finalRoman: parts.final ? (FINALS[parts.final] || {}).roman || '' : '',
