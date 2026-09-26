@@ -617,7 +617,8 @@ test('元音充当声母：占比稳定，不会挤掉其它结果', () => {
 test('元音分布不塌缩：全词表跑 400 次，各元音都能出现', () => {
   const rng = rng32(7);
   const consonants = ThaiRules.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
-  const vowels = ThaiRules.VOWELS.map((v) => v.id);
+  // 只算词表里能勾选的元音（internal 的「无元音」只给固定模式内部用）
+  const vowels = ThaiRules.VOWELS.filter((v) => !v.internal).map((v) => v.id);
   const perVowel = new Map();
   const n = 400;
   for (let i = 0; i < n; i += 1) {
@@ -631,6 +632,20 @@ test('元音分布不塌缩：全词表跑 400 次，各元音都能出现', () 
   // 允许有 ั 这类「必带尾辅音」的元音出现少一些，但不该有明显一家独大
   const max = Math.max(...perVowel.values());
   assert.ok(max < n * 0.15, `单个元音占比过高：${max}/${n}`);
+});
+
+test('随机组合不会用到「无元音」这个内部项', () => {
+  const rng = rng32(3);
+  const consonants = ['ก', 'ม', 'อ'];
+  const vowels = ['aa', 'i', 'ua', 'none']; // 故意把内部项塞进词表
+  for (let i = 0; i < 300; i += 1) {
+    const p = ThaiRules.generate({ consonants, vowels, rng });
+    assert.ok(p, '应该能生成');
+    assert.notEqual(p.vowelId, 'none', '「无元音」不该出现在随机结果里');
+    assert.ok(ThaiRules.assemble(p).length > 0);
+  }
+  // 只给内部项时，生成不出东西也算正常（词表里没有真正可用的元音）
+  assert.equal(ThaiRules.generate({ consonants, vowels: ['none'], rng }), null);
 });
 
 test('辅音与尾辅音分布：都来自勾选的词表，且都有覆盖', () => {

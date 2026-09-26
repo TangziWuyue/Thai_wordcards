@@ -31,10 +31,12 @@
 
   // 默认勾选全部辅音，只留 ฃ ฅ 这两个废弃字母让人手动开
   const DEFAULT_CONSONANTS = R.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
+  // 词表里能勾选的元音（排除「无元音」这种只在固定模式内部使用的项）
+  const SELECTABLE_VOWELS = R.VOWELS.filter((v) => !v.internal).map((v) => v.id);
 
   const state = {
     consonants: new Set(DEFAULT_CONSONANTS),
-    vowels: new Set(R.VOWELS.map((v) => v.id)),
+    vowels: new Set(SELECTABLE_VOWELS),
     allowClusters: false,
     allowFinal: true,
     allowVowelOnset: false,
@@ -114,7 +116,7 @@
     try {
       const data = JSON.parse(raw);
       const known = new Set(R.CONSONANTS.map((c) => c.ch));
-      const knownVowels = new Set(R.VOWELS.map((v) => v.id));
+      const knownVowels = new Set(SELECTABLE_VOWELS);
       const cons = (data.consonants || []).filter((ch) => known.has(ch));
       const vows = (data.vowels || []).filter((id) => knownVowels.has(id));
       if (cons.length) state.consonants = new Set(cons);
@@ -428,7 +430,7 @@
   }
 
   function setAllVowels(on) {
-    state.vowels = new Set(on ? R.VOWELS.map((v) => v.id) : []);
+    state.vowels = new Set(on ? SELECTABLE_VOWELS : []);
     buildVowels();
     save();
   }

@@ -600,7 +600,10 @@ const ThaiRules = (() => {
     } = options;
 
     const onsets = consonants.filter(isConsonant);
-    const vowelList = vowels.map((id) => VOWEL_MAP.get(id)).filter(Boolean);
+    // internal 的项（「无元音」）只给固定模式内部用，随机组合里不该出现
+    const vowelList = vowels
+      .map((id) => VOWEL_MAP.get(id))
+      .filter((v) => v && !v.internal);
     if (!vowelList.length) return null;
 
     // 能自己当声母的元音（ฤ ฤๅ ฦ ฦๅ）
