@@ -533,6 +533,19 @@ kbd {
 
 .switch input { margin: 0; accent-color: var(--fg); }
 
+/* 固定模式下不适用的选项：灰掉且选不中 */
+.switch.off {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.options-hint {
+  margin: 10px 0 2px;
+  font-size: 11px;
+  text-align: left;
+  line-height: 1.5;
+}
+
 /* ── 页脚 ───────────────────────────────── */
 .foot {
   display: flex;

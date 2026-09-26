@@ -103,23 +103,25 @@
             </div>
             <div class="seg" id="themeSeg" role="group" aria-label="外观"></div>
 
-            <label class="switch">
+            <p class="hint options-hint" id="optionsHint"></p>
+
+            <label class="switch" id="rowClusters">
               <input type="checkbox" id="optClusters">
               <span>允许辅音簇（กร กล คร …）</span>
             </label>
-            <label class="switch">
+            <label class="switch" id="rowFinal">
               <input type="checkbox" id="optFinal" checked>
               <span>允许尾辅音（约一半概率）</span>
             </label>
-            <label class="switch">
+            <label class="switch" id="rowVowelOnset">
               <input type="checkbox" id="optVowelOnset">
               <span>允许元音充当声母（ฤ ฤๅ ฦ ฦๅ）</span>
             </label>
-            <label class="switch">
+            <label class="switch" id="rowStrict">
               <input type="checkbox" id="optStrict" checked>
-              <span>遵守声调规则：禁用该组合用不上的声调</span>
+              <span>遵守拼写规则：禁用该组合用不上的声调</span>
             </label>
-            <label class="switch">
+            <label class="switch" id="rowAutoSpeak">
               <input type="checkbox" id="optAutoSpeak">
               <span>随机后自动朗读</span>
             </label>

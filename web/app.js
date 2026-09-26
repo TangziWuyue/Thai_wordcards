@@ -60,6 +60,11 @@
     vowels: document.getElementById('vowels'),
     consHint: document.getElementById('consHint'),
     vowelHint: document.getElementById('vowelHint'),
+    optionsHint: document.getElementById('optionsHint'),
+    rowClusters: document.getElementById('rowClusters'),
+    rowFinal: document.getElementById('rowFinal'),
+    rowVowelOnset: document.getElementById('rowVowelOnset'),
+    rowAutoSpeak: document.getElementById('rowAutoSpeak'),
     consAll: document.getElementById('consAll'),
     consNone: document.getElementById('consNone'),
     vowelAll: document.getElementById('vowelAll'),
@@ -341,7 +346,14 @@
     }
     const next = onset
       ? { vowelId: vowelId || 'o_long', onset, cluster: null, tone: 'none', final: null }
-      : { vowelId, onset: 'อ', cluster: null, tone: 'none', final: null };
+      // 只选元音时：ฤ ฤๅ ฦ ฦๅ 自己能站住，不用补载体；其它元音补一个 อ 当载体
+      : {
+        vowelId,
+        onset: R.VOWELS.find((v) => v.id === vowelId).canBeOnset ? null : 'อ',
+        cluster: null,
+        tone: 'none',
+        final: null,
+      };
     // 之前选过的声调如果还能用就留着，来回换字母时不用重新点
     const prevTone = state.parts ? state.parts.tone : 'none';
     if (prevTone && prevTone !== 'none') {
@@ -375,6 +387,21 @@
     const fixed = state.mode === 'fixed';
     // 全选/全不选只对随机模式有意义，固定模式下藏起来
     for (const btn of [el.consAll, el.consNone, el.vowelAll, el.vowelNone]) btn.hidden = fixed;
+    // 这四项只影响随机组合：固定模式灰掉、选不中（字体/音标/外观、拼写规则两种模式都保留）
+    const randomOnly = [
+      [el.rowClusters, el.optClusters],
+      [el.rowFinal, el.optFinal],
+      [el.rowVowelOnset, el.optVowelOnset],
+      [el.rowAutoSpeak, el.optAutoSpeak],
+    ];
+    for (const [row, input] of randomOnly) {
+      input.disabled = fixed;
+      row.classList.toggle('off', fixed);
+      row.title = fixed ? '固定模式下不适用（只影响随机组合）' : '';
+    }
+    el.optionsHint.textContent = fixed
+      ? '固定模式只用到字体、音标、外观和拼写规则；灰掉的几项只对随机组合生效'
+      : '';
     el.modeBtn.setAttribute('aria-pressed', String(fixed));
     el.modeBtn.title = fixed ? '当前：固定模式（点它切回随机组合）' : '切换：随机组合 / 自己挑选搭配';
     el.randomBtn.disabled = fixed;
@@ -541,7 +568,8 @@
     // 固定模式下有两处「自动补出来」的内容要标出来：
     //   只选元音 → 前面补的 อ 是载体
     //   只选辅音 → 后面补的 อ（สระออ）是载体，按需求只在「不遵守拼写规则」时标
-    const carrierOnly = state.mode === 'fixed' && !state.fixedOnset && !!state.parts;
+    const carrierOnly = state.mode === 'fixed' && !state.fixedOnset && !!state.parts
+      && !!state.parts.onset;
     const autoTail = state.mode === 'fixed' && !!state.fixedOnset && !state.fixedVowelId
       && !!state.parts && !state.strict;
     if (carrierOnly || autoTail) {
