@@ -27,15 +27,19 @@
 ```
 web/index.html        页面结构
 web/style.css         样式（极简黑白灰）
+web/fonts.css         打包字体的 @font-face
 web/app.js            界面逻辑：词表、随机、声调切换、朗读
 web/rules.js          拼写规则引擎（纯逻辑，无 DOM 依赖）
 web/rules.test.mjs    规则引擎自测
+web/fonts/            Sarabun / Noto Serif Thai 的 woff2 与 OFL 授权说明
 src/thai_wordcards/   Python 脚手架，暂无功能
 ```
 
 ## 技术栈
 
 - 前端：原生 HTML/CSS/JS，无构建步骤、无第三方依赖；用普通 `<script>` 加载（不用 ES module），保证双击 `web/index.html` 也能打开。
+- 泰文字体：Sarabun（默认，泰国政府文书标准体）与 Noto Serif Thai 以 woff2 形式打包在 `web/fonts/`，SIL OFL 1.1，版权与来源见 `web/fonts/NOTICE.md`；界面另有「系统体」选项不打包字体。新增字体必须是可自由分发的授权，并补上 NOTICE。
+- 主题：`<html data-theme="auto|light|dark">` + `data-font`，全部走 CSS 变量（`--bg / --card / --fg / --muted / --line / --soft / --inv-bg / --inv-fg`）。加新颜色时同时补 light、dark 两组值，不要在组件里写死颜色。
 - 规则引擎同时兼容浏览器与 Node：文件末尾分别导出 `window.ThaiRules` 与 `module.exports`。
 - Python 3.12（见 `.python-version`），构建后端 `uv_build`；Python 侧目前只用于脚手架。
 - Python 依赖管理与运行统一用 [uv](https://docs.astral.sh/uv/)。
@@ -63,7 +67,9 @@ uv run python
 - `ัว` 带尾辅音时会省掉 `ั`（`ตัว` → `สวย`、`ช่วง`），由元音表上的 `dropFollowWithFinal` 控制。
 - 生成的组合不校验是否是真实泰语词（刻意如此），但必须通过 `rules.js` 的 `check()`：不叠字、不越界、元音与尾辅音约束成立。
 - 声调规则（strict 模式）：`๊`/`๋` 只用于中类辅音；`noTone` 元音（如 `เ-็`）不写声调符号。用户可在界面上关掉规则检查，此时 `check()` 报出的规则问题属于预期，不要当成 bug。
-- 词表范围：44 个辅音默认全开，只有 ฃ ฅ 两个废弃字母默认关；尾辅音表覆盖 37 个可作尾辅音的字母（不能作尾辅音的是 ฃ ฅ ผ ฝ ห อ ฮ）。`ฤ ฤๅ ฦ ฦๅ` 是合体字，不占「辅音 + 元音」的位置，本项目未建模。
+- 词表范围：44 个辅音默认全开，只有 ฃ ฅ 两个废弃字母默认关；尾辅音表覆盖 37 个可作尾辅音的字母（不能作尾辅音的是 ฃ ฅ ผ ฝ ห อ ฮ）。
+- 元音按教科书的 สระ 32 รูป 分组：单元音 18 + 复合元音 6 + 超额元音 8 = 32，另有 4 个拼写变体（`ั` `เ-ิ` `เ-็` 无元音符号）不入这 32。改动元音表时要保持 `group` 与 `name` 正确，测试里有分组数量断言。
+- `ฤ ฤๅ ฦ ฦๅ` 按「跟在辅音后面的元音」收录（`กฤ`、`พฤกษ์`）；它们单独成音节（`ฤดู` 里 ฤ 自带 ร 声母）没有建模。
 - 规则引擎保持纯逻辑、不碰 DOM；界面只消费 `generate()` / `describe()` 的返回值。以后若搬到后端，接口不变，前端改成 fetch 即可。
 - 改动规则引擎必须补测试并跑 `node --test web/`；新数据表（如新增元音）也要加断言，最好拿真实词做码点抽查（写期望值时用 `String.fromCodePoint`，泰文形近字符肉眼分不出来）。
 - 卡片上的拉丁注音是近似转写、不含声调，不要当成准确读音。
