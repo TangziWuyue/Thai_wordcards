@@ -345,6 +345,11 @@
       renderCard();
       return;
     }
+    const vowel = vowelId ? R.VOWELS.find((v) => v.id === vowelId) : null;
+    const vowelForm = vowel ? `${vowel.lead || ''}${vowel.follow || ''}${vowel.tail || ''}` : '';
+    // 只选元音时要补载体吗：遵守规则时补；「无元音符号」这种本身没有字形的也必须补，
+    // 否则卡片会是一片空白。ฤ ฤๅ ฦ ฦๅ 自己能站住，不补。
+    const needCarrier = !!vowel && !vowel.canBeOnset && (state.strict || !vowelForm);
     const next = onset
       // 只选辅音时：遵守拼写规则就补一个 สระออ（读作 กอ，字母本身的读法）；
       //            关掉规则就不补，卡片上只留这个辅音
@@ -353,7 +358,7 @@
       //            关掉规则就不补。ฤ ฤๅ ฦ ฦๅ 自己能站住，任何时候都不补。
       : {
         vowelId,
-        onset: state.strict && !R.VOWELS.find((v) => v.id === vowelId).canBeOnset ? 'อ' : null,
+        onset: needCarrier ? 'อ' : null,
         cluster: null,
         tone: 'none',
         final: null,
@@ -573,9 +578,22 @@
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
     // 固定模式下只选了元音时，卡片上的 อ 是自动补的载体，不是使用者选的，淡显出来
-    el.syllable.textContent = info.text;
+    // 不补位（关闭拼写规则）时，孤立的组合符号（ิ ี ึ ื ุ ู ั）默认浮在卡片上方，
+    // 单独把它往下/上挪一点，落在卡片中间
+    const l = R.layout(state.parts);
+    const bareMark = state.mode === 'fixed' && !state.strict && !l.onset
+      && l.follow.length === 1 && R.COMBINING_CHARS.has(l.follow) && !l.tail;
+    if (bareMark) {
+      const span = document.createElement('span');
+      span.className = R.BELOW_COMBINING_CHARS.has(l.follow) ? 'bare-mark below' : 'bare-mark';
+      span.textContent = l.follow;
+      setChildren(el.syllable, span);
+    } else {
+      el.syllable.textContent = info.text;
+    }
     const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '罗马注音';
-    el.roman.textContent = `/${info.roman}/ · ${systemLabel}，不含声调`;
+    // อ 之类的字母在罗马注音里本来就没有对应写法，显示成 — 而不是空斜杠
+    el.roman.textContent = `/${info.roman || '—'}/ · ${systemLabel}，不含声调`;
 
     const breakdown = [];
     if (info.isVowelOnset) breakdown.push(renderPart('声母', '元音充当声母'));

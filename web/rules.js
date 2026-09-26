@@ -370,6 +370,10 @@ const ThaiRules = (() => {
   const VOWEL_CHARS = new Set(
     VOWELS.flatMap((v) => [...((v.lead || '') + (v.follow || '') + (v.tail || ''))]),
   );
+  // 贴在辅音上方 / 下方的组合符号（界面上单独显示时需要做垂直微调）
+  const ABOVE_COMBINING_CHARS = new Set(['ั', 'ิ', 'ี', 'ึ', 'ื', '็']);
+  const BELOW_COMBINING_CHARS = new Set(['ุ', 'ู']);
+  const COMBINING_CHARS = new Set([...ABOVE_COMBINING_CHARS, ...BELOW_COMBINING_CHARS]);
 
   function isConsonant(ch) {
     return CONSONANT_MAP.has(ch);
@@ -526,13 +530,16 @@ const ThaiRules = (() => {
     if (!parts.onset && !(vowel && vowel.canBeOnset)) issues.push('缺少首辅音');
 
     // 前引元音必须排在首个辅音之前（码点顺序错就会渲染错位）
-    if (at('lead') !== -1 && at('lead') > firstConsonant) {
-      issues.push('前引元音排在辅音之后');
-    }
-    for (let i = 0; i < chars.length; i += 1) {
-      if (LEAD_VOWEL_CHARS.includes(chars[i]) && i > firstConsonant) {
+    // 没有声母时不检查「前引元音的位置」（固定模式下会故意只显示一个元音符号）
+    if (parts.onset) {
+      if (at('lead') !== -1 && at('lead') > firstConsonant) {
         issues.push('前引元音排在辅音之后');
-        break;
+      }
+      for (let i = 0; i < chars.length; i += 1) {
+        if (LEAD_VOWEL_CHARS.includes(chars[i]) && i > firstConsonant) {
+          issues.push('前引元音排在辅音之后');
+          break;
+        }
       }
     }
 
@@ -701,6 +708,9 @@ const ThaiRules = (() => {
     LEAD_VOWEL_CHARS,
     FOLLOW_VOWEL_CHARS,
     VOWEL_CHARS,
+    COMBINING_CHARS,
+    ABOVE_COMBINING_CHARS,
+    BELOW_COMBINING_CHARS,
     TONE_CHARS,
     isConsonant,
     classOf,

@@ -144,6 +144,15 @@ html.js .js-fallback { display: none; }
   word-break: keep-all;
 }
 
+/* 不补位时孤立显示的组合符号：默认位置偏上，挪到卡片中间
+   （上方符号往下挪，ุ ู 这种下方符号往上挪） */
+.syllable .bare-mark {
+  display: inline-block;
+  transform: translateY(0.3em);
+}
+
+.syllable .bare-mark.below { transform: translateY(-0.42em); }
+
 .roman {
   margin: 0;
   color: var(--muted);
