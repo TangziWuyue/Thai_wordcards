@@ -52,6 +52,8 @@
         <section class="actions">
           <button type="button" class="btn primary" id="randomBtn">随机组合<kbd>空格</kbd></button>
           <button type="button" class="btn" id="speakBtn">播放发音<kbd>⏎</kbd></button>
+          <button type="button" class="btn mode" id="modeBtn" aria-pressed="false"
+                  title="切换：随机组合 / 自己挑选搭配" aria-label="切换随机模式与固定模式">⇄</button>
         </section>
       </div>
 
@@ -62,7 +64,7 @@
             <div class="label-row">
               <span class="label">辅音</span>
               <span class="row-end">
-                <span class="hint">44 个</span>
+                <span class="hint" id="consHint">44 个</span>
                 <button type="button" class="mini" id="consAll">全选</button>
                 <button type="button" class="mini" id="consNone">全不选</button>
               </span>

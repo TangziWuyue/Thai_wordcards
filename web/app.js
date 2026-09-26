@@ -43,6 +43,10 @@
     font: 'sarabun',
     theme: 'auto',
     romanSystem: 'latin',
+    // 'random' = 随机组合；'fixed' = 自己挑一个辅音 / 一个元音来拼读
+    mode: 'random',
+    fixedOnset: null,
+    fixedVowelId: null,
     parts: null,
   };
 
@@ -54,6 +58,7 @@
     toneHint: document.getElementById('toneHint'),
     consonants: document.getElementById('consonants'),
     vowels: document.getElementById('vowels'),
+    consHint: document.getElementById('consHint'),
     vowelHint: document.getElementById('vowelHint'),
     consAll: document.getElementById('consAll'),
     consNone: document.getElementById('consNone'),
@@ -64,6 +69,7 @@
     romanSeg: document.getElementById('romanSeg'),
     randomBtn: document.getElementById('randomBtn'),
     speakBtn: document.getElementById('speakBtn'),
+    modeBtn: document.getElementById('modeBtn'),
     voiceInfo: document.getElementById('voiceInfo'),
     optClusters: document.getElementById('optClusters'),
     optFinal: document.getElementById('optFinal'),
@@ -86,6 +92,9 @@
         font: state.font,
         theme: state.theme,
         romanSystem: state.romanSystem,
+        mode: state.mode,
+        fixedOnset: state.fixedOnset,
+        fixedVowelId: state.fixedVowelId,
       }));
     } catch { /* 无痕模式等场景下忽略 */ }
   }
@@ -112,6 +121,9 @@
       if (FONTS.some((f) => f.id === data.font)) state.font = data.font;
       if (THEMES.some((t) => t.id === data.theme)) state.theme = data.theme;
       if (R.ROMAN_SYSTEMS.some((s) => s.id === data.romanSystem)) state.romanSystem = data.romanSystem;
+      if (data.mode === 'fixed' || data.mode === 'random') state.mode = data.mode;
+      if (typeof data.fixedOnset === 'string') state.fixedOnset = data.fixedOnset;
+      if (typeof data.fixedVowelId === 'string') state.fixedVowelId = data.fixedVowelId;
     } catch { /* 数据坏了就用默认值 */ }
   }
 
@@ -227,6 +239,7 @@
       tag.className = 'tag';
       tag.textContent = R.CLASS_LABEL[cls];
       row.append(tag);
+      const fixed = state.mode === 'fixed';
       for (const c of R.CONSONANTS.filter((x) => x.cls === cls)) {
         const flags = [c.rare && '罕用', c.obsolete && '已废弃'].filter(Boolean);
         const rows = [
@@ -235,7 +248,16 @@
           ['国际音标', R.consonantIPA(c.ch)],
           ['例词', c.example ? `${c.ch} ${c.example}${c.gloss ? `（${c.gloss}）` : ''}` : ''],
         ].filter(([, v]) => v);
-        row.append(chip(c.ch, state.consonants.has(c.ch), { glyph: c.ch, rows }, '', () => {
+        const on = fixed ? state.fixedOnset === c.ch : state.consonants.has(c.ch);
+        row.append(chip(c.ch, on, { glyph: c.ch, rows }, '', () => {
+          if (fixed) {
+            // 固定模式：点一下选它，再点一下取消（可以只留元音，或者什么都不留）
+            state.fixedOnset = state.fixedOnset === c.ch ? null : c.ch;
+            buildConsonants();
+            applyFixed();
+            save();
+            return;
+          }
           if (state.consonants.has(c.ch)) state.consonants.delete(c.ch);
           else state.consonants.add(c.ch);
           buildConsonants();
@@ -269,6 +291,7 @@
   function buildVowels() {
     hideTip();
     setChildren(el.vowels);
+    const fixed = state.mode === 'fixed';
     for (const group of R.VOWEL_GROUPS) {
       const inGroup = R.VOWELS.filter((v) => v.group === group.id);
       if (!inGroup.length) continue;
@@ -282,13 +305,16 @@
       const row = document.createElement('div');
       row.className = 'chips';
       for (const v of inGroup) {
-        row.append(vowelChip(v));
+        row.append(vowelChip(v, fixed ? state.fixedVowelId === v.id : state.vowels.has(v.id)));
       }
       el.vowels.append(head, row);
     }
     const counted = R.VOWELS.filter((v) => v.group !== 'variant').length;
     const variants = R.VOWELS.filter((v) => v.group === 'variant').length;
-    el.vowelHint.textContent = `${counted} 个 + ${variants} 个变体写法`;
+    el.vowelHint.textContent = fixed
+      ? '点一下选择，再点取消'
+      : `${counted} 个 + ${variants} 个变体写法`;
+    el.consHint.textContent = fixed ? '点一下选择，再点取消' : '44 个';
   }
 
   // ── 一键全选 / 全不选 ───────────────────────────────────────────────
@@ -298,13 +324,76 @@
     save();
   }
 
+  // ── 固定模式：自己挑一个辅音 / 一个元音来拼读 ────────────────────────
+  /**
+   * 固定模式的三种情况：
+   *   只选辅音 → 补上 สระออ，显示成 กอ（就是字母本身的读法）
+   *   只选元音 → 用 อ 当载体，显示成 อา（课本里写单元音的方式）
+   *   都选了   → 正常拼成一个音节，如 กา
+   */
+  function applyFixed() {
+    const onset = state.fixedOnset;
+    const vowelId = state.fixedVowelId;
+    if (!onset && !vowelId) {
+      state.parts = null;
+      renderCard();
+      return;
+    }
+    const next = onset
+      ? { vowelId: vowelId || 'o_long', onset, cluster: null, tone: 'none', final: null }
+      : { vowelId, onset: 'อ', cluster: null, tone: 'none', final: null };
+    // 之前选过的声调如果还能用就留着，来回换字母时不用重新点
+    const prevTone = state.parts ? state.parts.tone : 'none';
+    if (prevTone && prevTone !== 'none') {
+      const option = R.toneOptions(next, state.strict).find((t) => t.id === prevTone);
+      if (option && option.allowed) next.tone = prevTone;
+    }
+    state.parts = next;
+    renderCard();
+  }
+
+  function setMode(mode) {
+    if (mode === state.mode) return;
+    state.mode = mode;
+    if (mode === 'fixed') {
+      // 接着刚才随机出来的那个音节练：把声母和元音带进固定模式
+      if (state.parts) {
+        state.fixedOnset = state.parts.onset;
+        state.fixedVowelId = state.parts.vowelId === 'o_long' ? null : state.parts.vowelId;
+      }
+    }
+    applyMode();
+    buildConsonants();
+    buildVowels();
+    if (mode === 'fixed') applyFixed();
+    else renderCard();
+    save();
+  }
+
+  /** 把与模式有关的界面状态刷一遍（按钮文字/状态、全选按钮的显隐） */
+  function applyMode() {
+    const fixed = state.mode === 'fixed';
+    // 全选/全不选只对随机模式有意义，固定模式下藏起来
+    for (const btn of [el.consAll, el.consNone, el.vowelAll, el.vowelNone]) btn.hidden = fixed;
+    el.modeBtn.setAttribute('aria-pressed', String(fixed));
+    el.modeBtn.title = fixed ? '当前：固定模式（点它切回随机组合）' : '切换：随机组合 / 自己挑选搭配';
+    el.randomBtn.disabled = fixed;
+    if (fixed) {
+      setChildren(el.randomBtn, document.createTextNode('固定模式'));
+    } else {
+      const kbd = document.createElement('kbd');
+      kbd.textContent = '空格';
+      setChildren(el.randomBtn, document.createTextNode('随机组合'), kbd);
+    }
+  }
+
   function setAllVowels(on) {
     state.vowels = new Set(on ? R.VOWELS.map((v) => v.id) : []);
     buildVowels();
     save();
   }
 
-  function vowelChip(v) {
+  function vowelChip(v, on) {
     const notes = [
       v.canBeOnset && '可单独作声母',
       !v.allowsFinal && !v.requiresFinal && '不能带尾辅音',
@@ -321,7 +410,15 @@
       ['说明', notes.join(' · ')],
     ].filter(([, value]) => value);
     const tipData = { glyph: '', glyphNodes: () => vowelChipContent(v), rows };
-    return chip(vowelChipContent(v), state.vowels.has(v.id), tipData, 'vowel-chip', () => {
+    return chip(vowelChipContent(v), on, tipData, 'vowel-chip', () => {
+      if (state.mode === 'fixed') {
+        // 固定模式：点一下选它，再点一下取消（可以只留辅音，或者什么都不留）
+        state.fixedVowelId = state.fixedVowelId === v.id ? null : v.id;
+        buildVowels();
+        applyFixed();
+        save();
+        return;
+      }
       if (state.vowels.has(v.id)) state.vowels.delete(v.id);
       else state.vowels.add(v.id);
       buildVowels();
@@ -417,7 +514,9 @@
 
     if (!state.parts) {
       el.syllable.textContent = '—';
-      el.roman.textContent = '点「随机组合」开始';
+      el.roman.textContent = state.mode === 'fixed'
+        ? '固定模式：点下面的字母，选一个辅音和/或一个元音'
+        : '点「随机组合」开始';
       setChildren(el.parts);
       el.toneHint.textContent = '';
       for (const btn of el.tones.children) {
@@ -471,6 +570,7 @@
 
   // ── 动作 ────────────────────────────────────────────────────────────
   function randomize() {
+    if (state.mode === 'fixed') return; // 固定模式下由词表点击驱动
     const vowelOnsetAvailable = state.allowVowelOnset
       && R.VOWELS.some((v) => v.canBeOnset && state.vowels.has(v.id));
     if (!state.vowels.size || (!state.consonants.size && !vowelOnsetAvailable)) {
@@ -536,6 +636,7 @@
   el.consNone.addEventListener('click', () => setAllConsonants(false));
   el.vowelAll.addEventListener('click', () => setAllVowels(true));
   el.vowelNone.addEventListener('click', () => setAllVowels(false));
+  el.modeBtn.addEventListener('click', () => setMode(state.mode === 'fixed' ? 'random' : 'fixed'));
 
   const bindings = [
     [el.optClusters, 'allowClusters'],
@@ -598,7 +699,9 @@
     buildVowels();
     buildTones();
     renderSettings();
-    renderCard();
+    applyMode();
+    if (state.mode === 'fixed') applyFixed();
+    else renderCard();
     refreshVoices();
     if ('speechSynthesis' in window) {
       window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
