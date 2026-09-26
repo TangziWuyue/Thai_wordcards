@@ -202,6 +202,12 @@ const ThaiRules = (() => {
       example: 'กบ = kop', lead: '', follow: '', tail: '',
       short: true, allowsFinal: true, requiresFinal: true,
       note: '没有元音符号的闭音节' },
+
+    // 内部用（不出现在词表里）：固定模式 + 关闭拼写规则时「不补位」，
+    // 卡片上只显示辅音本身。没有 lead/follow/tail，所以拼出来就是孤零零一个辅音。
+    { id: 'none', group: 'internal', name: '（无元音）', en: 'no vowel', roman: '', ipa: '—',
+      lead: '', follow: '', tail: '',
+      short: false, allowsFinal: false, noTone: true, internal: true },
   ];
 
   // ── 声调符号 ────────────────────────────────────────────────────────

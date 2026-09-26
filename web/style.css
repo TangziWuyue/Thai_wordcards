@@ -150,16 +150,6 @@ html.js .js-fallback { display: none; }
   font-size: 13px;
 }
 
-/* 自动补出来的载体（固定模式下只选元音时那个 อ）。
-   不能用变淡/变灰来区分：泰文的组合符号（ิ ี ึ ื ุ ู ั）会跟着基字的样式走，
-   一淡就把它一起冲淡了。所以改用不影响字色的虚线下划线来标。 */
-.syllable .placeholder {
-  text-decoration: underline dotted;
-  text-decoration-thickness: 0.035em;
-  text-underline-offset: 0.12em;
-  text-decoration-color: var(--muted);
-}
-
 .parts {
   display: flex;
   flex-wrap: wrap;

@@ -315,7 +315,7 @@
       }
       el.vowels.append(head, row);
     }
-    const counted = R.VOWELS.filter((v) => v.group !== 'variant').length;
+    const counted = R.VOWELS.filter((v) => !v.internal && v.group !== 'variant').length;
     const variants = R.VOWELS.filter((v) => v.group === 'variant').length;
     el.vowelHint.textContent = fixed
       ? '点一下选择，再点取消'
@@ -346,11 +346,14 @@
       return;
     }
     const next = onset
-      ? { vowelId: vowelId || 'o_long', onset, cluster: null, tone: 'none', final: null }
-      // 只选元音时：ฤ ฤๅ ฦ ฦๅ 自己能站住，不用补载体；其它元音补一个 อ 当载体
+      // 只选辅音时：遵守拼写规则就补一个 สระออ（读作 กอ，字母本身的读法）；
+      //            关掉规则就不补，卡片上只留这个辅音
+      ? { vowelId: vowelId || (state.strict ? 'o_long' : 'none'), onset, cluster: null, tone: 'none', final: null }
+      // 只选元音时：遵守拼写规则就补一个 อ 当载体（课本写单元音的方式）；
+      //            关掉规则就不补。ฤ ฤๅ ฦ ฦๅ 自己能站住，任何时候都不补。
       : {
         vowelId,
-        onset: R.VOWELS.find((v) => v.id === vowelId).canBeOnset ? null : 'อ',
+        onset: state.strict && !R.VOWELS.find((v) => v.id === vowelId).canBeOnset ? 'อ' : null,
         cluster: null,
         tone: 'none',
         final: null,
@@ -570,50 +573,21 @@
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
     // 固定模式下只选了元音时，卡片上的 อ 是自动补的载体，不是使用者选的，淡显出来
-    // 固定模式下有两处「自动补出来」的内容要标出来：
-    //   只选元音 → 前面补的 อ 是载体
-    //   只选辅音 → 后面补的 อ（สระออ）是载体，按需求只在「不遵守拼写规则」时标
-    const carrierOnly = state.mode === 'fixed' && !state.fixedOnset && !!state.parts
-      && !!state.parts.onset;
-    const autoTail = state.mode === 'fixed' && !!state.fixedOnset && !state.fixedVowelId
-      && !!state.parts && !state.strict;
-    if (carrierOnly || autoTail) {
-      const l = R.layout(state.parts);
-      const nodes = [];
-      const push = (t, placeholder) => {
-        if (!t) return;
-        if (!placeholder) {
-          nodes.push(document.createTextNode(t));
-          return;
-        }
-        const span = document.createElement('span');
-        span.className = 'placeholder';
-        span.textContent = t;
-        nodes.push(span);
-      };
-      push(l.lead, false);
-      push(l.onset, carrierOnly);   // 载体 อ
-      push(l.cluster, false);
-      push(l.follow, false);
-      push(l.tone, false);
-      push(l.tail, autoTail);       // 自动补的 สระออ
-      push(l.final, false);
-      setChildren(el.syllable, ...nodes);
-    } else {
-      el.syllable.textContent = info.text;
-    }
+    el.syllable.textContent = info.text;
     const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '罗马注音';
     el.roman.textContent = `/${info.roman}/ · ${systemLabel}，不含声调`;
 
     const breakdown = [];
     if (info.isVowelOnset) breakdown.push(renderPart('声母', '元音充当声母'));
-    else if (carrierOnly) breakdown.push(renderPart('载体', `${state.parts.onset} ${info.onsetClassLabel}`));
     else breakdown.push(renderPart('首辅音', `${state.parts.onset} ${info.onsetClassLabel}`));
     if (state.parts.cluster) {
       const cluster = `${state.parts.onset}${state.parts.cluster}`;
       breakdown.push(renderPart('辅音簇', info.clusterNote ? `${cluster}（${info.clusterNote}）` : cluster));
     }
-    breakdown.push(renderPart('元音', `${info.vowelName}（${info.vowelLength}）`));
+    // 关闭拼写规则时会用到「无元音」这个内部项，这时不显示元音那一栏
+    if (state.parts.vowelId !== 'none') {
+      breakdown.push(renderPart('元音', `${info.vowelName}（${info.vowelLength}）`));
+    }
     if (state.parts.final) breakdown.push(renderPart('尾辅音', state.parts.final));
     breakdown.push(renderPart('声调', info.toneName));
     setChildren(el.parts, ...breakdown);
@@ -725,7 +699,9 @@
   el.optStrict.checked = state.strict;
   el.optStrict.addEventListener('change', () => {
     state.strict = el.optStrict.checked;
-    renderCard();
+    // 固定模式下这个开关决定要不要补 อ，得重新拼一遍，不能只重绘卡片
+    if (state.mode === 'fixed') applyFixed();
+    else renderCard();
     save();
   });
 

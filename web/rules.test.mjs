@@ -400,6 +400,7 @@ test('元音表：名称 / 英文名 / 音标 / 例词与课本一致', () => {
   }
   // 每个元音都要有名称与音标，例词格式统一
   for (const v of ThaiRules.VOWELS) {
+    if (v.internal) continue; // 「无元音」这类内部项不参与词表展示
     assert.ok(v.name && v.en && v.roman, `${v.id} 字段不全`);
     if (v.example) assert.match(v.example, /^.+ = .+$/u, `${v.id} 例词格式`);
   }
@@ -445,6 +446,11 @@ test('完整词表：非废弃辅音 42 个，元音按教科书 32 รูป �
   assert.equal(count('extra'), 8, 'สระเกิน 超额元音应为 8');
   assert.equal(count('single') + count('compound') + count('extra'), 32, '合计应为教科书 32 รูป');
   assert.equal(count('variant'), 4, '另有 4 个拼写变体');
+  // 内部项「无元音」：不在任何分组里、也不出现在词表（固定模式关闭拼写规则时用）
+  const internal = ThaiRules.VOWELS.filter((v) => v.internal);
+  assert.equal(internal.length, 1);
+  assert.equal(internal[0].id, 'none');
+  assert.equal(internal[0].lead + internal[0].follow + internal[0].tail, '');
   // 每个元音的段必须落在合法字符集内
   const legal = new Set([
     'เ', 'แ', 'โ', 'ใ', 'ไ', 'ะ', 'า', 'ิ', 'ี', 'ึ', 'ื', 'ุ', 'ู',
@@ -547,7 +553,10 @@ test('两套注音：罗马注音与国际音标都要对得上', () => {
   // 不传参数时默认走罗马注音
   assert.equal(ThaiRules.romanize(parts('aa', 'ก')), 'ka');
   // 每个元音都要有 IPA 字段，每个尾辅音也要有
-  for (const v of ThaiRules.VOWELS) assert.ok(v.ipa, `${v.id} 缺 IPA`);
+  for (const v of ThaiRules.VOWELS) {
+    if (v.internal) continue;
+    assert.ok(v.ipa, `${v.id} 缺 IPA`);
+  }
   for (const ch of Object.keys(ThaiRules.FINALS)) {
     assert.ok(ThaiRules.FINALS[ch].ipa, `${ch} 缺 IPA`);
   }
