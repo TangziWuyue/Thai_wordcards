@@ -537,12 +537,39 @@
     // 关闭规则检查时允许生成「规则上不合法」的组合，这种情况不算异常
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
-    el.syllable.textContent = info.text;
+    // 固定模式下只选了元音时，卡片上的 อ 是自动补的载体，不是使用者选的，淡显出来
+    const carrierOnly = state.mode === 'fixed' && !state.fixedOnset && !!state.parts;
+    if (carrierOnly) {
+      const l = R.layout(state.parts);
+      const nodes = [];
+      const push = (text, faded) => {
+        if (!text) return;
+        if (!faded) {
+          nodes.push(document.createTextNode(text));
+          return;
+        }
+        const span = document.createElement('span');
+        span.className = 'placeholder';
+        span.textContent = text;
+        nodes.push(span);
+      };
+      push(l.lead, false);
+      push(l.onset, true);      // 载体 อ
+      push(l.cluster, false);
+      push(l.follow, false);
+      push(l.tone, false);
+      push(l.tail, false);
+      push(l.final, false);
+      setChildren(el.syllable, ...nodes);
+    } else {
+      el.syllable.textContent = info.text;
+    }
     const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '罗马注音';
     el.roman.textContent = `/${info.roman}/ · ${systemLabel}，不含声调`;
 
     const breakdown = [];
     if (info.isVowelOnset) breakdown.push(renderPart('声母', '元音充当声母'));
+    else if (carrierOnly) breakdown.push(renderPart('载体', `${state.parts.onset} ${info.onsetClassLabel}`));
     else breakdown.push(renderPart('首辅音', `${state.parts.onset} ${info.onsetClassLabel}`));
     if (state.parts.cluster) {
       const cluster = `${state.parts.onset}${state.parts.cluster}`;

@@ -150,6 +150,9 @@ html.js .js-fallback { display: none; }
   font-size: 13px;
 }
 
+/* 自动补出来的载体（固定模式下只选元音时那个 อ），淡显 */
+.syllable .placeholder { opacity: 0.38; }
+
 .parts {
   display: flex;
   flex-wrap: wrap;
