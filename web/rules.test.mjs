@@ -91,7 +91,7 @@ test('拼装顺序：无声调、无尾辅音、前引元音结尾', () => {
 });
 
 test('拼装顺序：无元音符号 + 尾辅音（隐含元音）', () => {
-  const p = parts('implicit', 'ก', { final: 'บ' });
+  const p = parts('o_implied', 'ก', { final: 'บ' });
   assert.equal(ThaiRules.assemble(p), 'กบ');
   assert.deepEqual(ThaiRules.check(p), []);
 });
@@ -313,19 +313,52 @@ test('常见词抽查：辅音簇 / 前引元音 / 尾辅音组合拼出来是�
   }
 });
 
-test('完整词表：非废弃辅音 42 个，元音 28 个', () => {
+test('超额元音与复合元音短形：ฤ ฦ ออ เอียะ อัวะ', () => {
+  const cases = [
+    // กฤ = ก + ฤ
+    [parts('rue', 'ก'), [0x0e01, 0x0e24]],
+    // ฤๅ = ฤ + ๅ
+    [parts('ruee', 'ก'), [0x0e01, 0x0e24, 0x0e45]],
+    // กฦๅ = ก + ฦ + ๅ
+    [parts('luee', 'ก'), [0x0e01, 0x0e26, 0x0e45]],
+    // พ่อ = พ + ่ + อ
+    [parts('o_long', 'พ', { tone: 'ek' }), [0x0e1e, 0x0e48, 0x0e2d]],
+    // ก่อน = ก + ่ + อ + น
+    [parts('o_long', 'ก', { tone: 'ek', final: 'น' }), [0x0e01, 0x0e48, 0x0e2d, 0x0e19]],
+    // เปียะ = เ + ป + ี + ย + ะ
+    [parts('ia_short', 'ป'), [0x0e40, 0x0e1b, 0x0e35, 0x0e22, 0x0e30]],
+    // กัวะ = ก + ั + ว + ะ
+    [parts('ua_short', 'ก'), [0x0e01, 0x0e31, 0x0e27, 0x0e30]],
+  ];
+  for (const [p, expected] of cases) {
+    assert.deepEqual(cps(ThaiRules.assemble(p)), expected, ThaiRules.assemble(p));
+    assert.deepEqual(ThaiRules.check(p), []);
+  }
+  // ฤ 系列不写声调符号
+  const rue = parts('rue', 'ก');
+  assert.deepEqual(ThaiRules.toneOptions(rue, true).filter((t) => t.allowed).map((t) => t.id), ['none']);
+});
+
+test('完整词表：非废弃辅音 42 个，元音按教科书 32 รูป 分组', () => {
   assert.equal(ThaiRules.CONSONANTS.filter((c) => !c.obsolete).length, 42);
   assert.equal(ThaiRules.CONSONANTS.filter((c) => c.obsolete).map((c) => c.ch).join(''), 'ฃฅ');
-  assert.equal(ThaiRules.VOWELS.length, 28);
+  const count = (g) => ThaiRules.VOWELS.filter((v) => v.group === g).length;
+  assert.equal(count('single'), 18, 'สระเดี่ยว 单元音应为 18');
+  assert.equal(count('compound'), 6, 'สระประสม 复合元音应为 6');
+  assert.equal(count('extra'), 8, 'สระเกิน 超额元音应为 8');
+  assert.equal(count('single') + count('compound') + count('extra'), 32, '合计应为教科书 32 รูป');
+  assert.equal(count('variant'), 4, '另有 4 个拼写变体');
   // 每个元音的段必须落在合法字符集内
   const legal = new Set([
-    ...ThaiRules.LEAD_VOWEL_CHARS,
-    ...ThaiRules.FOLLOW_VOWEL_CHARS,
-    'ั', '็', 'ำ', 'อ', 'ย', 'ว', 'าะ', 'อะ',
+    'เ', 'แ', 'โ', 'ใ', 'ไ', 'ะ', 'า', 'ิ', 'ี', 'ึ', 'ื', 'ุ', 'ู',
+    'ั', '็', 'ำ', 'อ', 'ย', 'ว', 'ฤ', 'ฦ', 'ๅ',
   ]);
   for (const v of ThaiRules.VOWELS) {
     for (const part of [v.lead, v.follow, v.tail]) {
-      if (part && !legal.has(part)) assert.fail(`${v.id} 的段「${part}」不在预期字符集里`);
+      for (const ch of part || '') {
+        if (!legal.has(ch)) assert.fail(`${v.id} 的段「${part}」含预期外字符 ${ch}`);
+      }
     }
+    assert.ok(v.name, `${v.id} 缺少教科书名称`);
   }
 });

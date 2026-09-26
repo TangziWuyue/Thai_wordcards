@@ -110,7 +110,7 @@
   }
 
   function vowelForm(v) {
-    if (v.id === 'implicit') return '无';
+    if (v.id === 'o_implied') return '无';
     return `${v.lead ? `${v.lead}-` : ''}${v.follow || ''}${v.tail || ''}`;
   }
 
@@ -190,7 +190,7 @@
 
     const breakdown = [renderPart('首辅音', `${state.parts.onset} ${info.onsetClassLabel}`)];
     if (state.parts.cluster) breakdown.push(renderPart('辅音簇', `${state.parts.onset}${state.parts.cluster}`));
-    breakdown.push(renderPart('元音', info.vowelLabel.split(' ')[0]));
+    breakdown.push(renderPart('元音', info.vowelName));
     if (state.parts.final) breakdown.push(renderPart('尾辅音', state.parts.final));
     breakdown.push(renderPart('声调', info.toneName));
     el.parts.replaceChildren(...breakdown);
