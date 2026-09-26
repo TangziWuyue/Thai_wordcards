@@ -295,7 +295,8 @@ kbd {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
+  /* 字块之间要留出缝，否则选中态的深色块会连成一片 */
+  gap: 6px;
 }
 
 .row .tag {
@@ -305,7 +306,7 @@ kbd {
   flex: none;
 }
 
-.chips { display: flex; flex-wrap: wrap; gap: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .chips .tag {
   display: flex;
@@ -431,6 +432,7 @@ kbd {
   .tone .mark { font-size: 26px; }
   .tone .name { font-size: 10px; }
   .parts { gap: 4px 8px; }
+  .row, .chips { gap: 5px; }
   .vowel-chip { font-size: 14px; }
   .chip { font-size: 17px; padding: 3px 6px; }
 }
