@@ -61,6 +61,7 @@
     consHint: document.getElementById('consHint'),
     vowelHint: document.getElementById('vowelHint'),
     optionsHint: document.getElementById('optionsHint'),
+    strictHint: document.getElementById('strictHint'),
     rowClusters: document.getElementById('rowClusters'),
     rowFinal: document.getElementById('rowFinal'),
     rowVowelOnset: document.getElementById('rowVowelOnset'),
@@ -402,6 +403,10 @@
     el.optionsHint.textContent = fixed
       ? '固定模式只用到字体、音标、外观和拼写规则；灰掉的几项只对随机组合生效'
       : '';
+    // 「遵守拼写规则」后面那句话跟着模式换：随机模式讲声调限制，固定模式讲补位
+    el.strictHint.textContent = fixed
+      ? '单选元/辅音时用อ补位'
+      : '禁用该组合用不上的声调';
     el.modeBtn.setAttribute('aria-pressed', String(fixed));
     el.modeBtn.title = fixed ? '当前：固定模式（点它切回随机组合）' : '切换：随机组合 / 自己挑选搭配';
     el.randomBtn.disabled = fixed;
