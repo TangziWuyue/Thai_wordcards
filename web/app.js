@@ -33,7 +33,7 @@
     autoSpeak: false,
     font: 'sarabun',
     theme: 'auto',
-    romanSystem: 'book',
+    romanSystem: 'latin',
     parts: null,
   };
 
@@ -169,7 +169,7 @@
   function vowelChip(v) {
     const notes = [
       `${v.name} · ${v.en}`,
-      `课本音标 ${v.roman} · 国际音标 ${v.ipa}`,
+      `拉丁转写 ${v.roman} · 国际音标 ${v.ipa}`,
       v.short ? '短音' : '长音',
       v.example && `例：${v.example}`,
       v.canBeOnset && '可单独作声母',
@@ -290,7 +290,7 @@
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
     el.syllable.textContent = info.text;
-    const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '课本音标';
+    const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '拉丁转写';
     el.roman.textContent = `/${info.roman}/ · ${systemLabel}，不含声调`;
 
     const breakdown = [];

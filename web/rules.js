@@ -277,7 +277,7 @@ const ThaiRules = (() => {
   };
 
   // 国际音标写法：辅音（按课本注音推导）、尾辅音、元音
-  // 尾辅音在课本音标里的写法：แม่เกย 写 i（ไทย = thai）、แม่เกอว 写 o（แมว = maeo）
+  // 尾辅音在拉丁转写里的写法：แม่เกย 写 i（ไทย = thai）、แม่เกอว 写 o（แมว = maeo）
   const FINAL_ROMAN = { k: 'k', t: 't', p: 'p', n: 'n', ng: 'ng', m: 'm', y: 'i', w: 'o' };
 
   const CONSONANT_IPA = {
@@ -314,9 +314,9 @@ const ThaiRules = (() => {
   // 每个元音都带上国际音标写法
   for (const v of VOWELS) v.ipa = VOWEL_IPA[v.id] || v.roman;
 
-  /** 卡片注音可选的两种写法 */
+  /** 卡片注音可选的两种转写方式 */
   const ROMAN_SYSTEMS = [
-    { id: 'book', label: '课本音标', note: '《基础泰语（1）》的音标列，不区分长短音' },
+    { id: 'latin', label: '拉丁转写', note: '用拉丁字母拼读，与《基础泰语（1）》音标列一致；不区分长短音' },
     { id: 'ipa', label: '国际音标', note: 'IPA 写法，长音用 ː 标出' },
   ];
   const VOWEL_GROUPS = [
@@ -405,9 +405,9 @@ const ThaiRules = (() => {
 
   /**
    * 参考注音（不含声调）。
-   * system = 'book' 用课本「音标」列写法；system = 'ipa' 用国际音标。
+   * system = 'latin' 用拉丁转写；system = 'ipa' 用国际音标。
    */
-  function romanize(parts, system = 'book') {
+  function romanize(parts, system = 'latin') {
     const useIPA = system === 'ipa';
     const vowel = VOWEL_MAP.get(parts.vowelId);
     const letter = (ch) => {
@@ -607,7 +607,7 @@ const ThaiRules = (() => {
   }
 
   /** 生成结果的完整快照，供界面渲染 */
-  function describe(parts, strict = true, system = 'book') {
+  function describe(parts, strict = true, system = 'latin') {
     const vowel = VOWEL_MAP.get(parts.vowelId);
     const consonant = CONSONANT_MAP.get(parts.onset) || {};
     const tone = TONE_MAP.get(parts.tone) || TONE_MAP.get('none');
@@ -616,7 +616,7 @@ const ThaiRules = (() => {
       text: assemble(parts),
       roman: romanize(parts, system),
       romanSystem: system,
-      romanBook: romanize(parts, 'book'),
+      romanLatin: romanize(parts, 'latin'),
       romanIPA: romanize(parts, 'ipa'),
       toneName: tone.name,
       onsetClass: consonant.cls,

@@ -227,7 +227,7 @@ test('尾辅音表：44 个辅音里只有 ฃ ฅ ผ ฝ ห อ ฮ 不能作
   assert.equal(ThaiRules.FINALS['จ'].roman, 't');
   assert.equal(ThaiRules.FINALS['ศ'].roman, 't');
   assert.equal(ThaiRules.FINALS['ภ'].roman, 'p');
-  // 课本音标：แม่เกย 写 i、แม่เกอว 写 o（ไทย = thai / แมว = maeo）
+  // 拉丁转写：แม่เกย 写 i、แม่เกอว 写 o（ไทย = thai / แมว = maeo）
   assert.equal(ThaiRules.FINALS['ย'].roman, 'i');
   assert.equal(ThaiRules.FINALS['ว'].roman, 'o');
   assert.equal(ThaiRules.FINALS['ย'].ipa, 'j');
@@ -464,7 +464,7 @@ test('อักษรนำ：前引的 ห 不发音，只把后面那个辅音
   ];
   for (const [p, expected, book, ipa] of cases) {
     assert.deepEqual(cps(ThaiRules.assemble(p)), expected, ThaiRules.assemble(p));
-    assert.equal(ThaiRules.romanize(p, 'book'), book);
+    assert.equal(ThaiRules.romanize(p, 'latin'), book);
     assert.equal(ThaiRules.romanize(p, 'ipa'), ipa);
     assert.deepEqual(ThaiRules.check(p), []);
     assert.equal(ThaiRules.describe(p).clusterNote, '前引 ห 不发音');
@@ -484,37 +484,37 @@ test('อักษรควบไม่แท้：จริง / ทราย /
   // จริง = จ + ร + ิ + ง（ร 不发音）
   const jing = parts('i', 'จ', { cluster: 'ร', final: 'ง' });
   assert.equal(ThaiRules.assemble(jing), 'จริง');
-  assert.equal(ThaiRules.romanize(jing, 'book'), 'jing');
+  assert.equal(ThaiRules.romanize(jing, 'latin'), 'jing');
   assert.equal(ThaiRules.romanize(jing, 'ipa'), 'tɕiŋ');
   assert.equal(ThaiRules.describe(jing).clusterNote, 'ร 不发音');
 
   // ทราย = ท + ร + า + ย（整体读 s，尾 ย 不重复写）
   const saai = parts('aa', 'ท', { cluster: 'ร', final: 'ย' });
   assert.equal(ThaiRules.assemble(saai), 'ทราย');
-  assert.equal(ThaiRules.romanize(saai, 'book'), 'sai');
+  assert.equal(ThaiRules.romanize(saai, 'latin'), 'sai');
   assert.equal(ThaiRules.romanize(saai, 'ipa'), 'saːj');
   assert.equal(ThaiRules.describe(saai).clusterNote, 'ทร 整体读 s');
 
   // ศรี = ศ + ร + ี（ร 不发音）
   const sii = parts('ii', 'ศ', { cluster: 'ร' });
   assert.equal(ThaiRules.assemble(sii), 'ศรี');
-  assert.equal(ThaiRules.romanize(sii, 'book'), 'si');
+  assert.equal(ThaiRules.romanize(sii, 'latin'), 'si');
   assert.equal(ThaiRules.romanize(sii, 'ipa'), 'siː');
 
   for (const p of [jing, saai, sii]) assert.deepEqual(ThaiRules.check(p), []);
 });
 
 test('真辅音簇：ปลา / ความ / กร 都按两个字读', () => {
-  assert.equal(ThaiRules.romanize(parts('aa', 'ป', { cluster: 'ล' }), 'book'), 'pla');
-  assert.equal(ThaiRules.romanize(parts('aa', 'ค', { cluster: 'ว', final: 'ม' }), 'book'), 'khwam');
-  assert.equal(ThaiRules.romanize(parts('i', 'ก', { cluster: 'ร', final: 'ง' }), 'book'), 'kring');
+  assert.equal(ThaiRules.romanize(parts('aa', 'ป', { cluster: 'ล' }), 'latin'), 'pla');
+  assert.equal(ThaiRules.romanize(parts('aa', 'ค', { cluster: 'ว', final: 'ม' }), 'latin'), 'khwam');
+  assert.equal(ThaiRules.romanize(parts('i', 'ก', { cluster: 'ร', final: 'ง' }), 'latin'), 'kring');
   // ย 作尾辅音时课本写 i，所以 สาย = sai 而不是 say
-  assert.equal(ThaiRules.romanize(parts('aa', 'ส', { final: 'ย' }), 'book'), 'sai');
+  assert.equal(ThaiRules.romanize(parts('aa', 'ส', { final: 'ย' }), 'latin'), 'sai');
   // 元音本身就以这个音结尾时，尾辅音不重复写
-  assert.equal(ThaiRules.romanize(parts('ai', 'ท', { final: 'ย' }), 'book'), 'thai');
+  assert.equal(ThaiRules.romanize(parts('ai', 'ท', { final: 'ย' }), 'latin'), 'thai');
 });
 
-test('两套音标：课本写法与国际音标都要对得上', () => {
+test('两套转写：拉丁转写与国际音标都要对得上', () => {
   const cases = [
     ['aa', 'ก', {}, 'ka', 'kaː'],
     ['aa', 'ก', { final: 'น' }, 'kan', 'kaːn'],
@@ -528,19 +528,19 @@ test('两套音标：课本写法与国际音标都要对得上', () => {
     ['ai', 'ก', { tone: 'ek' }, 'kai', 'kaj'],
     ['ao', 'ม', {}, 'mao', 'maw'],
   ];
-  for (const [vowelId, onset, extra, book, ipa] of cases) {
+  for (const [vowelId, onset, extra, latin, ipa] of cases) {
     const p = parts(vowelId, onset, extra);
-    assert.equal(ThaiRules.romanize(p, 'book'), book, `${vowelId} 课本音标`);
+    assert.equal(ThaiRules.romanize(p, 'latin'), latin, `${vowelId} 拉丁转写`);
     assert.equal(ThaiRules.romanize(p, 'ipa'), ipa, `${vowelId} 国际音标`);
   }
-  // 不传参数时默认走课本写法
+  // 不传参数时默认走拉丁转写
   assert.equal(ThaiRules.romanize(parts('aa', 'ก')), 'ka');
   // 每个元音都要有 IPA 字段，每个尾辅音也要有
   for (const v of ThaiRules.VOWELS) assert.ok(v.ipa, `${v.id} 缺 IPA`);
   for (const ch of Object.keys(ThaiRules.FINALS)) {
     assert.ok(ThaiRules.FINALS[ch].ipa, `${ch} 缺 IPA`);
   }
-  // 两套写法不能完全一样（否则说明数据没填好）
+  // 两套转写不能完全一样（否则说明数据没填好）
   const differs = ThaiRules.VOWELS.filter((v) => v.ipa !== v.roman);
-  assert.ok(differs.length >= 10, `IPA 与课本写法应有明显差别，实际只有 ${differs.length} 个不同`);
+  assert.ok(differs.length >= 10, `IPA 与拉丁转写应有明显差别，实际只有 ${differs.length} 个不同`);
 });
