@@ -99,7 +99,7 @@ button { font: inherit; color: inherit; }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 14px;
+  gap: 18px;
   /* 高度跟着视窗走：矮屏不会把卡片撑出屏幕，高屏也不会太空 */
   min-height: clamp(190px, 32vh, 300px);
   padding: 40px 24px 34px;
@@ -115,7 +115,10 @@ button { font: inherit; color: inherit; }
   /* 取「视窗宽 vw」和「视窗高 vh」里较小的那个，横屏/矮屏也不会溢出 */
   font-size: clamp(52px, min(17vw, 19vh), 104px);
   font-weight: 400;
-  line-height: 1.12;
+  /* 泰文字形上下都长（声调符号在上、ฎ ญ ฟ 这类有下伸部），
+     line-height 太小会让字形溢出到下面的注释行上 */
+  /* Sarabun 的行框约 1.51em（上伸部 1.06 + 下伸部 0.45），留得比它大才不会被压 */
+  line-height: 1.55;
   letter-spacing: 0.01em;
   word-break: keep-all;
 }
