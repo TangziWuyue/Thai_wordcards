@@ -13,6 +13,14 @@ python3 -m http.server 8901 --directory web
 
 也可以直接双击 `web/index.html`（页面用的是普通 `<script>`，不需要打包器，直接打开也能跑）。
 
+要把页面发给别人（老师 / 同学），打包成一个文件更省事：
+
+```bash
+node web/build-standalone.mjs      # 生成 dist/泰语组合练习.html
+```
+
+产物把 CSS、JS、字体全部内联进 HTML（约 930KB），**零外部引用**——发过去双击就能用，不需要联网、不需要装泰文字体，也不受 `file://` 跨域限制影响。改动界面后重新跑一次即可（脚本会自检有没有残留外部引用，有就报错退出）。
+
 ## 功能
 
 - **随机拼装**：前引元音 → 首辅音（可带辅音簇）→ 元音前段 → 声调符号 → 元音后段 → 尾辅音，严格遵守泰文码点顺序。
@@ -41,6 +49,8 @@ web/app.js            界面逻辑：词表、随机、声调切换、朗读
 web/rules.js          拼写规则引擎（纯逻辑，无 DOM 依赖）
 web/rules.test.mjs    规则引擎自测
 web/fonts/            打包的 woff2、授权说明，以及中文字体子集生成脚本
+web/build-standalone.mjs  打包成单文件 HTML 的脚本
+dist/                 打包产物（已在 .gitignore 里，不入库）
 src/thai_wordcards/   Python 脚手架，目前没有实际功能
 ```
 

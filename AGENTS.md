@@ -32,6 +32,7 @@ web/app.js            界面逻辑：词表、随机、声调切换、朗读
 web/rules.js          拼写规则引擎（纯逻辑，无 DOM 依赖）
 web/rules.test.mjs    规则引擎自测
 web/fonts/            Sarabun / Noto Serif Thai 的 woff2 与 OFL 授权说明
+web/build-standalone.mjs  打包成单文件 HTML 的脚本（产物在 dist/，不入库）
 src/thai_wordcards/   Python 脚手架，暂无功能
 ```
 
@@ -43,6 +44,7 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 - `--ui` 字体栈里带 `var(--thai)`：注释行里混着泰文（`首辅音 ก 中类`），不这样会掉到系统泰文字体上。
 - 字块的说明卡片（`.tip`）鼠标悬浮和键盘聚焦会弹；触屏靠 `pointerdown` 450ms 长按或 `contextmenu` 触发，长按后的那一次 click 会被跳过（用时间戳判断，避免把下一次点击也吃掉）。
 - 中文字体子集由 `node web/fonts/build-cjk-subset.mjs` 生成（需要联网），只取 `index.html` / `app.js` / `rules.js` 里真正出现过的中文。**改完界面文案要重跑**，否则新字会退回系统字体。
+- 发给别人的单文件版由 `node web/build-standalone.mjs` 生成（`dist/泰语组合练习.html`，约 930KB，字体全部内联）。**改完界面要重新生成**；脚本会自检外部引用，有残留就报错退出。`dist/` 在 `.gitignore` 里，产物不入库，只提交脚本。
 - 元音数据带课本字段：`name`（สระ อา）、`en`（sara aa）、`roman`（罗马注音，同时是卡片注音）、`example`（例词）、`short`（长/短音）。改这些字段前先对一遍课本，测试里有逐条比对。
 - 辅音的传统例词在 `CONSONANT_EXAMPLES`（`ก ไก่` …），字段是 `example` + `gloss`；测试要求 44 个字母都有，漏一个会失败。
 - 词表字块的悬浮卡片（`.tip`）由 `app.js` 里 `chip()` 的 `tipData` 驱动：`{ glyph | glyphNodes, rows }`，鼠标悬浮和键盘聚焦都会弹，定位会自动避开视口边缘；重建词表（`buildConsonants`/`buildVowels`）时要先 `hideTip()`。
