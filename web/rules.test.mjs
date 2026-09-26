@@ -451,6 +451,16 @@ test('完整词表：非废弃辅音 42 个，元音按教科书 32 รูป �
   assert.equal(internal.length, 1);
   assert.equal(internal[0].id, 'none');
   assert.equal(internal[0].lead + internal[0].follow + internal[0].tail, '');
+  // 词表里默认能勾选的元音：32 个课本元音 + 3 个拼写变体（不含「无元音」和「无符号」）
+  assert.equal(ThaiRules.SELECTABLE_VOWEL_IDS.length, 35);
+  assert.ok(!ThaiRules.SELECTABLE_VOWEL_IDS.includes('none'));
+  assert.ok(!ThaiRules.SELECTABLE_VOWEL_IDS.includes('o_implied'));
+  const selectableVariant = ThaiRules.VOWELS
+    .filter((v) => ThaiRules.isSelectableVowel(v) && v.group === 'variant');
+  assert.equal(selectableVariant.length, 3);
+  // 「无元音符号的闭音节」由开关控制，所以单独标记
+  const optionOnly = ThaiRules.VOWELS.filter((v) => v.optionOnly);
+  assert.deepEqual(optionOnly.map((v) => v.id), ['o_implied']);
   // 每个元音的段必须落在合法字符集内
   const legal = new Set([
     'เ', 'แ', 'โ', 'ใ', 'ไ', 'ะ', 'า', 'ิ', 'ี', 'ึ', 'ื', 'ุ', 'ู',

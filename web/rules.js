@@ -201,7 +201,9 @@ const ThaiRules = (() => {
     { id: 'o_implied', group: 'variant', name: 'สระ โอะ (ไม่มีรูป)', en: 'sara oh (implied)', roman: 'o',
       example: 'กบ = kop', lead: '', follow: '', tail: '',
       short: true, allowsFinal: true, requiresFinal: true,
-      note: '没有元音符号的闭音节' },
+      // optionOnly：不在词表里显示，由「允许无元音符号的闭音节（กบ）」这个开关控制
+      optionOnly: true,
+      note: '没有元音符号的闭音节（如 กบ = kop）' },
 
     // 内部用（不出现在词表里）：固定模式 + 关闭拼写规则时「不补位」，
     // 卡片上只显示辅音本身。没有 lead/follow/tail，所以拼出来就是孤零零一个辅音。
@@ -348,6 +350,9 @@ const ThaiRules = (() => {
   }
   const VOWEL_MAP = new Map(VOWELS.map((v) => [v.id, v]));
   const TONE_MAP = new Map(TONES.map((t) => [t.id, t]));
+  /** 词表里默认能勾选的元音：排除内部项，以及要用开关单独开启的项 */
+  const isSelectableVowel = (v) => !v.internal && !v.optionOnly;
+  const SELECTABLE_VOWEL_IDS = VOWELS.filter(isSelectableVowel).map((v) => v.id);
   // 每个元音都带上国际音标写法
   for (const v of VOWELS) v.ipa = VOWEL_IPA[v.id] || v.roman;
 
@@ -698,6 +703,8 @@ const ThaiRules = (() => {
     CONSONANTS,
     VOWELS,
     VOWEL_GROUPS,
+    SELECTABLE_VOWEL_IDS,
+    isSelectableVowel,
     ROMAN_SYSTEMS,
     TRUE_CLUSTERS,
     LEADING_H_CLUSTERS,

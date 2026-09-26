@@ -31,8 +31,8 @@
 
   // 默认勾选全部辅音，只留 ฃ ฅ 这两个废弃字母让人手动开
   const DEFAULT_CONSONANTS = R.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
-  // 词表里能勾选的元音（排除「无元音」这种只在固定模式内部使用的项）
-  const SELECTABLE_VOWELS = R.VOWELS.filter((v) => !v.internal).map((v) => v.id);
+  // 词表里能勾选的元音（排除内部项，以及由开关单独控制的「无元音符号」那种写法）
+  const SELECTABLE_VOWELS = R.SELECTABLE_VOWEL_IDS;
 
   const state = {
     consonants: new Set(DEFAULT_CONSONANTS),
@@ -40,6 +40,7 @@
     allowClusters: false,
     allowFinal: true,
     allowVowelOnset: false,
+    allowImplicit: false,
     strict: true,
     autoSpeak: false,
     font: 'sarabun',
@@ -67,6 +68,7 @@
     rowClusters: document.getElementById('rowClusters'),
     rowFinal: document.getElementById('rowFinal'),
     rowVowelOnset: document.getElementById('rowVowelOnset'),
+    rowImplicit: document.getElementById('rowImplicit'),
     rowAutoSpeak: document.getElementById('rowAutoSpeak'),
     consAll: document.getElementById('consAll'),
     consNone: document.getElementById('consNone'),
@@ -82,6 +84,7 @@
     optClusters: document.getElementById('optClusters'),
     optFinal: document.getElementById('optFinal'),
     optVowelOnset: document.getElementById('optVowelOnset'),
+    optImplicit: document.getElementById('optImplicit'),
     optStrict: document.getElementById('optStrict'),
     optAutoSpeak: document.getElementById('optAutoSpeak'),
   };
@@ -95,6 +98,7 @@
         allowClusters: state.allowClusters,
         allowFinal: state.allowFinal,
         allowVowelOnset: state.allowVowelOnset,
+        allowImplicit: state.allowImplicit,
         strict: state.strict,
         autoSpeak: state.autoSpeak,
         font: state.font,
@@ -124,6 +128,7 @@
       if (typeof data.allowClusters === 'boolean') state.allowClusters = data.allowClusters;
       if (typeof data.allowFinal === 'boolean') state.allowFinal = data.allowFinal;
       if (typeof data.allowVowelOnset === 'boolean') state.allowVowelOnset = data.allowVowelOnset;
+      if (typeof data.allowImplicit === 'boolean') state.allowImplicit = data.allowImplicit;
       if (typeof data.strict === 'boolean') state.strict = data.strict;
       if (typeof data.autoSpeak === 'boolean') state.autoSpeak = data.autoSpeak;
       if (FONTS.some((f) => f.id === data.font)) state.font = data.font;
@@ -301,7 +306,8 @@
     setChildren(el.vowels);
     const fixed = state.mode === 'fixed';
     for (const group of R.VOWEL_GROUPS) {
-      const inGroup = R.VOWELS.filter((v) => v.group === group.id);
+      // 「无元音符号」那种写法由选项面板的开关控制，不出现在词表里
+      const inGroup = R.VOWELS.filter((v) => v.group === group.id && R.isSelectableVowel(v));
       if (!inGroup.length) continue;
       const head = document.createElement('div');
       head.className = 'vowel-group';
@@ -317,8 +323,8 @@
       }
       el.vowels.append(head, row);
     }
-    const counted = R.VOWELS.filter((v) => !v.internal && v.group !== 'variant').length;
-    const variants = R.VOWELS.filter((v) => v.group === 'variant').length;
+    const counted = R.VOWELS.filter((v) => R.isSelectableVowel(v) && v.group !== 'variant').length;
+    const variants = R.VOWELS.filter((v) => R.isSelectableVowel(v) && v.group === 'variant').length;
     el.vowelHint.textContent = fixed
       ? '点一下选择，再点取消'
       : `${counted} 个 + ${variants} 个变体写法`;
@@ -403,6 +409,7 @@
       [el.rowClusters, el.optClusters],
       [el.rowFinal, el.optFinal],
       [el.rowVowelOnset, el.optVowelOnset],
+      [el.rowImplicit, el.optImplicit],
       [el.rowAutoSpeak, el.optAutoSpeak],
     ];
     for (const [row, input] of randomOnly) {
@@ -647,7 +654,8 @@
     }
     const parts = R.generate({
       consonants: [...state.consonants],
-      vowels: [...state.vowels],
+      // 「允许无元音符号的闭音节」打开时，把那种不写符号的 โอะ 加进候选
+      vowels: state.allowImplicit ? [...state.vowels, 'o_implied'] : [...state.vowels],
       allowClusters: state.allowClusters,
       allowFinal: state.allowFinal,
       allowVowelOnset: state.allowVowelOnset,
@@ -707,16 +715,15 @@
     [el.optClusters, 'allowClusters'],
     [el.optFinal, 'allowFinal'],
     [el.optVowelOnset, 'allowVowelOnset'],
+    [el.optImplicit, 'allowImplicit'],
     [el.optAutoSpeak, 'autoSpeak'],
   ];
   for (const [input, key] of bindings) {
-    input.checked = state[key];
     input.addEventListener('change', () => {
       state[key] = input.checked;
       save();
     });
   }
-  el.optStrict.checked = state.strict;
   el.optStrict.addEventListener('change', () => {
     state.strict = el.optStrict.checked;
     // 固定模式下这个开关决定要不要补 อ，得重新拼一遍，不能只重绘卡片
@@ -724,6 +731,13 @@
     else renderCard();
     save();
   });
+
+  /** 把界面上的开关同步成 state 的值。必须在 load() 之后调用一次，
+      否则会「界面显示默认值、实际用的是本地恢复的值」两不一致 */
+  function syncInputs() {
+    for (const [input, key] of bindings) input.checked = state[key];
+    el.optStrict.checked = state.strict;
+  }
 
   document.addEventListener('keydown', (event) => {
     const tag = (document.activeElement || {}).tagName;
@@ -760,6 +774,7 @@
 
   try {
     load();
+    syncInputs();   // 开关的勾选状态要跟着刚读回来的设置走
     applyFont();
     applyTheme();
     buildConsonants();
