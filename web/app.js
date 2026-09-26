@@ -87,6 +87,7 @@
     optImplicit: document.getElementById('optImplicit'),
     optStrict: document.getElementById('optStrict'),
     optAutoSpeak: document.getElementById('optAutoSpeak'),
+    tourBtn: document.getElementById('tourBtn'),
   };
 
   // ── 偏好持久化 ───────────────────────────────────────────────────────
@@ -772,6 +773,202 @@
   }, true);
   window.addEventListener('scroll', hideTip, { passive: true });
 
+  // ── 新手引导 ────────────────────────────────────────────────────────
+  const TOUR_KEY = 'thai-wordcards.tourDone';
+  const TOUR_STEPS = [
+    {
+      sel: '.card',
+      title: '卡片',
+      text: '点「随机组合」生成音节，多无词义，只练拼读。',
+    },
+    {
+      sel: '.split',
+      title: '随机 / 固定',
+      text: '左半边随机换一个；右半边 ⇄ 切固定模式，自己挑字母。',
+    },
+    {
+      sel: '.tones',
+      title: '声调',
+      text: '点一下换声调，灰色表示用不上。',
+    },
+    {
+      sel: '#consonants',
+      title: '词表',
+      text: '勾选要练的字母；悬停看例词和读音（手机长按）。',
+    },
+    {
+      sel: 'details.panel:nth-of-type(2)',
+      title: '选项',
+      text: '字体、音标、外观在这里调；固定模式下用不到的会变灰。',
+      before: () => openPanel(1, true),
+    },
+    {
+      sel: '.split',
+      title: '固定模式',
+      text: '点字母就能拼，再点一下取消。',
+      before: () => setMode('fixed'),
+    },
+    {
+      sel: '.foot',
+      title: '反馈',
+      text: '有问题发邮件；安卓暂不支持发音，后续会加。',
+      before: () => setMode(tour.prevMode || 'random'),
+    },
+  ];
+
+  const tour = {
+    index: 0,
+    prevMode: 'random',   // 引导里会切到固定模式演示，结束时要切回去
+    hole: document.createElement('div'),
+    mask: document.createElement('div'),
+    tip: document.createElement('div'),
+    active: false,
+  };
+  tour.hole.className = 'tour-hole';
+  tour.mask.className = 'tour-mask';
+  tour.tip.className = 'tour-tip';
+  tour.mask.hidden = true;
+  tour.hole.hidden = true;
+  tour.tip.hidden = true;
+  document.body.append(tour.mask, tour.hole, tour.tip);
+
+  function openPanel(index, open) {
+    const panel = document.querySelectorAll('details.panel')[index];
+    if (panel && open && !panel.open) panel.open = true;
+  }
+
+  function placeTour() {
+    const step = TOUR_STEPS[tour.index];
+    const target = document.querySelector(step.sel);
+    if (!target) return;
+    const pad = 6;
+    const r = target.getBoundingClientRect();
+    const hole = {
+      top: Math.max(4, r.top - pad),
+      left: Math.max(4, r.left - pad),
+      width: Math.min(window.innerWidth - 8, r.width + pad * 2),
+      height: Math.min(window.innerHeight - 8, r.height + pad * 2),
+    };
+    tour.hole.style.top = `${hole.top}px`;
+    tour.hole.style.left = `${hole.left}px`;
+    tour.hole.style.width = `${hole.width}px`;
+    tour.hole.style.height = `${hole.height}px`;
+
+    const t = tour.tip.getBoundingClientRect();
+    const gap = 12;
+    let top;
+    if (hole.top + hole.height + gap + t.height <= window.innerHeight - 8) {
+      top = hole.top + hole.height + gap;
+    } else if (hole.top - gap - t.height >= 8) {
+      top = hole.top - gap - t.height;
+    } else {
+      top = Math.max(8, window.innerHeight - t.height - 8);
+    }
+    const left = Math.max(8, Math.min(
+      hole.left + hole.width / 2 - t.width / 2,
+      window.innerWidth - t.width - 8,
+    ));
+    tour.tip.style.top = `${top}px`;
+    tour.tip.style.left = `${left}px`;
+  }
+
+  function showTourStep() {
+    const step = TOUR_STEPS[tour.index];
+    if (step.before) step.before();
+    const target = document.querySelector(step.sel);
+    if (target && target.scrollIntoView) {
+      target.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+    const total = TOUR_STEPS.length;
+    const last = tour.index === total - 1;
+    const title = document.createElement('h4');
+    title.append(step.title);
+    const stepLabel = document.createElement('span');
+    stepLabel.className = 'tour-step';
+    stepLabel.textContent = `${tour.index + 1}/${total}`;
+    title.append(stepLabel);
+    const text = document.createElement('p');
+    text.textContent = step.text.replace(/\*\*/g, '');
+    const actions = document.createElement('div');
+    actions.className = 'tour-actions';
+    const skip = document.createElement('button');
+    skip.type = 'button';
+    skip.textContent = '跳过';
+    skip.addEventListener('click', () => endTour());
+    const prev = document.createElement('button');
+    prev.type = 'button';
+    prev.textContent = '上一步';
+    prev.disabled = tour.index === 0;
+    prev.addEventListener('click', () => {
+      tour.index = Math.max(0, tour.index - 1);
+      showTourStep();
+    });
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'primary';
+    next.textContent = last ? '开始使用' : '下一步';
+    next.addEventListener('click', () => {
+      if (last) {
+        endTour();
+        return;
+      }
+      tour.index += 1;
+      showTourStep();
+    });
+    const spacer = document.createElement('span');
+    spacer.className = 'spacer';
+    actions.append(skip, spacer, prev, next);
+    setChildren(tour.tip, title, text, actions);
+
+    tour.mask.hidden = false;
+    tour.hole.hidden = false;
+    tour.tip.hidden = false;
+    placeTour();
+  }
+
+  function startTour() {
+    if (tour.active) return;
+    tour.active = true;
+    tour.index = 0;
+    tour.prevMode = state.mode;
+    hideTip();
+    showTourStep();
+  }
+
+  /** 第一次打开时自动走一遍引导；在页脚点「新手引导」可以随时重看 */
+  function maybeStartTour() {
+    let seen = false;
+    try {
+      seen = !!localStorage.getItem(TOUR_KEY);
+    } catch { seen = true; }
+    if (!seen) setTimeout(startTour, 500);
+  }
+
+  function endTour(markDone = true) {
+    tour.active = false;
+    tour.mask.hidden = true;
+    tour.hole.hidden = true;
+    tour.tip.hidden = true;
+    renderCard();
+    if (markDone) {
+      try {
+        localStorage.setItem(TOUR_KEY, '1');
+      } catch { /* 无痕模式等场景下忽略 */ }
+    }
+  }
+
+  tour.mask.addEventListener('click', () => {
+    if (tour.index >= TOUR_STEPS.length - 1) endTour();
+    else {
+      tour.index += 1;
+      showTourStep();
+    }
+  });
+  window.addEventListener('resize', () => {
+    if (tour.active) placeTour();
+  });
+  el.tourBtn.addEventListener('click', () => startTour());
+
   /** 出错时直接把原因写在页面上，方便对方截图反馈，而不是只看到空页面 */
   function showFatal(message) {
     const box = document.createElement('div');
@@ -803,6 +1000,7 @@
       window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
       setTimeout(refreshVoices, 600);
     }
+    maybeStartTour();
   } catch (err) {
     showFatal(`初始化失败：${(err && err.message) || err}`);
     throw err;

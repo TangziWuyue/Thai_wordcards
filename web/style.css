@@ -570,6 +570,92 @@ kbd {
 
 .foot a:hover { color: var(--fg); }
 
+.link {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.link:hover { color: var(--fg); }
+
+/* ── 新手引导 ───────────────────────────── */
+.tour-mask,
+.tour-hole,
+.tour-tip {
+  position: fixed;
+  z-index: 60;
+}
+
+.tour-mask {
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.tour-hole {
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42);
+  outline: 2px solid var(--inv-bg);
+  outline-offset: 0;
+  pointer-events: none;
+  transition: all 0.18s ease;
+}
+
+.tour-tip {
+  width: min(320px, calc(100vw - 24px));
+  padding: 14px 16px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.tour-tip h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tour-tip p { margin: 0; }
+
+.tour-tip .tour-step {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tour-actions .spacer { flex: 1; }
+
+.tour-actions button {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tour-actions button:hover { background: var(--soft); color: var(--fg); }
+
+.tour-actions button.primary {
+  background: var(--inv-bg);
+  border-color: var(--inv-bg);
+  color: var(--inv-fg);
+}
+
 /* ── 宽屏：左右两栏，卡片在左、词表在右 ──────────────── */
 @media (min-width: 820px) {
   .app { max-width: 1060px; padding: 48px 32px 80px; }
