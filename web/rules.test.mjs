@@ -14,6 +14,17 @@ function seededRng(seed = 1) {
   };
 }
 
+/** mulberry32：分布质量比 LCG 好，用于「占比是否合理」这类断言 */
+function rng32(seed = 1) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 const MIXED = {
   // 全部非废弃辅音 + 全部元音
   consonants: ThaiRules.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch),
@@ -543,4 +554,64 @@ test('两套转写：拉丁转写与国际音标都要对得上', () => {
   // 两套转写不能完全一样（否则说明数据没填好）
   const differs = ThaiRules.VOWELS.filter((v) => v.ipa !== v.roman);
   assert.ok(differs.length >= 10, `IPA 与拉丁转写应有明显差别，实际只有 ${differs.length} 个不同`);
+});
+
+// ── 分布类回归（曾经出过 bug：元音当声母把结果吃光）─────────────────
+
+test('元音充当声母：占比稳定，不会挤掉其它结果', () => {
+  const vowels = ThaiRules.VOWELS.map((v) => v.id);
+  const onsetsOnly = ['ก'];
+  const fullSet = ThaiRules.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
+  for (const consonants of [onsetsOnly, fullSet]) {
+    const rng = rng32(20260926);
+    const n = 400;
+    let vowelOnset = 0;
+    const perVowel = new Map();
+    for (let i = 0; i < n; i += 1) {
+      const p = ThaiRules.generate({
+        consonants, vowels, allowClusters: true, allowVowelOnset: true, rng,
+      });
+      assert.ok(p, '应该能生成');
+      if (!p.onset) vowelOnset += 1;
+      perVowel.set(p.vowelId, (perVowel.get(p.vowelId) || 0) + 1);
+    }
+    assert.ok(vowelOnset > 0, '应该能生成元音当声母的音节');
+    assert.ok(vowelOnset < n * 0.25, `元音当声母占比过高：${vowelOnset}/${n}`);
+    const max = Math.max(...perVowel.values());
+    assert.ok(max < n * 0.2, `单个元音占比过高：${max}/${n}`);
+  }
+});
+
+test('元音分布不塌缩：全词表跑 400 次，各元音都能出现', () => {
+  const rng = rng32(7);
+  const consonants = ThaiRules.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
+  const vowels = ThaiRules.VOWELS.map((v) => v.id);
+  const perVowel = new Map();
+  const n = 400;
+  for (let i = 0; i < n; i += 1) {
+    const p = ThaiRules.generate({
+      consonants, vowels, allowClusters: true, allowFinal: true, allowVowelOnset: false, rng,
+    });
+    perVowel.set(p.vowelId, (perVowel.get(p.vowelId) || 0) + 1);
+  }
+  const missing = vowels.filter((id) => !perVowel.has(id));
+  assert.deepEqual(missing, [], `这些元音一次都没生成：${missing.join(',')}`);
+  // 允许有 ั 这类「必带尾辅音」的元音出现少一些，但不该有明显一家独大
+  const max = Math.max(...perVowel.values());
+  assert.ok(max < n * 0.15, `单个元音占比过高：${max}/${n}`);
+});
+
+test('辅音与尾辅音分布：都来自勾选的词表，且都有覆盖', () => {
+  const rng = rng32(99);
+  const consonants = ThaiRules.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
+  const onsetSeen = new Set();
+  const finalSeen = new Set();
+  const n = 600;
+  for (let i = 0; i < n; i += 1) {
+    const p = ThaiRules.generate({ consonants, vowels: ['aa', 'i', 'ua'], allowFinal: true, rng });
+    onsetSeen.add(p.onset);
+    if (p.final) finalSeen.add(p.final);
+  }
+  assert.ok(onsetSeen.size >= 30, `声母覆盖过少：${onsetSeen.size}`);
+  assert.ok(finalSeen.size >= 15, `尾辅音覆盖过少：${finalSeen.size}`);
 });

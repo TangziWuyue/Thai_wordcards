@@ -555,14 +555,9 @@ const ThaiRules = (() => {
     const vowelList = vowels.map((id) => VOWEL_MAP.get(id)).filter(Boolean);
     if (!vowelList.length) return null;
 
-    // 可选声母：普通辅音 + （开启时）能自己当声母的元音
-    const choices = onsets.map((ch) => ({ onset: ch }));
-    if (allowVowelOnset) {
-      for (const v of vowelList.filter((x) => x.canBeOnset)) {
-        choices.push({ onset: null, vowelId: v.id });
-      }
-    }
-    if (!choices.length) return null;
+    // 能自己当声母的元音（ฤ ฤๅ ฦ ฦๅ）
+    const vowelOnsetVowels = allowVowelOnset ? vowelList.filter((v) => v.canBeOnset) : [];
+    if (!onsets.length && !vowelOnsetVowels.length) return null;
 
     const finalCandidates = allowFinal ? onsets.filter((ch) => FINALS[ch]) : [];
 
@@ -570,18 +565,24 @@ const ThaiRules = (() => {
     const usableVowels = vowelList.filter(
       (v) => !(v.requiresFinal && !finalCandidates.length),
     );
-    if (!usableVowels.length) return null;
+    if (!usableVowels.length && !vowelOnsetVowels.length) return null;
 
-    const choice = pick(choices, rng);
-
-    // 元音自己当声母：这个音节只有那个元音
-    if (choice.onset === null) {
-      const parts = { vowelId: choice.vowelId, onset: null, cluster: null, tone: 'none', final: null };
+    // 元音自己当声母按固定概率出现。不能把 ฤ 系列每个元音都算作一个「声母选项」——
+    // 那样只勾一两个辅音时它们会占掉大部分结果。
+    const vowelOnsetChance = onsets.length && usableVowels.length ? 0.15 : 1;
+    if (vowelOnsetVowels.length && rng() < vowelOnsetChance) {
+      const parts = {
+        vowelId: pick(vowelOnsetVowels, rng).id,
+        onset: null,
+        cluster: null,
+        tone: 'none',
+        final: null,
+      };
       parts.tone = allowedTones(parts, strict)[0] || 'none';
       return parts;
     }
 
-    const onset = choice.onset;
+    const onset = pick(onsets, rng);
     let cluster = null;
     if (allowClusters) {
       const pairs = CLUSTERS.filter(([a, b]) => a === onset && consonants.includes(b));
