@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-26T12:04:40.323Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-26T12:06:50.032Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -2416,9 +2416,17 @@ if (typeof window !== 'undefined') window.ThaiRules = ThaiRules;
     }
     const voices = window.speechSynthesis.getVoices() || [];
     thaiVoice = voices.find((v) => /^th([-_]|$)/i.test(v.lang)) || null;
-    if (thaiVoice) el.voiceInfo.textContent = `语音：${thaiVoice.name}（${thaiVoice.lang}）`;
-    else if (voices.length) el.voiceInfo.textContent = '语音：未找到泰语语音，朗读会不准';
-    else el.voiceInfo.textContent = '语音：加载中…';
+    if (thaiVoice) {
+      el.voiceInfo.textContent = `语音：${thaiVoice.name}（${thaiVoice.lang}）`;
+      el.voiceInfo.title = '';
+    } else if (voices.length) {
+      el.voiceInfo.textContent = '语音：未找到泰语语音（鼠标停这里看安装方法）';
+      el.voiceInfo.title = '安装泰语语音：Windows → 设置 → 时间和语言 → 语言和区域 → 给泰语添加语音包；'
+        + 'macOS → 系统设置 → 辅助功能 → 朗读内容 → 系统声音 → 管理声音 → 下载泰语；'
+        + 'iPhone → 设置 → 辅助功能 → 朗读内容 → 声音 → 泰语';
+    } else {
+      el.voiceInfo.textContent = '语音：加载中…';
+    }
   }
 
   function speak() {

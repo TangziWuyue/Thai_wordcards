@@ -683,9 +683,17 @@
     }
     const voices = window.speechSynthesis.getVoices() || [];
     thaiVoice = voices.find((v) => /^th([-_]|$)/i.test(v.lang)) || null;
-    if (thaiVoice) el.voiceInfo.textContent = `语音：${thaiVoice.name}（${thaiVoice.lang}）`;
-    else if (voices.length) el.voiceInfo.textContent = '语音：未找到泰语语音，朗读会不准';
-    else el.voiceInfo.textContent = '语音：加载中…';
+    if (thaiVoice) {
+      el.voiceInfo.textContent = `语音：${thaiVoice.name}（${thaiVoice.lang}）`;
+      el.voiceInfo.title = '';
+    } else if (voices.length) {
+      el.voiceInfo.textContent = '语音：未找到泰语语音（鼠标停这里看安装方法）';
+      el.voiceInfo.title = '安装泰语语音：Windows → 设置 → 时间和语言 → 语言和区域 → 给泰语添加语音包；'
+        + 'macOS → 系统设置 → 辅助功能 → 朗读内容 → 系统声音 → 管理声音 → 下载泰语；'
+        + 'iPhone → 设置 → 辅助功能 → 朗读内容 → 声音 → 泰语';
+    } else {
+      el.voiceInfo.textContent = '语音：加载中…';
+    }
   }
 
   function speak() {
