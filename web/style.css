@@ -18,7 +18,9 @@
   --thai-serif: "Noto Serif Thai", serif;
   --thai: var(--thai-sarabun);
 
-  --ui: "Noto Sans SC", -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
+  /* 界面中文用打包的 Noto Sans SC；中文没有的泰文字形落到打包的泰文字体上，
+     这样注释行里的泰文也不会去用系统字体 */
+  --ui: "Noto Sans SC", var(--thai), -apple-system, "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
 }
 
 html[data-font="sarabun"] { --thai: var(--thai-sarabun); }
@@ -358,6 +360,11 @@ kbd {
   font-size: 19px;
   line-height: 1.2;
   cursor: pointer;
+  /* 触屏：长按用来弹说明卡片，别触发选择/系统菜单 */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .chip:hover { background: var(--soft); }

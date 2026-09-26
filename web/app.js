@@ -150,6 +150,25 @@
     tip.hidden = true;
   }
 
+  // 触屏没有 hover：长按 450ms 弹卡片，并且这次长按不再触发「选中/取消」
+  const LONG_PRESS_MS = 450;
+  let pressTimer = null;
+  let longPressAt = 0; // 用时间戳而不是布尔：长按后万一没派发 click，也不会把下一次点击吃掉
+
+  function startPress(btn, pointerType) {
+    if (pointerType === 'mouse') return; // 鼠标走 mouseenter
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      longPressAt = Date.now();
+      showTip(btn);
+    }, LONG_PRESS_MS);
+  }
+
+  function cancelPress() {
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }
+
   function chip(content, pressed, tipData, extraClass, onClick) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -163,7 +182,23 @@
     btn.addEventListener('mouseleave', hideTip);
     btn.addEventListener('focus', () => showTip(btn));
     btn.addEventListener('blur', hideTip);
-    btn.addEventListener('click', onClick);
+    btn.addEventListener('pointerdown', (e) => startPress(btn, e.pointerType));
+    for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+      btn.addEventListener(type, cancelPress);
+    }
+    // 手机上长按常常会走 contextmenu，顺手接住：既不弹系统菜单，也把卡片显示出来
+    btn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      longPressAt = Date.now();
+      showTip(btn);
+    });
+    btn.addEventListener('click', (e) => {
+      if (Date.now() - longPressAt < 1000) {
+        e.preventDefault();
+        return;
+      }
+      onClick(e);
+    });
     return btn;
   }
 
@@ -518,6 +553,13 @@
       speak();
     }
   });
+
+  // 点到别处或者滚动时把卡片收起来（长按出来的卡片也是）
+  document.addEventListener('pointerdown', (event) => {
+    const onChip = event.target instanceof Element && event.target.closest('.chip');
+    if (!onChip) hideTip();
+  }, true);
+  window.addEventListener('scroll', hideTip, { passive: true });
 
   load();
   applyFont();

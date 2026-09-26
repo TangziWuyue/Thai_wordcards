@@ -1,5 +1,9 @@
 /* 打包的泰文字体（SIL OFL 1.1，来源与版权见 fonts/NOTICE.md）
-   分成 thai / latin 两个 subset，用 unicode-range 分开加载。 */
+   分成 thai / latin 两个 subset，用 unicode-range 分开加载。
+
+   ascent/descent-override：两套字体原本度量差很多（Sarabun 是 1.068/0.232，
+   Noto Serif Thai 是 1.064/0.534），同样的行高下基线位置不一致，衬线体就会
+   显得偏上。这里给两套字体强制同一组度量，基线才对得齐。 */
 
 /* ── Sarabun：泰国政府标准体，默认使用 ── */
 @font-face {
@@ -7,6 +11,9 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
+  ascent-override: 107%;
+  descent-override: 30%;
+  line-gap-override: 0%;
   src: url("fonts/sarabun-400-thai.woff2") format("woff2");
   unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
 }
@@ -16,6 +23,9 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
+  ascent-override: 107%;
+  descent-override: 30%;
+  line-gap-override: 0%;
   src: url("fonts/sarabun-400-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
@@ -28,6 +38,9 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
+  ascent-override: 107%;
+  descent-override: 30%;
+  line-gap-override: 0%;
   src: url("fonts/noto-serif-thai-400-thai.woff2") format("woff2");
   unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
 }
@@ -37,6 +50,9 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
+  ascent-override: 107%;
+  descent-override: 30%;
+  line-gap-override: 0%;
   src: url("fonts/noto-serif-thai-400-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,

@@ -39,6 +39,9 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 
 - 前端：原生 HTML/CSS/JS，无构建步骤、无第三方依赖；用普通 `<script>` 加载（不用 ES module），保证双击 `web/index.html` 也能打开。
 - 字体全部打包在仓库里，不依赖系统装了什么：泰文用 Sarabun（默认，泰国政府文书标准体）与 Noto Serif Thai；界面中文用 Noto Sans SC 的子集。都是 SIL OFL 1.1，版权与来源见 `web/fonts/NOTICE.md`。**不要再加「系统字体」选项**，也不要在字体栈里放系统泰文字体名，否则换机器字形会变。
+- 两套泰文字体在 `fonts.css` 里都带 `ascent-override: 107%` / `descent-override: 30%` / `line-gap-override: 0%`。**换字体或改字号时要保留这组 override**：两套字体原生度量差很多（Sarabun 1.068/0.232，Noto Serif Thai 1.064/0.534），不统一的话同样行高下衬线体会整体偏上。
+- `--ui` 字体栈里带 `var(--thai)`：注释行里混着泰文（`首辅音 ก 中类`），不这样会掉到系统泰文字体上。
+- 字块的说明卡片（`.tip`）鼠标悬浮和键盘聚焦会弹；触屏靠 `pointerdown` 450ms 长按或 `contextmenu` 触发，长按后的那一次 click 会被跳过（用时间戳判断，避免把下一次点击也吃掉）。
 - 中文字体子集由 `node web/fonts/build-cjk-subset.mjs` 生成（需要联网），只取 `index.html` / `app.js` / `rules.js` 里真正出现过的中文。**改完界面文案要重跑**，否则新字会退回系统字体。
 - 元音数据带课本字段：`name`（สระ อา）、`en`（sara aa）、`roman`（罗马注音，同时是卡片注音）、`example`（例词）、`short`（长/短音）。改这些字段前先对一遍课本，测试里有逐条比对。
 - 辅音的传统例词在 `CONSONANT_EXAMPLES`（`ก ไก่` …），字段是 `example` + `gloss`；测试要求 44 个字母都有，漏一个会失败。
