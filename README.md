@@ -25,6 +25,39 @@ node web/build-standalone.mjs      # 生成 dist/泰语组合练习.html
 
 产物把 CSS、JS、字体全部内联进 HTML（约 930KB），**零外部引用**——发过去双击就能用，不需要联网、不需要装泰文字体，也不受 `file://` 跨域限制影响。改动界面后重新跑一次即可（脚本会自检有没有残留外部引用，有就报错退出）。
 
+## 在手机上用
+
+### 方式一：同一 Wi-Fi 直接访问（临时，最快）
+
+```bash
+python3 -m http.server 8901 --directory web
+# 然后在手机浏览器打开 http://<这台电脑的局域网 IP>:8901/
+# 查本机 IP：ipconfig getifaddr en0
+```
+
+手机和电脑要在同一个网络（同一个 Wi-Fi，或电脑连着手机热点）。这个地址只在家里/局域网有效，出门就打不开。
+
+### 方式二：部署到 GitHub Pages（正式，随时可用）
+
+部署内容放在 `docs/`（`index.html` 就是打包好的单文件版，`docs/` 是 GitHub Pages 允许的两个目录之一）。**仓库公开后**，在 Settings → Pages 里把 Source 选成 **Deploy from a branch**、分支选 `main`、目录选 `/docs`，就会得到固定链接：
+
+```
+https://<用户名>.github.io/Thai_wordcards/
+```
+
+只有一个前提：**仓库要公开**（免费版 Pages 不支持私有仓库）。
+
+更新线上内容时重新构建并复制过去：
+
+```bash
+node web/build-standalone.mjs
+cp "dist/泰语组合练习.html" docs/index.html
+cp "dist/使用说明.txt" docs/使用说明.txt
+git add docs && git commit -m "更新线上版本" && git push
+```
+
+不想公开仓库的话，可以改用 Vercel / Cloudflare Pages / Netlify——它们支持从**私有**仓库部署，但需要各自注册账号。
+
 ## 功能
 
 - **随机拼装**：前引元音 → 首辅音（可带辅音簇）→ 元音前段 → 声调符号 → 元音后段 → 尾辅音，严格遵守泰文码点顺序。
