@@ -6,14 +6,11 @@
   'use strict';
 
   const R = window.ThaiRules;
-  const STORE_KEY = 'thai-wordcards.v1';
+  // 词表结构变动时递增版本号，避免读到旧版不兼容的勾选记录
+  const STORE_KEY = 'thai-wordcards.v2';
 
-  // 默认勾选常用辅音，罕用 / 已废弃的字母留着手动开
-  const DEFAULT_CONSONANTS = [
-    'ก', 'จ', 'ด', 'ต', 'บ', 'ป', 'อ', // 中类
-    'ข', 'ฉ', 'ถ', 'ผ', 'ฝ', 'ส', 'ห', // 高类
-    'ค', 'ช', 'ท', 'น', 'ม', 'ง', 'ย', 'ร', 'ล', 'ว', 'พ', 'ฟ', 'ซ', 'ฮ', // 低类
-  ];
+  // 默认勾选全部辅音，只留 ฃ ฅ 这两个废弃字母让人手动开
+  const DEFAULT_CONSONANTS = R.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
 
   const state = {
     consonants: new Set(DEFAULT_CONSONANTS),
@@ -113,10 +110,8 @@
   }
 
   function vowelForm(v) {
-    if (v.lead && v.follow) return `${v.lead}-${v.follow}`;
-    if (v.lead) return v.lead;
-    if (v.follow) return v.follow;
-    return '无';
+    if (v.id === 'implicit') return '无';
+    return `${v.lead ? `${v.lead}-` : ''}${v.follow || ''}${v.tail || ''}`;
   }
 
   function buildVowels() {
