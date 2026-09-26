@@ -687,7 +687,7 @@
       el.voiceInfo.textContent = `语音：${thaiVoice.name}（${thaiVoice.lang}）`;
       el.voiceInfo.title = '';
     } else if (voices.length) {
-      el.voiceInfo.textContent = '语音：未找到泰语语音（鼠标停这里看安装方法）';
+      el.voiceInfo.textContent = '语音：未找到泰语语音，无法发音';
       el.voiceInfo.title = '安装泰语语音：Windows → 设置 → 时间和语言 → 语言和区域 → 给泰语添加语音包；'
         + 'macOS → 系统设置 → 辅助功能 → 朗读内容 → 系统声音 → 管理声音 → 下载泰语；'
         + 'iPhone → 设置 → 辅助功能 → 朗读内容 → 声音 → 泰语';
@@ -702,11 +702,17 @@
       el.voiceInfo.textContent = '语音：当前浏览器不支持朗读';
       return;
     }
+    refreshVoices();  // 语音列表是异步加载的，点之前先刷一遍
+    if (!thaiVoice) {
+      // 安卓常见：系统没装泰语语音包，说了也是静音或乱读，不如直接说清楚
+      el.voiceInfo.textContent = '语音：这台设备没有泰语语音，暂时无法发音';
+      return;
+    }
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(R.assemble(state.parts));
     utter.lang = 'th-TH';
     utter.rate = 0.75;
-    if (thaiVoice) utter.voice = thaiVoice;
+    utter.voice = thaiVoice;
     window.speechSynthesis.speak(utter);
   }
 

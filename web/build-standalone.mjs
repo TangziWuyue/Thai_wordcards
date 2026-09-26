@@ -55,7 +55,8 @@ html = html
   .replace('</body>', `  <script>\n${js}\n  </script>\n</body>`);
 
 // 自检：绝不能残留外部引用，否则发给别人就打不开 / 掉字体
-const leftovers = [...html.matchAll(/(?:src|href)="(?!data:|#)([^"]+)"/g)].map((m) => m[1]);
+// mailto: / tel: 是点开邮件的链接，不会联网取资源，不算外部引用
+const leftovers = [...html.matchAll(/(?:src|href)="(?!data:|#|mailto:|tel:)([^"]+)"/g)].map((m) => m[1]);
 const problems = [];
 if (leftovers.length) problems.push(`外部引用：${leftovers.join(', ')}`);
 if (/<link rel="stylesheet"/.test(html)) problems.push('仍有未内联的 <link rel="stylesheet">');

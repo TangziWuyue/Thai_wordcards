@@ -549,12 +549,26 @@ kbd {
 /* ── 页脚 ───────────────────────────────── */
 .foot {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
   margin-top: 36px;
   color: var(--muted);
   font-size: 12px;
 }
+
+.foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.foot a {
+  color: var(--muted);
+  text-decoration: underline dotted;
+}
+
+.foot a:hover { color: var(--fg); }
 
 /* ── 宽屏：左右两栏，卡片在左、词表在右 ──────────────── */
 @media (min-width: 820px) {
