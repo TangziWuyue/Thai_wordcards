@@ -11,6 +11,7 @@
  * 字体授权：SIL OFL 1.1，见同目录 NOTICE.md。
  */
 import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
 import path from 'node:path';
 
 const WEB = path.resolve(import.meta.dirname, '..');
@@ -90,9 +91,11 @@ if (missing.length) {
 }
 
 const rules = [];
-let index = 0;
 for (const face of needed) {
-  const name = `noto-sans-sc-400-${String(index).padStart(2, '0')}.woff2`;
+  // 文件名用 unicode-range 的短哈希：文案改动时只有真正变了的子集才会重新写盘，
+  // 不会像流水号那样整体错位。
+  const hash = crypto.createHash('sha1').update(face.range).digest('hex').slice(0, 8);
+  const name = `noto-sans-sc-400-${hash}.woff2`;
   const res = await fetch(face.url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/126.0' },
   });
@@ -106,7 +109,6 @@ for (const face of needed) {
   src: url("fonts/${name}") format("woff2");
   unicode-range: ${face.range};
 }`);
-  index += 1;
 }
 
 const header = `/* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
