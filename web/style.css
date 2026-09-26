@@ -314,6 +314,7 @@ html.js .js-fallback { display: none; }
   border: 1px solid var(--line);
   border-radius: var(--radius);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .btn:hover { background: var(--soft); }
@@ -587,4 +588,10 @@ kbd {
   .row, .chips { gap: 5px; }
   .vowel-chip { font-size: 14px; }
   .chip { font-size: 17px; padding: 3px 6px; }
+}
+
+/* 手机上按钮里的键盘提示没用，还会把按钮撑成两行，直接隐藏 */
+@media (max-width: 480px) {
+  .actions kbd { display: none; }
+  .btn { padding: 13px 12px; }
 }
