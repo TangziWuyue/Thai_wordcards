@@ -627,6 +627,17 @@
     return span;
   }
 
+  /**
+   * 往卡片上放泰文。字号按字数缩：7 个码点的长组合在窄卡片上会折成两行，
+   * 一折行卡片高度就翻倍、整页跟着跳，所以字越多缩得越小，永远占一行。
+   * （样式的字号写成 calc(基础字号 * var(--syl-scale))，见 style.css）
+   */
+  function setSyllable(text) {
+    el.syllable.textContent = text;
+    const len = [...text].length;
+    el.syllable.style.setProperty('--syl-scale', len >= 5 ? String((4 / len).toFixed(3)) : '1');
+  }
+
   function renderCard() {
     normalizeTone();
 
@@ -634,7 +645,7 @@
       state.commonFallback = false;
       // 辞典里点过来的词优先；没有就摆打招呼那个词
       const entry = state.word ? D.lookup(state.word) : null;
-      el.syllable.textContent = state.word || GREETING.text;
+      setSyllable(state.word || GREETING.text);
       el.roman.textContent = state.word
         ? `/${(entry && entry[1]) || '—'}/ · 罗马注音`
         : `/${GREETING.roman}/ · 罗马注音`;
@@ -670,7 +681,7 @@
       span.textContent = l.follow;
       setChildren(el.syllable, span);
     } else {
-      el.syllable.textContent = info.text;
+      setSyllable(info.text);
     }
     // อ 之类的字母在罗马注音里本来就没有对应写法，显示成 — 而不是空斜杠
     el.roman.textContent = `/${info.roman || '—'}/ · 罗马注音，不含声调`;
@@ -705,14 +716,14 @@
       // 单独选出来就拼不成完整音节——这件事必须写出来，光在控制台警告用户看不见
       const needsFinal = info.issues.includes('该元音必须带尾辅音');
       hints.push(state.mode === 'fixed' && needsFinal
-        ? '这个元音必须带尾辅音，固定模式下拼不完整：换一个元音，或改用随机组合'
+        ? '这个元音必须带尾辅音，固定模式拼不完整，换一个元音'
         : info.issues.join('；'));
     }
     if (disabledReasons.length) {
       hints.push(`${disabledReasons.join('；')}（可在选项中关闭规则检查）`);
     }
     if (state.commonFallback) {
-      hints.push('当前词表里没抽到常用词，先给一个普通音节（多勾几个字母更容易抽中）');
+      hints.push('词表里没抽到常用词，先给普通音节，多勾几个字母更容易中');
     }
     el.toneHint.textContent = hints.join('；');
     updateDictHit();
@@ -747,7 +758,6 @@
     // 不是真词也标一下，跟「真词」对称：看到「无义」就知道这个拼写泰语里不成立
     if (!D.isWord(text)) {
       el.dictHit.append(mark('无义', 'dh-mark plain'));
-      el.dictHit.hidden = false;
       return;
     }
     el.dictHit.append(mark('真词', 'dh-mark'));
@@ -782,13 +792,12 @@
       tag.textContent = '常用';
       el.dictHit.append(tag);
     }
-    el.dictHit.hidden = false;
   }
 
   /** 索引没加载好时不显示结论，加载完再重绘一次当前卡片 */
   function updateDictHit() {
     if (D.isWord(currentText()) === null) {
-      el.dictHit.hidden = true;
+      // 这一行始终占位（见 style.css 里的 min-height），内容空着也不会让页面跳
       setChildren(el.dictHit);
       D.loadIndex()
         .then(() => renderDictHit())
