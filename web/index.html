@@ -58,6 +58,13 @@
           </div>
           <button type="button" class="btn" id="speakBtn">播放发音<kbd>⏎</kbd></button>
         </section>
+
+        <!-- 组合范围同时管着两件事：随机组合怎么拼、固定模式要不要用 อ 补位。
+             放在模式按钮正下方，因为它跟「随机 / 固定」是同一类选择，两种模式下都要看得到 -->
+        <div class="range-row">
+          <div class="seg" id="rangeSeg" role="group" aria-label="组合范围"></div>
+          <p class="hint range-hint" id="rangeHint"></p>
+        </div>
       </div>
 
       <div class="col-side">
@@ -134,10 +141,6 @@
             <label class="switch" id="rowImplicit">
               <input type="checkbox" id="optImplicit">
               <span>允许无元音符号的闭音节（กบ = kop）</span>
-            </label>
-            <label class="switch" id="rowStrict">
-              <input type="checkbox" id="optStrict" checked>
-              <span>遵守拼写规则：<span id="strictHint">禁用该组合用不上的声调</span></span>
             </label>
             <label class="switch" id="rowAutoSpeak">
               <input type="checkbox" id="optAutoSpeak">

@@ -150,6 +150,8 @@ const POS_CODE = {
 // 免得 เพื่อน（朋友）被标成古语代词那个条目
 // ให้ 这类词词典里同时收了名词和动词义，标「名」会让人误会，动词/形容词更贴近实际用法
 const POS_ORDER = ['v', 'n', 'adj', 'adv', 'cls', 'num', 'intj', 'fn', 'pron'];
+// 英文兜底释义也不要「used to express …」这种解释性开头
+const EN_STRIP = /^(?:used to express|used as|a word used to|to express)\s+/i;
 
 function loadKaikki() {
   const map = new Map();
@@ -164,26 +166,42 @@ function loadKaikki() {
     const w = o.word;
     if (!w) continue;
     const rom = (o.forms || []).find((f) => (f.tags || []).includes('romanization'))?.form || '';
-    const prev = map.get(w) || { rom: '', posList: [] };
+    const prev = map.get(w) || { rom: '', posList: [], en: '' };
     const code = POS_CODE[String(o.pos || '').toLowerCase()];
     if (code && !prev.posList.includes(code)) prev.posList.push(code);
-    map.set(w, { rom: prev.rom || rom, posList: prev.posList });
+    // 第一条义项的第一个说法最贴近常用义，后面的先不要
+    let en = prev.en;
+    if (!en) {
+      const first = (o.senses || [])[0];
+      const gloss = first && (first.glosses || []).find((g) => !String(g).endsWith(':'));
+      if (gloss) en = String(gloss).replace(EN_STRIP, '').split(';')[0].trim().slice(0, 60);
+    }
+    map.set(w, { rom: prev.rom || rom, posList: prev.posList, en });
   }
   const out = new Map();
   for (const [w, v] of map) {
     const pos = POS_ORDER.find((p) => v.posList.includes(p)) || '';
-    out.set(w, { rom: v.rom, pos });
+    out.set(w, { rom: v.rom, pos, en: v.en });
   }
   return out;
 }
 
-function loadLexitronWords() {
-  const set = new Set();
-  for (const m of readSource('lexitron').matchAll(/<tentry>([\s\S]*?)<\/tentry>/g)) {
-    const w = m[1].trim();
-    if (w) set.add(w);
+/** LEXiTRON：词头 + 英文释义。英文兜底优先用它——比维基词典的定义短，更像词条 */
+function loadLexitron() {
+  const map = new Map();
+  for (const m of readSource('lexitron').matchAll(/<Doc>([\s\S]*?)<\/Doc>/g)) {
+    const body = m[1];
+    const pick = (name) => {
+      const hit = body.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`));
+      return hit ? hit[1].trim() : '';
+    };
+    const w = pick('tentry') || pick('tsearch');
+    if (!w) continue;
+    const en = pick('eentry').slice(0, 60);
+    // 同一个词头只留第一条有英文的
+    if (!map.has(w)) map.set(w, en);
   }
-  return set;
+  return map;
 }
 
 async function main() {
@@ -191,7 +209,7 @@ async function main() {
 
   const vocab = loadVocab();
   const kaikki = loadKaikki();
-  const lexitron = loadLexitronWords();
+  const lexitron = loadLexitron();
   const commonSet = new Set(
     [...vocab].filter(([, v]) => v.level === 'B1').map(([w]) => w),
   );
@@ -199,29 +217,33 @@ async function main() {
 
   // 入典范围 = 有中文释义的词（词典主体）+ 所有可能被拼出来的真词（只用于判定「真词」）
   const indexSet = new Set(
-    [...lexitron, ...kaikki.keys()].filter((w) => isUsableWord(w) && [...w].length <= MAX_SYLLABLE),
+    [...lexitron.keys(), ...kaikki.keys()].filter((w) => isUsableWord(w) && [...w].length <= MAX_SYLLABLE),
   );
   const all = [...new Set([...vocab.keys(), ...indexSet])].filter(isUsableWord).sort();
   log(`入典词头 ${all.length} 条（有中文释义 ${vocab.size} 条）`);
 
   const entries = all.map((w) => {
     const v = vocab.get(w);
-    const k = kaikki.get(w) || { rom: '', pos: '' };
+    const k = kaikki.get(w) || { rom: '', pos: '', en: '' };
     // 人工补的基础词表里标了词性的（ครับ 这类语气词）优先用它
-    return [w, k.rom, v ? v.zh : '', v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0];
+    // 第 6 位是英文释义：中文词表没收录这个词时，界面上用英文兜底（会标明是英文）
+    // 优先维基词典：LEXiTRON 的 eentry 会挑偏义项（น้ำ 给的是 river、สวัสดี 给的是 safety）
+    const en = k.en || lexitron.get(w) || '';
+    return [w, k.rom, v ? v.zh : '', v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0, en];
   });
 
   const withZh = entries.filter((e) => e[2]).length;
+  const withEn = entries.filter((e) => !e[2] && e[5]).length;
   const common = entries.filter((e) => e[4]).length;
-  log(`· 出典 ${entries.length} 条：有中文释义 ${withZh}，标为常用 ${common}，有罗马注音 ${entries.filter((e) => e[1]).length}`);
+  log(`· 出典 ${entries.length} 条：中文释义 ${withZh}，只有英文 ${withEn}，标为常用 ${common}，有罗马注音 ${entries.filter((e) => e[1]).length}`);
 
   mkdirSync(OUT, { recursive: true });
   writeFileSync(
     join(OUT, 'dict.js'),
     // 注意：全局名是 ThaiDictData，不要写成 ThaiDict —— dict.js 用 ThaiDict 暴露接口
     'window.ThaiDictData=' + JSON.stringify({
-      source: '中泰词表 thai-vocabulary-studio（B1/B2/C1）· 注音与词性来自 Wiktionary (kaikki.org) · 真词表来自 LEXiTRON',
-      note: '中文释义取自中文作者整理的中泰对照词表，未做机器翻译；没有释义的是「确实是泰语词但词表未收录」。',
+      source: '中泰词表 thai-vocabulary-studio（B1/B2/C1）· 注音与词性来自 Wiktionary (kaikki.org) · 真词与英文释义来自 LEXiTRON',
+      note: '中文释义取自中文作者整理的中泰对照词表，未做机器翻译；词表没收录的词给英文释义，界面上会标明「英文」。',
       commonLabel: 'B1 常用档',
       words: entries,
     }) + ';\n',

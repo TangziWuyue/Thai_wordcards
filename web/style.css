@@ -204,6 +204,11 @@ html.js .js-fallback { display: none; }
 
 .dh-zh { font-weight: 500; }
 
+.dh-en {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .dh-pos {
   color: var(--muted);
   font-size: 11px;
@@ -262,6 +267,18 @@ html.js .js-fallback { display: none; }
   flex: 1;
   font-size: 13px;
 }
+
+.dw-en { color: var(--muted); }
+
+.dw-en-tag {
+  margin-right: 5px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10px;
+  font-style: normal;
+}
+
 
 .dict-note {
   margin: 10px 0 0;
@@ -604,6 +621,41 @@ kbd {
 .seg button[aria-pressed="true"] {
   background: var(--card);
   color: var(--fg);
+}
+
+/* 用不到的档位（固定模式下的「常用词」）灰掉，但保留选中状态，
+   切回随机组合还是原来那一档 */
+.seg button:disabled {
+  color: var(--dot);
+  cursor: default;
+}
+
+.seg button:disabled[aria-pressed="true"] {
+  background: transparent;
+  color: var(--dot);
+}
+
+/* 组合范围：跟「随机组合 / 固定模式」是同一类选择，摆在它正下方，
+   两种模式下都露在外面，不用展开「选项」去找 */
+.range-row { margin-top: 12px; }
+
+.range-row .seg {
+  display: flex;
+  width: 100%;
+}
+
+.range-row .seg button {
+  flex: 1;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.range-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--muted);
 }
 
 .sample {

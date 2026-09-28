@@ -43,6 +43,13 @@
     { id: 'dark', label: '深色' },
   ];
   const ROMAN_SEGS = R.ROMAN_SYSTEMS.map((s) => ({ id: s.id, label: s.label }));
+  // 随机组合的范围，从宽到严。原来只有一个「遵守拼写规则」开关，
+  // 现在把「只拼常用词」并进来做成同一档：一档比一档严，不会出现「不检查规则却只出常用词」这种自相矛盾的状态
+  const RANGES = [
+    { id: 'any', label: '任意' },
+    { id: 'strict', label: '按规则' },
+    { id: 'common', label: '常用词' },
+  ];
 
   // 默认勾选全部辅音，只留 ฃ ฅ 这两个废弃字母让人手动开
   const DEFAULT_CONSONANTS = R.CONSONANTS.filter((c) => !c.obsolete).map((c) => c.ch);
@@ -56,6 +63,10 @@
     allowFinal: true,
     allowVowelOnset: false,
     allowImplicit: false,
+    // 'any' = 不检查规则；'strict' = 按泰语拼写规则；'common' = 只拼词表里的常用词
+    range: 'strict',
+    // 由 range 推出来的（除了「任意」都要检查规则）。规则判断统一读这个字段，
+    // 不要单独给它赋值，改 range 之后调 syncRange()
     strict: true,
     autoSpeak: false,
     font: 'sarabun',
@@ -65,6 +76,8 @@
     mode: 'random',
     fixedOnset: null,
     fixedVowelId: null,
+    // 常用词模式下没抽中、退回了普通音节（只在这一次随机里有效，用来提示一句）
+    commonFallback: false,
     parts: null,
   };
 
@@ -79,7 +92,8 @@
     consHint: document.getElementById('consHint'),
     vowelHint: document.getElementById('vowelHint'),
     optionsHint: document.getElementById('optionsHint'),
-    strictHint: document.getElementById('strictHint'),
+    rangeSeg: document.getElementById('rangeSeg'),
+    rangeHint: document.getElementById('rangeHint'),
     rowClusters: document.getElementById('rowClusters'),
     rowFinal: document.getElementById('rowFinal'),
     rowVowelOnset: document.getElementById('rowVowelOnset'),
@@ -100,7 +114,6 @@
     optFinal: document.getElementById('optFinal'),
     optVowelOnset: document.getElementById('optVowelOnset'),
     optImplicit: document.getElementById('optImplicit'),
-    optStrict: document.getElementById('optStrict'),
     optAutoSpeak: document.getElementById('optAutoSpeak'),
     tourBtn: document.getElementById('tourBtn'),
     dictHit: document.getElementById('dictHit'),
@@ -122,7 +135,7 @@
         allowFinal: state.allowFinal,
         allowVowelOnset: state.allowVowelOnset,
         allowImplicit: state.allowImplicit,
-        strict: state.strict,
+        range: state.range,
         autoSpeak: state.autoSpeak,
         font: state.font,
         theme: state.theme,
@@ -152,7 +165,9 @@
       if (typeof data.allowFinal === 'boolean') state.allowFinal = data.allowFinal;
       if (typeof data.allowVowelOnset === 'boolean') state.allowVowelOnset = data.allowVowelOnset;
       if (typeof data.allowImplicit === 'boolean') state.allowImplicit = data.allowImplicit;
-      if (typeof data.strict === 'boolean') state.strict = data.strict;
+      // 老版本存的是布尔值 strict，映射到新的三档上
+      if (RANGES.some((r) => r.id === data.range)) state.range = data.range;
+      else if (typeof data.strict === 'boolean') state.range = data.strict ? 'strict' : 'any';
       if (typeof data.autoSpeak === 'boolean') state.autoSpeak = data.autoSpeak;
       if (FONTS.some((f) => f.id === data.font)) state.font = data.font;
       if (THEMES.some((t) => t.id === data.theme)) state.theme = data.theme;
@@ -369,6 +384,7 @@
    *   都选了   → 正常拼成一个音节，如 กา
    */
   function applyFixed() {
+    state.commonFallback = false; // 固定模式是自己挑字母，和「常用词」无关
     const onset = state.fixedOnset;
     const vowelId = state.fixedVowelId;
     if (!onset && !vowelId) {
@@ -440,13 +456,7 @@
       row.classList.toggle('off', fixed);
       row.title = fixed ? '固定模式下不适用（只影响随机组合）' : '';
     }
-    el.optionsHint.textContent = fixed
-      ? '固定模式只用到字体、音标、外观和拼写规则；灰掉的几项只对随机组合生效'
-      : '';
-    // 「遵守拼写规则」后面那句话跟着模式换：随机模式讲声调限制，固定模式讲补位
-    el.strictHint.textContent = fixed
-      ? '单选元/辅音时用อ补位'
-      : '禁用该组合用不上的声调';
+    applyRangeHint();
     el.modeBtn.setAttribute('aria-pressed', String(fixed));
     el.modeBtn.title = fixed ? '当前：固定模式（点它切回随机组合）' : '切换：随机组合 / 自己挑选搭配';
     el.randomBtn.disabled = fixed;
@@ -511,6 +521,7 @@
         btn.append(span);
       }
       btn.setAttribute('aria-pressed', String(item.id === current));
+      btn.dataset.id = item.id;
       btn.addEventListener('click', () => onPick(item.id));
       return btn;
     }));
@@ -543,6 +554,54 @@
       renderSettings();
       save();
     });
+    buildSeg(el.rangeSeg, RANGES, state.range, (id) => {
+      state.range = id;
+      syncRange();
+      // 选到「常用词」就顺手把词表取回来，不然第一次点随机组合还得现等
+      if (id === 'common') D.loadWords().catch(() => { /* 取不到就退回普通随机 */ });
+      // 固定模式下这一档决定要不要用 อ 补位，得重新拼一遍
+      if (state.mode === 'fixed') applyFixed();
+      else renderCard();
+      renderSettings();
+      applyRangeHint();
+      save();
+    });
+  }
+
+  /** range 是唯一信息源，strict 从它推出来，免得两处状态对不上 */
+  function syncRange() {
+    state.strict = state.range !== 'any';
+  }
+
+  // 「组合范围」这一档在两种模式下含义不同：随机模式讲怎么拼，固定模式讲要不要补 อ
+  const RANGE_HINT = {
+    any: {
+      random: '不检查规则：可能拼出泰语里不存在的组合，声调也不受限',
+      fixed: '不检查规则：只选元音时不补 อ',
+    },
+    strict: {
+      random: '按泰语拼写规则拼：禁用这个组合用不上的声调',
+      fixed: '单选元/辅音时用 อ 补位',
+    },
+    common: {
+      random: '只从常用词里取：拼出来的一定是真实存在的词',
+      fixed: '固定模式下等同于「按规则」',
+    },
+  };
+
+  function applyRangeHint() {
+    const fixed = state.mode === 'fixed';
+    el.rangeHint.textContent = RANGE_HINT[state.range][fixed ? 'fixed' : 'random'];
+    // 「常用词」只对随机组合有意义（固定模式是手动挑字母），灰掉但保留选择，
+    // 切回随机模式还是这一档
+    const commonBtn = [...el.rangeSeg.children].find((b) => b.dataset.id === 'common');
+    if (commonBtn) {
+      commonBtn.disabled = fixed;
+      commonBtn.title = fixed ? '固定模式下不适用（常用词只影响随机组合）' : '';
+    }
+    el.optionsHint.textContent = fixed
+      ? '固定模式只用到字体、音标和外观；灰掉的几项只对随机组合生效'
+      : '';
   }
 
   // ── 渲染卡片 ────────────────────────────────────────────────────────
@@ -591,6 +650,7 @@
     normalizeTone();
 
     if (!state.parts) {
+      state.commonFallback = false;
       el.syllable.textContent = GREETING.text;
       el.roman.textContent = `/${GREETING.roman}/ · 罗马注音`;
       const hint = document.createElement('span');
@@ -656,6 +716,12 @@
     el.toneHint.textContent = disabledReasons.length
       ? `${disabledReasons.join('；')}（可在选项中关闭规则检查）`
       : '';
+    if (state.commonFallback) {
+      const note = '当前词表里没抽到常用词，先给一个普通音节（多勾几个字母更容易抽中）';
+      el.toneHint.textContent = el.toneHint.textContent
+        ? `${el.toneHint.textContent}；${note}`
+        : note;
+    }
     updateDictHit();
   }
 
@@ -692,6 +758,15 @@
       zh.className = 'dh-zh';
       zh.textContent = entry[2];
       el.dictHit.append(zh);
+    } else if (entry && entry[5]) {
+      // 中文词表没收录这个词，退回英文释义——标一下「英文」，别让人以为是中文没写好
+      const tag = document.createElement('span');
+      tag.className = 'dh-pos';
+      tag.textContent = '英文';
+      const en = document.createElement('span');
+      en.className = 'dh-en';
+      en.textContent = entry[5];
+      el.dictHit.append(tag, en);
     }
     // 没有实义的虚词（ครับ ค่ะ นะ …）单独标一下，看到就知道不用去记「意思」
     if (entry && entry[3] === 'fn') {
@@ -754,7 +829,16 @@
       }
       const cn = document.createElement('span');
       cn.className = 'dw-zh';
-      cn.textContent = zh;
+      if (zh) {
+        cn.textContent = zh;
+      } else if (entry[5]) {
+        // 同卡片：「英文」两个字提示这是英文释义，不是没翻好的中文
+        const tag = document.createElement('span');
+        tag.className = 'dw-en-tag';
+        tag.textContent = '英文';
+        cn.append(tag, document.createTextNode(entry[5]));
+        cn.classList.add('dw-en');
+      }
       item.append(thai, meta, cn);
       item.title = '点一下朗读';
       item.addEventListener('click', () => speakText(word));
@@ -804,15 +888,26 @@
       el.roman.textContent = '请先在词表里至少勾选一个辅音和一个元音';
       return;
     }
-    const parts = R.generate({
-      consonants: [...state.consonants],
-      // 「允许无元音符号的闭音节」打开时，把那种不写符号的 โอะ 加进候选
-      vowels: state.allowImplicit ? [...state.vowels, 'o_implied'] : [...state.vowels],
-      allowClusters: state.allowClusters,
-      allowFinal: state.allowFinal,
-      allowVowelOnset: state.allowVowelOnset,
-      strict: state.strict,
-    });
+    // 常用词模式下反复抽，直到抽到一个真实存在的常用词为止。
+    // 随机音节命中常用词的概率大约 1%，所以多试几百次基本不会落空；
+    // 实在抽不到（比如词表只勾了一两个字母）就退回普通随机，并说明原因
+    const wantCommon = state.range === 'common' && D.ready();
+    const MAX_TRIES = wantCommon ? 2000 : 1;
+    let parts = null;
+    for (let i = 0; i < MAX_TRIES; i += 1) {
+      const candidate = R.generate({
+        consonants: [...state.consonants],
+        // 「允许无元音符号的闭音节」打开时，把那种不写符号的 โอะ 加进候选
+        vowels: state.allowImplicit ? [...state.vowels, 'o_implied'] : [...state.vowels],
+        allowClusters: state.allowClusters,
+        allowFinal: state.allowFinal,
+        allowVowelOnset: state.allowVowelOnset,
+        strict: state.strict,
+      });
+      if (!candidate) break;
+      parts = candidate;
+      if (!wantCommon || D.isCommon(R.assemble(candidate))) break;
+    }
     if (!parts) {
       // 清掉上一张卡，避免「卡片上还留着上一个音节的字形」和提示互相矛盾
       state.parts = null;
@@ -822,6 +917,9 @@
       return;
     }
     state.parts = parts;
+    // 常用词模式下没抽中（词表勾得太少）时的兜底提示，交给 renderCard 一起写出来，
+    // 免得覆盖掉声调那一行本来要显示的原因
+    state.commonFallback = !!wantCommon && !D.isCommon(R.assemble(parts));
     renderCard();
     if (state.autoSpeak) speak();
   }
@@ -895,19 +993,10 @@
       save();
     });
   }
-  el.optStrict.addEventListener('change', () => {
-    state.strict = el.optStrict.checked;
-    // 固定模式下这个开关决定要不要补 อ，得重新拼一遍，不能只重绘卡片
-    if (state.mode === 'fixed') applyFixed();
-    else renderCard();
-    save();
-  });
-
   /** 把界面上的开关同步成 state 的值。必须在 load() 之后调用一次，
       否则会「界面显示默认值、实际用的是本地恢复的值」两不一致 */
   function syncInputs() {
     for (const [input, key] of bindings) input.checked = state[key];
-    el.optStrict.checked = state.strict;
   }
 
   document.addEventListener('keydown', (event) => {
@@ -940,7 +1029,7 @@
     {
       sel: '.split',
       title: '随机 / 固定',
-      text: '左半边随机换一个；右半边 ⇄ 切固定模式，自己挑字母。',
+      text: '左半边随机换一个，右半边 ⇄ 切固定模式。下面的「组合范围」选拼得多严。',
     },
     {
       sel: '.tones',
@@ -1143,6 +1232,7 @@
   try {
     load();
     syncInputs();   // 开关的勾选状态要跟着刚读回来的设置走
+    syncRange();    // strict 由 range 推出来，load() 之后必须重算一次
     applyFont();
     applyTheme();
     buildConsonants();

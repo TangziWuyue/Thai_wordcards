@@ -74,6 +74,18 @@
     return byWord.has(text);
   }
 
+  /** 是不是词表里最基础的那一档（界面上的「常用词」）。data 没加载好时返回 null */
+  function isCommon(text) {
+    if (!data) return null;
+    const entry = byWord.get(text);
+    return !!(entry && entry[4]);
+  }
+
+  /** 词库是否已经加载好（常用词模式要靠它判断） */
+  function ready() {
+    return !!data;
+  }
+
   /** 查词条；返回 [拼写, 罗马注音, 中文释义, 词性, 常用度]，查不到返回 null */
   function lookup(text) {
     return byWord.get(text) || null;
@@ -109,5 +121,7 @@
     return data ? data.note : '';
   }
 
-  global.ThaiDict = { loadWords, loadIndex, isWord, lookup, nextBatch, total, source, note };
+  global.ThaiDict = {
+    loadWords, loadIndex, isWord, isCommon, ready, lookup, nextBatch, total, source, note,
+  };
 })(window);
