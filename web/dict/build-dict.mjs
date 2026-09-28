@@ -152,6 +152,8 @@ const POS_CODE = {
 const POS_ORDER = ['v', 'n', 'adj', 'adv', 'cls', 'num', 'intj', 'fn', 'pron'];
 // 英文兜底释义也不要「used to express …」这种解释性开头
 const EN_STRIP = /^(?:used to express|used as|a word used to|to express)\s+/i;
+// 「alternative form of กฎ」「misspelling of …」这类是参见条目，不是词义，不能当释义用
+const EN_META = /\b(?:form|spelling|misspelling|shortening|clipping|synonym|plural|abbreviation|romanization|transliteration|name) of\b/i;
 
 function loadKaikki() {
   const map = new Map();
@@ -169,12 +171,17 @@ function loadKaikki() {
     const prev = map.get(w) || { rom: '', posList: [], en: '' };
     const code = POS_CODE[String(o.pos || '').toLowerCase()];
     if (code && !prev.posList.includes(code)) prev.posList.push(code);
-    // 第一条义项的第一个说法最贴近常用义，后面的先不要
+    // 从头找第一条「真的在讲意思」的说法：跳过 : 结尾的标签，也跳过参见条目
     let en = prev.en;
     if (!en) {
-      const first = (o.senses || [])[0];
-      const gloss = first && (first.glosses || []).find((g) => !String(g).endsWith(':'));
-      if (gloss) en = String(gloss).replace(EN_STRIP, '').split(';')[0].trim().slice(0, 60);
+      for (const sense of o.senses || []) {
+        const gloss = (sense.glosses || []).find(
+          (g) => !String(g).endsWith(':') && !EN_META.test(String(g)),
+        );
+        if (!gloss) continue;
+        en = String(gloss).replace(EN_STRIP, '').split(';')[0].trim().slice(0, 60);
+        break;
+      }
     }
     map.set(w, { rom: prev.rom || rom, posList: prev.posList, en });
   }
@@ -226,10 +233,13 @@ async function main() {
     const v = vocab.get(w);
     const k = kaikki.get(w) || { rom: '', pos: '', en: '' };
     // 人工补的基础词表里标了词性的（ครับ 这类语气词）优先用它
-    // 第 6 位是英文释义：中文词表没收录这个词时，界面上用英文兜底（会标明是英文）
-    // 优先维基词典：LEXiTRON 的 eentry 会挑偏义项（น้ำ 给的是 river、สวัสดี 给的是 safety）
-    const en = k.en || lexitron.get(w) || '';
-    return [w, k.rom, v ? v.zh : '', v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0, en];
+    // 第 6 位是英文释义：**只在没有中文释义时才存**，这样界面上不可能出现
+    // 「这个词明明有中文却显示英文」。优先维基词典（LEXiTRON 的 eentry 会挑偏义项：
+    // น้ำ 给的是 river、สวัสดี 给的是 safety）
+    const zhText = v ? v.zh : '';
+    let en = zhText ? '' : (k.en || lexitron.get(w) || '');
+    if (en && EN_META.test(en)) en = ''; // LEXiTRON 偶尔也有参见条目，一并挡掉
+    return [w, k.rom, zhText, v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0, en];
   });
 
   const withZh = entries.filter((e) => e[2]).length;

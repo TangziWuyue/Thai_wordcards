@@ -78,10 +78,13 @@
     fixedVowelId: null,
     // 常用词模式下没抽中、退回了普通音节（只在这一次随机里有效，用来提示一句）
     commonFallback: false,
+    // 从辞典里点出来、正在主卡片上展示的词（没有音节时用它替代打招呼那个词）
+    word: null,
     parts: null,
   };
 
   const el = {
+    card: document.getElementById('card'),
     syllable: document.getElementById('syllable'),
     roman: document.getElementById('roman'),
     parts: document.getElementById('parts'),
@@ -385,6 +388,7 @@
    */
   function applyFixed() {
     state.commonFallback = false; // 固定模式是自己挑字母，和「常用词」无关
+    state.word = null;            // 一旦自己挑字母，辞典点过来的那个词就不留了
     const onset = state.fixedOnset;
     const vowelId = state.fixedVowelId;
     if (!onset && !vowelId) {
@@ -651,12 +655,16 @@
 
     if (!state.parts) {
       state.commonFallback = false;
-      el.syllable.textContent = GREETING.text;
-      el.roman.textContent = `/${GREETING.roman}/ · 罗马注音`;
+      // 辞典里点过来的词优先；没有就摆打招呼那个词
+      const entry = state.word ? D.lookup(state.word) : null;
+      el.syllable.textContent = state.word || GREETING.text;
+      el.roman.textContent = state.word
+        ? `/${(entry && entry[1]) || '—'}/ · 罗马注音`
+        : `/${GREETING.roman}/ · 罗马注音`;
       const hint = document.createElement('span');
-      hint.textContent = state.mode === 'fixed'
-        ? '固定模式：点下面的字母，选一个辅音和/或一个元音'
-        : '点「随机组合」开始';
+      if (state.word) hint.textContent = '来自辞典 · 点「随机组合」回到随机练习';
+      else if (state.mode === 'fixed') hint.textContent = '固定模式：点下面的字母，选一个辅音和/或一个元音';
+      else hint.textContent = '点「随机组合」开始';
       setChildren(el.parts, hint);
       el.toneHint.textContent = '';
       updateDictHit();
@@ -736,7 +744,9 @@
 
   /** 卡片上现在是哪段泰文；还没生成时就是打招呼的那个词 */
   function currentText() {
-    return state.parts ? R.assemble(state.parts) : GREETING.text;
+    if (state.parts) return R.assemble(state.parts);
+    if (state.word) return state.word;
+    return GREETING.text;
   }
 
   function renderDictHit() {
@@ -840,11 +850,20 @@
         cn.classList.add('dw-en');
       }
       item.append(thai, meta, cn);
-      item.title = '点一下朗读';
-      item.addEventListener('click', () => speakText(word));
+      item.title = '点一下显示在主卡片上';
+      item.addEventListener('click', () => showWordOnCard(word));
       el.dictList.append(item);
     }
     el.dictHint.textContent = `共 ${D.total()} 条`;
+  }
+
+  /** 把辞典里的词放到主卡片上：放大字形 + 注音 + 释义都在同一处看 */
+  function showWordOnCard(word) {
+    state.parts = null;
+    state.commonFallback = false;
+    state.word = word;
+    renderCard();
+    el.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function ensureDict() {
@@ -879,6 +898,7 @@
   // ── 动作 ────────────────────────────────────────────────────────────
   function randomize() {
     if (state.mode === 'fixed') return; // 固定模式下由词表点击驱动
+    state.word = null;                  // 随机组合一按，辞典点过来的词就让位
     const vowelOnsetAvailable = state.allowVowelOnset
       && R.VOWELS.some((v) => v.canBeOnset && state.vowels.has(v.id));
     if (!state.vowels.size || (!state.consonants.size && !vowelOnsetAvailable)) {
