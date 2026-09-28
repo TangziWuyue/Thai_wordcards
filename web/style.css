@@ -298,7 +298,20 @@ html.js .js-fallback { display: none; }
   margin: 10px 0 0;
   font-size: 11px;
   line-height: 1.6;
+}
+
+/* .hint 是右对齐的，而且在本文件里排在后面，会盖掉这里的左对齐；
+   这两行是说明文字，用更具体的选择器压回去 */
+#dictPanel .dict-note,
+#dictPanel .dict-source {
   text-align: left;
+}
+
+#dictPanel .dict-source {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--dot);
 }
 
 /* ── 分组标题 ───────────────────────────── */

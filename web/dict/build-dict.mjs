@@ -252,8 +252,8 @@ async function main() {
     join(OUT, 'dict.js'),
     // 注意：全局名是 ThaiDictData，不要写成 ThaiDict —— dict.js 用 ThaiDict 暴露接口
     'window.ThaiDictData=' + JSON.stringify({
-      source: '中泰词表 thai-vocabulary-studio（B1/B2/C1）· 注音与词性来自 Wiktionary (kaikki.org) · 真词与英文释义来自 LEXiTRON',
-      note: '中文释义取自中文作者整理的中泰对照词表，未做机器翻译；词表没收录的词给英文释义，界面上会标明「英文」。',
+      source: '来源：thai-vocabulary-studio · Wiktionary · LEXiTRON',
+      note: '中文释义来自中文作者整理的中泰对照词表，未做机翻；未收录时给英文释义并标「英文」。',
       commonLabel: 'B1 常用档',
       words: entries,
     }) + ';\n',

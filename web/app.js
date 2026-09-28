@@ -124,6 +124,7 @@
     dictMore: document.getElementById('dictMore'),
     dictHint: document.getElementById('dictHint'),
     dictNote: document.getElementById('dictNote'),
+    dictSource: document.getElementById('dictSource'),
     dictPanel: document.getElementById('dictPanel'),
     optionsPanel: document.getElementById('optionsPanel'),
   };
@@ -872,11 +873,13 @@
       .then(() => {
         dictLoaded = true;
         renderDictBatch();
-        el.dictNote.textContent = `${D.note()}　来源：${D.source()}`;
+        el.dictNote.textContent = D.note();
+        el.dictSource.textContent = D.source();
       })
       .catch(() => {
         el.dictList.textContent = '';
-        el.dictNote.textContent = '词库没加载出来：这部分数据是联网取的，检查一下网络后重新打开本页。';
+        el.dictNote.textContent = '词库没加载出来：这部分数据要联网取，检查网络后重新打开本页。';
+        el.dictSource.textContent = '';
       });
   }
 
@@ -1049,7 +1052,7 @@
     {
       sel: '.split',
       title: '随机 / 固定',
-      text: '左半边随机换一个，右半边 ⇄ 切固定模式。下面的「组合范围」选拼得多严。',
+      text: '左边随机换一个，右边切到固定模式；「组合范围」决定拼得多严。',
     },
     {
       sel: '.tones',
