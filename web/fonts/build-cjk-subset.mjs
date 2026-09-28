@@ -17,7 +17,8 @@ import path from 'node:path';
 const WEB = path.resolve(import.meta.dirname, '..');
 const FONT_DIR = path.join(WEB, 'fonts');
 const OUT_CSS = path.join(WEB, 'fonts-cjk.css');
-const SOURCE_FILES = ['index.html', 'app.js', 'rules.js'];
+// data/dict.js 是辞典数据，里面的中文释义也要有字型，否则会掉到系统字体上
+const SOURCE_FILES = ['index.html', 'app.js', 'rules.js', 'data/dict.js'];
 const FAMILY = 'Noto Sans SC';
 
 /** 收集界面里出现的中文字符与中文标点 */
@@ -117,4 +118,15 @@ const header = `/* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
 
 `;
 await fs.writeFile(OUT_CSS, header + rules.join('\n\n') + '\n');
-console.log(`完成：${codepoints.size} 个字符 -> ${needed.length} 个子集`);
+
+// 文案改动会换掉子集的文件名，把上一轮留下的、这次不再引用的文件删掉，
+// 否则目录里会越积越多用不上的字体
+const keep = new Set(needed.map((face) => `noto-sans-sc-400-${crypto.createHash('sha1').update(face.range).digest('hex').slice(0, 8)}.woff2`));
+let removed = 0;
+for (const name of await fs.readdir(FONT_DIR)) {
+  if (!name.startsWith('noto-sans-sc-') || !name.endsWith('.woff2')) continue;
+  if (keep.has(name)) continue;
+  await fs.rm(path.join(FONT_DIR, name));
+  removed += 1;
+}
+console.log(`完成：${codepoints.size} 个字符 -> ${needed.length} 个子集${removed ? `，清掉 ${removed} 个旧子集` : ''}`);

@@ -42,7 +42,14 @@ async function inlineFonts(css) {
 let html = await read('index.html');
 const cssParts = await Promise.all(['fonts.css', 'fonts-cjk.css', 'style.css'].map(read));
 const { css, count, bytes } = await inlineFonts(cssParts.join('\n'));
-const js = [await read('rules.js'), await read('app.js')].join('\n\n');
+// 顺序不能乱：app.js 要用到 ThaiRules 与 ThaiDict；辞典数据整包内联，
+// 这样单文件版双击打开（file://）也能查词，不会去请求 data/ 目录
+const js = [
+  await read('rules.js'),
+  await read('dict.js'),
+  await read('data/dict.js'),
+  await read('app.js'),
+].join('\n\n');
 
 // 去掉外链与外部脚本，改为内联
 html = html
@@ -61,7 +68,7 @@ const problems = [];
 if (leftovers.length) problems.push(`外部引用：${leftovers.join(', ')}`);
 if (/<link rel="stylesheet"/.test(html)) problems.push('仍有未内联的 <link rel="stylesheet">');
 if (/<script src=/.test(html)) problems.push('仍有未内联的 <script src>');
-for (const name of ['rules.js', 'app.js', 'style.css', 'fonts.css']) {
+for (const name of ['rules.js', 'dict.js', 'app.js', 'style.css', 'fonts.css', 'data/dict.js']) {
   if (html.includes(`"${name}"`)) problems.push(`残留对 ${name} 的引用`);
 }
 if (problems.length) {

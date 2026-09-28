@@ -38,6 +38,7 @@
         <section class="card">
           <p class="syllable" id="syllable" aria-live="polite">—</p>
           <p class="roman" id="roman">点「随机组合」开始</p>
+          <p class="dict-hit" id="dictHit" hidden></p>
           <p class="parts" id="parts"></p>
         </section>
 
@@ -85,7 +86,22 @@
           </div>
         </details>
 
-        <details class="panel">
+        <details class="panel" id="dictPanel">
+          <summary>辞典</summary>
+          <div class="panel-body">
+            <div class="label-row">
+              <span class="label">常用词</span>
+              <span class="row-end">
+                <span class="hint" id="dictHint">—</span>
+                <button type="button" class="mini" id="dictMore">换一批</button>
+              </span>
+            </div>
+            <div class="dict-list" id="dictList"></div>
+            <p class="hint dict-note" id="dictNote"></p>
+          </div>
+        </details>
+
+        <details class="panel" id="optionsPanel">
           <summary>选项</summary>
           <div class="panel-body">
             <div class="label-row">
@@ -147,6 +163,7 @@
   </main>
 
   <script src="rules.js"></script>
+  <script src="dict.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

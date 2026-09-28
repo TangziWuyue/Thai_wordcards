@@ -18,6 +18,21 @@
   // 词表结构变动时递增版本号，避免读到旧版不兼容的勾选记录
   const STORE_KEY = 'thai-wordcards.v3';
 
+  // 打开页面时卡片上先摆一个真实的泰语词，别空着；点「随机组合」后就被替换掉
+  const GREETING = { text: 'สวัสดี', roman: 'sà-wàt-dii' };
+
+  // 辞典是可选功能：dict.js 没加载出来（旧缓存、被预览器拦掉）时整个功能静默停用
+  const D = window.ThaiDict || {
+    loadWords: () => Promise.reject(new Error('no dict')),
+    loadIndex: () => Promise.reject(new Error('no dict')),
+    isWord: () => false,
+    lookup: () => null,
+    nextBatch: () => [],
+    total: () => 0,
+    source: () => '',
+    note: () => '',
+  };
+
   const FONTS = [
     { id: 'sarabun', label: '标准体', sample: 'ก' },
     { id: 'serif', label: '印刷衬线', sample: 'ข' },
@@ -88,6 +103,13 @@
     optStrict: document.getElementById('optStrict'),
     optAutoSpeak: document.getElementById('optAutoSpeak'),
     tourBtn: document.getElementById('tourBtn'),
+    dictHit: document.getElementById('dictHit'),
+    dictList: document.getElementById('dictList'),
+    dictMore: document.getElementById('dictMore'),
+    dictHint: document.getElementById('dictHint'),
+    dictNote: document.getElementById('dictNote'),
+    dictPanel: document.getElementById('dictPanel'),
+    optionsPanel: document.getElementById('optionsPanel'),
   };
 
   // ── 偏好持久化 ───────────────────────────────────────────────────────
@@ -569,12 +591,15 @@
     normalizeTone();
 
     if (!state.parts) {
-      el.syllable.textContent = '—';
-      el.roman.textContent = state.mode === 'fixed'
+      el.syllable.textContent = GREETING.text;
+      el.roman.textContent = `/${GREETING.roman}/ · 罗马注音`;
+      const hint = document.createElement('span');
+      hint.textContent = state.mode === 'fixed'
         ? '固定模式：点下面的字母，选一个辅音和/或一个元音'
         : '点「随机组合」开始';
-      setChildren(el.parts);
+      setChildren(el.parts, hint);
       el.toneHint.textContent = '';
+      updateDictHit();
       for (const btn of el.tones.children) {
         btn.disabled = true;
         btn.setAttribute('aria-pressed', 'false');
@@ -631,7 +656,133 @@
     el.toneHint.textContent = disabledReasons.length
       ? `${disabledReasons.join('；')}（可在选项中关闭规则检查）`
       : '';
+    updateDictHit();
   }
+
+  // ── 卡片上的「真词」提示 ──────────────────────────────────────────
+  // 组合出来的音节大多不是真词，这是刻意的；碰巧撞上真词时顺手把释义带上，
+  // 索引是懒加载的（近 500KB），所以第一张卡片可能先没有结论，加载完再补上。
+  // fn = 虚词：没有实义、只起语法或语气作用（ครับ ค่ะ นะ 这类），单独标出来
+  const POS_LABEL = {
+    n: '名', v: '动', adj: '形', adv: '副', pron: '代',
+    num: '数', cls: '量', intj: '叹', fn: '虚词', x: '其它',
+  };
+
+  /** 卡片上现在是哪段泰文；还没生成时就是打招呼的那个词 */
+  function currentText() {
+    return state.parts ? R.assemble(state.parts) : GREETING.text;
+  }
+
+  function renderDictHit() {
+    const text = currentText();
+    const entry = D.lookup(text);
+    setChildren(el.dictHit);
+    if (!D.isWord(text)) {
+      el.dictHit.hidden = true;
+      return;
+    }
+    const mark = document.createElement('span');
+    mark.className = 'dh-mark';
+    mark.textContent = '真词';
+    el.dictHit.append(mark);
+    // 有释义就摆释义（这正是这个提示的意义）；没有就只留「真词」两个字，
+    // 不要再写「常用词表未收录」那种解释——那是给开发者看的，不是给学的人看的
+    if (entry && entry[2]) {
+      const zh = document.createElement('span');
+      zh.className = 'dh-zh';
+      zh.textContent = entry[2];
+      el.dictHit.append(zh);
+    }
+    // 没有实义的虚词（ครับ ค่ะ นะ …）单独标一下，看到就知道不用去记「意思」
+    if (entry && entry[3] === 'fn') {
+      const fn = document.createElement('span');
+      fn.className = 'dh-pos';
+      fn.textContent = '虚词';
+      el.dictHit.append(fn);
+    }
+    // 「常用」只在它真的是常用词时才标
+    if (entry && entry[4]) {
+      const tag = document.createElement('span');
+      tag.className = 'dh-pos';
+      tag.textContent = '常用';
+      el.dictHit.append(tag);
+    }
+    el.dictHit.hidden = false;
+  }
+
+  /** 索引没加载好时不显示结论，加载完再重绘一次当前卡片 */
+  function updateDictHit() {
+    if (D.isWord(currentText()) === null) {
+      el.dictHit.hidden = true;
+      setChildren(el.dictHit);
+      D.loadIndex()
+        .then(() => renderDictHit())
+        .catch(() => { /* 取不到索引就当没有这个功能，卡片照常用 */ });
+      return;
+    }
+    renderDictHit();
+  }
+
+  // ── 辞典面板：常用词，少量多次 ─────────────────────────────────────
+  const DICT_BATCH = 6;
+  let dictLoaded = false;
+
+  function renderDictBatch() {
+    const batch = D.nextBatch(DICT_BATCH);
+    setChildren(el.dictList);
+    for (const entry of batch) {
+      const [word, rom, zh, pos] = entry;
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'dict-word';
+      const thai = document.createElement('span');
+      thai.className = 'dw-thai';
+      thai.textContent = word;
+      const meta = document.createElement('span');
+      meta.className = 'dw-meta';
+      if (rom) {
+        const r = document.createElement('span');
+        r.className = 'dw-rom';
+        r.textContent = rom;
+        meta.append(r);
+      }
+      if (pos && POS_LABEL[pos]) {
+        const p = document.createElement('span');
+        p.className = 'dw-pos';
+        p.textContent = POS_LABEL[pos];
+        meta.append(p);
+      }
+      const cn = document.createElement('span');
+      cn.className = 'dw-zh';
+      cn.textContent = zh;
+      item.append(thai, meta, cn);
+      item.title = '点一下朗读';
+      item.addEventListener('click', () => speakText(word));
+      el.dictList.append(item);
+    }
+    el.dictHint.textContent = `共 ${D.total()} 条`;
+  }
+
+  function ensureDict() {
+    if (dictLoaded) return;
+    D.loadWords()
+      .then(() => {
+        dictLoaded = true;
+        renderDictBatch();
+        el.dictNote.textContent = `${D.note()}　来源：${D.source()}`;
+      })
+      .catch(() => {
+        el.dictList.textContent = '';
+        el.dictNote.textContent = '词库没加载出来：这部分数据是联网取的，检查一下网络后重新打开本页。';
+      });
+  }
+
+  el.dictMore.addEventListener('click', () => {
+    if (dictLoaded) renderDictBatch();
+  });
+  el.dictPanel.addEventListener('toggle', () => {
+    if (el.dictPanel.open) ensureDict();
+  });
 
   function selectTone(id) {
     if (!state.parts) return;
@@ -697,8 +848,9 @@
     }
   }
 
-  function speak() {
-    if (!state.parts) return;
+  /** 朗读任意一段泰文；没装泰语语音时把原因写在页脚，而不是静默失败 */
+  function speakText(text) {
+    if (!text) return;
     if (!('speechSynthesis' in window)) {
       el.voiceInfo.textContent = '语音：当前浏览器不支持朗读';
       return;
@@ -710,11 +862,15 @@
       return;
     }
     window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(R.assemble(state.parts));
+    const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'th-TH';
     utter.rate = 0.75;
     utter.voice = thaiVoice;
     window.speechSynthesis.speak(utter);
+  }
+
+  function speak() {
+    speakText(currentText());
   }
 
   // ── 绑定 ────────────────────────────────────────────────────────────
@@ -797,10 +953,16 @@
       text: '勾选要练的字母；悬停看例词和读音（手机长按）。',
     },
     {
-      sel: 'details.panel:nth-of-type(2)',
+      sel: '#dictPanel',
+      title: '辞典',
+      text: '常用词一次看几个，点「换一批」继续。碰巧拼出真词时，卡片上会标出来。',
+      before: () => { el.dictPanel.open = true; ensureDict(); },
+    },
+    {
+      sel: '#optionsPanel',
       title: '选项',
       text: '字体、音标、外观在这里调；固定模式下用不到的会变灰。',
-      before: () => openPanel(1, true),
+      before: () => { el.optionsPanel.open = true; },
     },
     {
       sel: '.split',
@@ -831,11 +993,6 @@
   tour.hole.hidden = true;
   tour.tip.hidden = true;
   document.body.append(tour.mask, tour.hole, tour.tip);
-
-  function openPanel(index, open) {
-    const panel = document.querySelectorAll('details.panel')[index];
-    if (panel && open && !panel.open) panel.open = true;
-  }
 
   function placeTour() {
     const step = TOUR_STEPS[tour.index];

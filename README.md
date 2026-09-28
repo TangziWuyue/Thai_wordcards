@@ -8,6 +8,34 @@
 
 组合出来的音节大多没有实际词义 —— 这是刻意的：不背单词，只练「看到拼写就能读出来」这条肌肉记忆。
 
+## 辞典
+
+侧栏的「辞典」面板是常用词牌组：一次只摆几个词，点「换一批」接着翻，不用在长列表里翻找。
+卡片上如果碰巧拼出真词，会在音节下面标出来（`真词` + 中文释义 + `常用` / `虚词`），
+释义就直接来自下面那份词表，没有经过机器翻译。
+
+词库数据（`web/data/dict.js`，约 1.1MB，**打开页面时按需联网加载**，不拖慢首屏）：
+
+| 内容 | 来源 |
+| --- | --- |
+| 中文释义（5000 余条） | [thai-vocabulary-studio](https://github.com/kinniuroudong-glitch/thai-vocabulary-studio) 的中泰对照词表，B1/B2/C1 三档 |
+| 补缺的基础词 | `web/dict/basic-words.json`（人工核对，问候语、颜色、礼貌语气词这类） |
+| 罗马注音（Paiboon 体系）、词性 | [Wiktionary](https://kaikki.org/dictionary/Thai/) 抽取的泰语词条 |
+| 真词判定用的词头 | [NECTEC LEXiTRON](https://github.com/brianbv/lexitron-data) + 上面的 Wiktionary |
+
+重新生成（需要联网，原始语料缓存在 `web/dict/.cache/`，不入库）：
+
+```bash
+node web/dict/build-dict.mjs        # 生成 web/data/dict.js
+node web/fonts/build-cjk-subset.mjs # 释义里的新汉字要补进字体子集，必须重跑
+```
+
+「常用」= 词表里最基础的那一档（B1，约 2000 条）；「虚词」= 没有实义、只起语法或语气作用
+（ครับ ค่ะ นะ และ 这类），标出来是为了让人知道不用去记它的「意思」。
+
+> 中文释义取自中文作者整理并公开的词表，该项目**没有声明开源协议**，自用没问题；
+> 若要正式对外发布，建议先联系作者确认，或替换成自有/授权词表。
+
 ## 快速开始
 
 ```bash
@@ -23,7 +51,7 @@ python3 -m http.server 8901 --directory web
 node web/build-standalone.mjs      # 生成 dist/泰语组合练习.html
 ```
 
-产物把 CSS、JS、字体全部内联进 HTML（约 930KB），**零外部引用**——发过去双击就能用，不需要联网、不需要装泰文字体，也不受 `file://` 跨域限制影响。改动界面后重新跑一次即可（脚本会自检有没有残留外部引用，有就报错退出）。
+产物把 CSS、JS、字体、辞典数据全部内联进 HTML（约 3.5MB），**零外部引用**——发过去双击就能用，不需要联网、不需要装泰文字体，也不受 `file://` 跨域限制影响，断网也能查词。改动界面后重新跑一次即可（脚本会自检有没有残留外部引用，有就报错退出）。
 
 ## 在手机上用
 

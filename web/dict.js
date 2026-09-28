@@ -1,0 +1,113 @@
+/**
+ * 辞典数据加载与查询。
+ *
+ * 数据放在 web/data/ 下，默认**按需联网加载**（同源，走本站自己的服务器，
+ * 不依赖任何第三方接口，国内可直连）。单文件版打包时会把这两份数据内联进
+ * HTML，此时下面的 loadScript 不会被触发，双击离线打开也能用。
+ *
+ * 纯逻辑 + 一个 script 注入，不碰界面；界面在 app.js 里消费。
+ */
+(function (global) {
+  'use strict';
+
+  // 只有一份数据：所有真词都在里面，常用词用第 5 位的排名标出来
+  const SRC = 'data/dict.js';
+
+  const loading = {};
+  function loadScript(src) {
+    if (!loading[src]) {
+      loading[src] = new Promise((resolve, reject) => {
+        const tag = document.createElement('script');
+        tag.src = src;
+        tag.onload = () => resolve();
+        tag.onerror = () => {
+          delete loading[src];
+          reject(new Error(`加载失败：${src}`));
+        };
+        document.head.append(tag);
+      });
+    }
+    return loading[src];
+  }
+
+  let loadPromise = null;
+  let data = null;
+  const byWord = new Map();
+  const common = [];
+
+  /** 加载词库。所有真词与常用词在同一份数据里，加载一次就够 */
+  function loadWords() {
+    if (!loadPromise) {
+      loadPromise = (global.ThaiDictData
+        ? Promise.resolve()
+        : loadScript(SRC)
+      ).then(() => {
+        const raw = global.ThaiDictData;
+        if (!raw || !Array.isArray(raw.words)) throw new Error('词库格式不对');
+        data = raw;
+        byWord.clear();
+        common.length = 0;
+        for (const entry of raw.words) {
+          byWord.set(entry[0], entry);
+          if (entry[4]) common.push(entry);
+        }
+        return data;
+      }).catch((err) => {
+        loadPromise = null;
+        throw err;
+      });
+    }
+    return loadPromise;
+  }
+
+  /** 与 loadWords 同一份数据；保留这个入口，调用方不必区分「索引」和「词库」 */
+  function loadIndex() {
+    return loadWords();
+  }
+
+  /**
+   * 这个拼写是不是一个真实存在的泰语词。
+   * 返回 null 表示索引还没加载好（调用方可以先不显示结论）。
+   */
+  function isWord(text) {
+    if (!data) return null;
+    return byWord.has(text);
+  }
+
+  /** 查词条；返回 [拼写, 罗马注音, 中文释义, 词性, 常用度]，查不到返回 null */
+  function lookup(text) {
+    return byWord.get(text) || null;
+  }
+
+  // ── 「换一批」：洗牌抽取，抽完一轮再重洗，避免短时间内反复出现同一个词 ──
+  let bag = [];
+  function nextBatch(size) {
+    if (!common.length) return [];
+    const out = [];
+    while (out.length < size) {
+      if (!bag.length) {
+        bag = common.map((_, i) => i);
+        for (let i = bag.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [bag[i], bag[j]] = [bag[j], bag[i]];
+        }
+      }
+      out.push(common[bag.pop()]);
+    }
+    return out;
+  }
+
+  function total() {
+    return common.length;
+  }
+
+  function source() {
+    return data ? data.source : '';
+  }
+
+  function note() {
+    return data ? data.note : '';
+  }
+
+  global.ThaiDict = { loadWords, loadIndex, isWord, lookup, nextBatch, total, source, note };
+})(window);

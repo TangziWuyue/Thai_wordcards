@@ -13,3 +13,6 @@ wheels/
 .env
 .env*
 .DS_Store
+
+# 辞典构建时下载的原始语料（体积大，可由 build-dict.mjs 重新拉取）
+web/dict/.cache/

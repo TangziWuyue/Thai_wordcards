@@ -180,6 +180,96 @@ html.js .js-fallback { display: none; }
   color: var(--fg);
 }
 
+/* ── 卡片上的「真词」提示 ─────────────────── */
+.dict-hit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.dict-hit[hidden] { display: none; }
+
+.dh-mark {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.dh-zh { font-weight: 500; }
+
+.dh-pos {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ── 辞典：常用词，一次几个 ───────────────── */
+.dict-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.dict-word {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 6px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dict-word:hover { background: var(--soft); }
+
+.dw-thai {
+  flex: none;
+  min-width: 4.2em;
+  font-family: var(--thai);
+  /* 泰文字形上下都长，行高留够，免得和上下两行贴在一起 */
+  font-size: 19px;
+  line-height: 1.6;
+}
+
+.dw-meta {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 5.5em;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dw-pos {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.dw-zh {
+  flex: 1;
+  font-size: 13px;
+}
+
+.dict-note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: left;
+}
+
 /* ── 分组标题 ───────────────────────────── */
 .block { margin-top: 28px; }
 
