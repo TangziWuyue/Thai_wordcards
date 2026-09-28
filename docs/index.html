@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-28T17:07:29.175Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-28T17:14:59.446Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1480,6 +1480,69 @@ kbd {
   color: var(--inv-fg);
 }
 
+/* ── 更新内容通知 ───────────────────────── */
+.wn-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+/* 这一条不能少：上面写了 display:flex，会把 hidden 属性顶掉 */
+.wn-mask[hidden] { display: none; }
+
+.wn-box {
+  width: min(360px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 18px 18px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.wn-box h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wn-box ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.wn-box li + li { margin-top: 5px; }
+
+.wn-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.wn-actions button {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wn-actions button.primary {
+  background: var(--inv-bg);
+  border-color: var(--inv-bg);
+  color: var(--inv-fg);
+}
+
 /* ── 宽屏：左右两栏，卡片在左、词表在右 ──────────────── */
 @media (min-width: 820px) {
   .app { max-width: 1060px; padding: 48px 32px 80px; }
@@ -1666,7 +1729,9 @@ kbd {
           <span class="note">组合多为无意义音节，只练拼读</span>
         </div>
         <div class="foot-row">
-          <span><button type="button" class="link" id="tourBtn">新手引导</button> · 反馈 bug、提供建议，发送至 <a href="mailto:1019853751@qq.com">1019853751@qq.com</a></span>
+          <span><button type="button" class="link" id="tourBtn">新手引导</button> ·
+            <button type="button" class="link" id="whatsNewBtn">更新内容</button> ·
+            反馈 bug、提供建议，发送至 <a href="mailto:1019853751@qq.com">1019853751@qq.com</a></span>
           <span>安卓设备暂不支持发音，后续版本迭代加入</span>
         </div>
       </footer>
@@ -2711,6 +2776,7 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
     optImplicit: document.getElementById('optImplicit'),
     optAutoSpeak: document.getElementById('optAutoSpeak'),
     tourBtn: document.getElementById('tourBtn'),
+    whatsNewBtn: document.getElementById('whatsNewBtn'),
     dictHit: document.getElementById('dictHit'),
     dictList: document.getElementById('dictList'),
     dictMore: document.getElementById('dictMore'),
@@ -3803,7 +3869,10 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
     try {
       seen = !!localStorage.getItem(TOUR_KEY);
     } catch { seen = true; }
+    // 顺序是：先走新手引导，结束之后再弹「更新内容」。
+    // 引导已经看过（或 localStorage 不可用）就直接弹。
     if (!seen) setTimeout(startTour, 500);
+    else maybeShowWhatsNew();
   }
 
   function endTour(markDone = true) {
@@ -3817,6 +3886,7 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
         localStorage.setItem(TOUR_KEY, '1');
       } catch { /* 无痕模式等场景下忽略 */ }
     }
+    maybeShowWhatsNew();
   }
 
   tour.mask.addEventListener('click', () => {
@@ -3830,6 +3900,82 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
     if (tour.active) placeTour();
   });
   el.tourBtn.addEventListener('click', () => startTour());
+
+  // ── 更新内容通知 ────────────────────────────────────────────────────
+  // 新手引导走完之后弹一次；看过就记下来，之后只在页脚留个入口。
+  // 发新版时改 WHATS_NEW.version（用版本号当 key，所以每版只会弹一次）。
+  const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
+  const WHATS_NEW = {
+    version: 'beta3',
+    items: [
+      '新增辞典：常用词一次看几个，点某个词就放到主卡片上放大显示。',
+      '卡片会标出「真词」还是「无义」；是真词就给释义，没有中文就给英文并标明。',
+      '新增「组合范围」三档：任意 / 按规则 / 常用词，在随机组合按钮下面。',
+      '去掉国际音标，只保留罗马注音。',
+      '换音节时页面不再上下跳动：卡片各行的位置固定了。',
+    ],
+  };
+
+  const wn = {
+    mask: document.createElement('div'),
+    box: document.createElement('div'),
+    showing: false,
+  };
+  wn.mask.className = 'wn-mask';
+  wn.box.className = 'wn-box';
+  wn.mask.hidden = true;
+  wn.mask.append(wn.box);
+  document.body.append(wn.mask);
+
+  function showWhatsNew() {
+    const title = document.createElement('h4');
+    title.append(`更新内容 · ${WHATS_NEW.version}`);
+    const list = document.createElement('ul');
+    for (const item of WHATS_NEW.items) {
+      const li = document.createElement('li');
+      li.textContent = item;
+      list.append(li);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'wn-actions';
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'primary';
+    ok.textContent = '知道了';
+    ok.addEventListener('click', () => closeWhatsNew(true));
+    actions.append(ok);
+    setChildren(wn.box, title, list, actions);
+    wn.mask.hidden = false;
+    wn.showing = true;
+  }
+
+  function closeWhatsNew(markSeen = true) {
+    wn.mask.hidden = true;
+    wn.showing = false;
+    if (markSeen) {
+      try {
+        localStorage.setItem(WHATS_NEW_KEY, WHATS_NEW.version);
+      } catch { /* 无痕模式等场景下忽略 */ }
+    }
+  }
+
+  function maybeShowWhatsNew() {
+    if (wn.showing || tour.active) return;
+    let seen = false;
+    try {
+      seen = localStorage.getItem(WHATS_NEW_KEY) === WHATS_NEW.version;
+    } catch { seen = true; }
+    if (!seen) showWhatsNew();
+  }
+
+  wn.mask.addEventListener('click', (event) => {
+    // 点遮罩也算看过，但点卡片本身不关
+    if (event.target === wn.mask) closeWhatsNew(true);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (wn.showing && event.key === 'Escape') closeWhatsNew(true);
+  });
+  el.whatsNewBtn.addEventListener('click', () => showWhatsNew());
 
   /** 出错时直接把原因写在页面上，方便对方截图反馈，而不是只看到空页面 */
   function showFatal(message) {

@@ -851,6 +851,69 @@ kbd {
   color: var(--inv-fg);
 }
 
+/* ── 更新内容通知 ───────────────────────── */
+.wn-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+/* 这一条不能少：上面写了 display:flex，会把 hidden 属性顶掉 */
+.wn-mask[hidden] { display: none; }
+
+.wn-box {
+  width: min(360px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 18px 18px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.wn-box h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wn-box ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.wn-box li + li { margin-top: 5px; }
+
+.wn-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.wn-actions button {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wn-actions button.primary {
+  background: var(--inv-bg);
+  border-color: var(--inv-bg);
+  color: var(--inv-fg);
+}
+
 /* ── 宽屏：左右两栏，卡片在左、词表在右 ──────────────── */
 @media (min-width: 820px) {
   .app { max-width: 1060px; padding: 48px 32px 80px; }

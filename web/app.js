@@ -116,6 +116,7 @@
     optImplicit: document.getElementById('optImplicit'),
     optAutoSpeak: document.getElementById('optAutoSpeak'),
     tourBtn: document.getElementById('tourBtn'),
+    whatsNewBtn: document.getElementById('whatsNewBtn'),
     dictHit: document.getElementById('dictHit'),
     dictList: document.getElementById('dictList'),
     dictMore: document.getElementById('dictMore'),
@@ -1208,7 +1209,10 @@
     try {
       seen = !!localStorage.getItem(TOUR_KEY);
     } catch { seen = true; }
+    // 顺序是：先走新手引导，结束之后再弹「更新内容」。
+    // 引导已经看过（或 localStorage 不可用）就直接弹。
     if (!seen) setTimeout(startTour, 500);
+    else maybeShowWhatsNew();
   }
 
   function endTour(markDone = true) {
@@ -1222,6 +1226,7 @@
         localStorage.setItem(TOUR_KEY, '1');
       } catch { /* 无痕模式等场景下忽略 */ }
     }
+    maybeShowWhatsNew();
   }
 
   tour.mask.addEventListener('click', () => {
@@ -1235,6 +1240,82 @@
     if (tour.active) placeTour();
   });
   el.tourBtn.addEventListener('click', () => startTour());
+
+  // ── 更新内容通知 ────────────────────────────────────────────────────
+  // 新手引导走完之后弹一次；看过就记下来，之后只在页脚留个入口。
+  // 发新版时改 WHATS_NEW.version（用版本号当 key，所以每版只会弹一次）。
+  const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
+  const WHATS_NEW = {
+    version: 'beta3',
+    items: [
+      '新增辞典：常用词一次看几个，点某个词就放到主卡片上放大显示。',
+      '卡片会标出「真词」还是「无义」；是真词就给释义，没有中文就给英文并标明。',
+      '新增「组合范围」三档：任意 / 按规则 / 常用词，在随机组合按钮下面。',
+      '去掉国际音标，只保留罗马注音。',
+      '换音节时页面不再上下跳动：卡片各行的位置固定了。',
+    ],
+  };
+
+  const wn = {
+    mask: document.createElement('div'),
+    box: document.createElement('div'),
+    showing: false,
+  };
+  wn.mask.className = 'wn-mask';
+  wn.box.className = 'wn-box';
+  wn.mask.hidden = true;
+  wn.mask.append(wn.box);
+  document.body.append(wn.mask);
+
+  function showWhatsNew() {
+    const title = document.createElement('h4');
+    title.append(`更新内容 · ${WHATS_NEW.version}`);
+    const list = document.createElement('ul');
+    for (const item of WHATS_NEW.items) {
+      const li = document.createElement('li');
+      li.textContent = item;
+      list.append(li);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'wn-actions';
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'primary';
+    ok.textContent = '知道了';
+    ok.addEventListener('click', () => closeWhatsNew(true));
+    actions.append(ok);
+    setChildren(wn.box, title, list, actions);
+    wn.mask.hidden = false;
+    wn.showing = true;
+  }
+
+  function closeWhatsNew(markSeen = true) {
+    wn.mask.hidden = true;
+    wn.showing = false;
+    if (markSeen) {
+      try {
+        localStorage.setItem(WHATS_NEW_KEY, WHATS_NEW.version);
+      } catch { /* 无痕模式等场景下忽略 */ }
+    }
+  }
+
+  function maybeShowWhatsNew() {
+    if (wn.showing || tour.active) return;
+    let seen = false;
+    try {
+      seen = localStorage.getItem(WHATS_NEW_KEY) === WHATS_NEW.version;
+    } catch { seen = true; }
+    if (!seen) showWhatsNew();
+  }
+
+  wn.mask.addEventListener('click', (event) => {
+    // 点遮罩也算看过，但点卡片本身不关
+    if (event.target === wn.mask) closeWhatsNew(true);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (wn.showing && event.key === 'Escape') closeWhatsNew(true);
+  });
+  el.whatsNewBtn.addEventListener('click', () => showWhatsNew());
 
   /** 出错时直接把原因写在页面上，方便对方截图反馈，而不是只看到空页面 */
   function showFatal(message) {

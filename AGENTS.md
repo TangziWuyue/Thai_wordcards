@@ -16,11 +16,12 @@
 
 ## 项目现状
 
-`web/` 是目前唯一有功能的实现（静态页面 + 纯 JS 规则引擎），已有自测。
+`web/` 是目前唯一有功能的实现（静态页面 + 纯 JS 规则引擎 + 内置辞典数据），已有自测：`node --test web/` 共 44 项（规则引擎 38 + 选项全矩阵 6）。
 
-- `src/thai_wordcards/__init__.py` 还是 `uv init` 的脚手架（只有打印 `Hello from thai-wordcards!` 的 `main()`），尚无词库、CLI 与后端功能。
-- 还没有真实词库、练习记录、后端 TTS。
-- 待办方向：词库数据结构（泰语、注音、释义、音频）、复习/间隔重复、更好的发音方案。
+- 已经做完：随机 / 固定两种模式、组合范围三档、词表勾选、声调自选、辞典（5000 余条中泰对照词 + 27522 条真词索引）、两种打包字体、暗色模式、卡片定高不跳动、系统语音朗读。
+- 还没有：自己的发音方案（现在用系统 TTS，安卓大多没声音）、录音打分、练习记录与间隔重复。
+- `src/thai_wordcards/__init__.py` 还是 `uv init` 的脚手架（只有打印 `Hello from thai-wordcards!` 的 `main()`），暂无 CLI 与后端功能。
+- 线上地址 <https://tangziwuyue.github.io/Thai_wordcards/>（GitHub Pages，从 `main` 的 `/docs` 目录部署），版本标签 `beta3`。
 
 ## 目录结构
 
@@ -49,7 +50,7 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 - 字块的说明卡片（`.tip`）鼠标悬浮和键盘聚焦会弹；触屏靠 `pointerdown` 450ms 长按或 `contextmenu` 触发，长按后的那一次 click 会被跳过（用时间戳判断，避免把下一次点击也吃掉）。
 - 中文字体子集由 `node web/fonts/build-cjk-subset.mjs` 生成（需要联网），只取 `index.html` / `app.js` / `rules.js` 里真正出现过的中文。**改完界面文案要重跑**，否则新字会退回系统字体。
 - 辞典数据由 `node web/dict/build-dict.mjs` 生成（需要联网，原始语料缓存在 `web/dict/.cache/`，不入库），产物 `web/data/dict.js` 入库。**改辞典要重跑构建脚本**；字体子集的取字范围包含 `data/dict.js`，所以**改完辞典还要重跑一次字体子集**。
-- 发给别人的单文件版由 `node web/build-standalone.mjs` 生成（`dist/泰语组合练习.html`，约 3.5MB，字体与辞典数据全部内联）。**改完界面或辞典要重新生成**；脚本会自检外部引用，有残留就报错退出。`dist/` 在 `.gitignore` 里，产物不入库，只提交脚本。
+- 发给别人的单文件版由 `node web/build-standalone.mjs` 生成（`dist/泰语组合练习.html`，约 4MB，字体与辞典数据全部内联）。**改完界面或辞典要重新生成**；脚本会自检外部引用，有残留就报错退出。`dist/` 在 `.gitignore` 里，产物不入库，只提交脚本。它同时会把 `docs/使用说明.txt` 复制到 `dist/`，那份说明是**直接编辑的源文件**（不是产物），改动后要跟着提交。
 - 元音数据带课本字段：`name`（สระ อา）、`en`（sara aa）、`roman`（罗马注音，同时是卡片注音）、`example`（例词）、`short`（长/短音）。改这些字段前先对一遍课本，测试里有逐条比对。
 - 辅音的传统例词在 `CONSONANT_EXAMPLES`（`ก ไก่` …），字段是 `example` + `gloss`；测试要求 44 个字母都有，漏一个会失败。
 - 词表字块的悬浮卡片（`.tip`）由 `app.js` 里 `chip()` 的 `tipData` 驱动：`{ glyph | glyphNodes, rows }`，鼠标悬浮和键盘聚焦都会弹，定位会自动避开视口边缘；重建词表（`buildConsonants`/`buildVowels`）时要先 `hideTip()`。
@@ -93,6 +94,7 @@ uv run python
 - 词性码 `n v adj adv pron num cls intj fn`，其中 **`fn` 是虚词**——没有实义、只起语法或语气作用（ครับ ค่ะ นะ และ ใน 这类），界面上单独标成「虚词」，让使用者知道不用去记「意思」。
 - 辞典数据按需联网加载（同源 `data/dict.js`，不经任何第三方接口，国内直连）；单文件版由 `build-standalone.mjs` 整包内联，双击离线也能查词，所以 `dict.js` 里要同时支持「数据已内联」和「需要注入 script」两种情况。
 - 打开页面时卡片上默认显示 `สวัสดี`（`GREETING`），不要留空占位符。`currentText()` 统一回答「现在卡片上是哪段泰文」：有音节用音节、没有就用问候语，朗读与真词提示都走它。
+- 两个开场浮层都走 localStorage 记忆：新手引导（`thai-wordcards.tourDone`，页脚可重看）和更新内容通知（`thai-wordcards.whatsNew`，值就是版本号，所以**发新版时改 `WHATS_NEW.version` 就会再弹一次**）。顺序固定是「引导 → 结束后弹更新通知」，入口都在页脚。
 - **泰文码点顺序**：`前引元音(เ แ โ ใ ไ) → 首辅音(+辅音簇) → 元音前段(า ิ ี ึ ื ุ ู ั ็) → 声调符号(่ ้ ๊ ๋) → 元音后段(ะ ำ อ า ย ว) → 尾辅音`。前引元音在 Unicode 里排在辅音前面但显示在左半边，顺序写错就会渲染错位。改拼装逻辑前先读 `web/rules.js` 顶部注释。
 - 元音在表里拆成 `lead / follow / tail` 三段，`tail` 就是「声调符号之后那一截」：`น้ำ` = น+้+ำ、`โต๊ะ` = โ+ต+๊+ะ、`เปล่า` = เ+ป+ล+่+า、`เพื่อน` = เ+พ+ื+่+อ+น。新增元音时想清楚每一截落在声调符号的哪一侧。
 - `ัว` 带尾辅音时会省掉 `ั`（`ตัว` → `สวย`、`ช่วง`），由元音表上的 `dropFollowWithFinal` 控制。
@@ -110,6 +112,13 @@ uv run python
 
 ## 开发约定
 
+- **发版流程**（缺一不可）：
+  1. `node --test web/` 全过；
+  2. 改过界面文案或辞典 → 重跑 `node web/fonts/build-cjk-subset.mjs`（取字范围含 `data/dict.js`）；
+  3. `node web/build-standalone.mjs` 重新打包，再把 `dist/泰语组合练习.html`、`dist/使用说明.txt` 复制到 `docs/`（线上就是这一份）；
+  4. 把 `index.html` 里本地资源的 `?v=` 号 +1（否则浏览器可能拿到新旧混搭的文件）；
+  5. 改 `pyproject.toml` 的版本号、更新 `README.md` 顶部的版本历史；
+  6. 提交 → `git push origin main` → 打标签（换版本时用 `git tag -f` 挪旧的，再 `git push --force origin <tag>`）→ 等 Pages 状态变成 `built`。
 - Python 侧一律用 `uv run ...` 执行脚本或命令，保证使用项目虚拟环境和锁定版本；前端是零依赖静态页，直接用 `node` / `python3 -m http.server` 即可。
 - 新增依赖用 `uv add`，由 `uv` 维护 `pyproject.toml` 和 `uv.lock`，不要手工往 `.venv` 里装包。
 - 前端不引入构建工具与第三方依赖（当前是零依赖静态页），确有需要先讨论。
