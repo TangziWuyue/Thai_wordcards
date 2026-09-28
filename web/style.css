@@ -202,6 +202,12 @@ html.js .js-fallback { display: none; }
   letter-spacing: 0.04em;
 }
 
+/* 「无义」比「真词」弱一档：不是真词是常态，不该抢视线 */
+.dh-mark.plain {
+  background: transparent;
+  color: var(--muted);
+}
+
 .dh-zh { font-weight: 500; }
 
 .dh-en {

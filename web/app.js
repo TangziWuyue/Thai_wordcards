@@ -754,14 +754,19 @@
     const text = currentText();
     const entry = D.lookup(text);
     setChildren(el.dictHit);
+    const mark = (text_, className) => {
+      const span = document.createElement('span');
+      span.className = className;
+      span.textContent = text_;
+      return span;
+    };
+    // 不是真词也标一下，跟「真词」对称：看到「无义」就知道这个拼写泰语里不成立
     if (!D.isWord(text)) {
-      el.dictHit.hidden = true;
+      el.dictHit.append(mark('无义', 'dh-mark plain'));
+      el.dictHit.hidden = false;
       return;
     }
-    const mark = document.createElement('span');
-    mark.className = 'dh-mark';
-    mark.textContent = '真词';
-    el.dictHit.append(mark);
+    el.dictHit.append(mark('真词', 'dh-mark'));
     // 有释义就摆释义（这正是这个提示的意义）；没有就只留「真词」两个字，
     // 不要再写「常用词表未收录」那种解释——那是给开发者看的，不是给学的人看的
     if (entry && entry[2]) {
@@ -771,13 +776,13 @@
       el.dictHit.append(zh);
     } else if (entry && entry[5]) {
       // 中文词表没收录这个词，退回英文释义——标一下「英文」，别让人以为是中文没写好
-      const tag = document.createElement('span');
-      tag.className = 'dh-pos';
-      tag.textContent = '英文';
       const en = document.createElement('span');
       en.className = 'dh-en';
       en.textContent = entry[5];
-      el.dictHit.append(tag, en);
+      el.dictHit.append(mark('英文', 'dh-pos'), en);
+    } else {
+      // 真是泰语词，但两套词表都没给释义，明确写出来，别让人以为界面坏了
+      el.dictHit.append(mark('无释义', 'dh-pos'));
     }
     // 没有实义的虚词（ครับ ค่ะ นะ …）单独标一下，看到就知道不用去记「意思」
     if (entry && entry[3] === 'fn') {
@@ -1047,7 +1052,7 @@
     {
       sel: '.card',
       title: '卡片',
-      text: '点「随机组合」生成音节，多无词义，只练拼读。',
+      text: '点「随机组合」生成音节。卡片会标出它是「真词」还是「无义」。',
     },
     {
       sel: '.split',
@@ -1067,7 +1072,7 @@
     {
       sel: '#dictPanel',
       title: '辞典',
-      text: '常用词一次看几个，点「换一批」继续。碰巧拼出真词时，卡片上会标出来。',
+      text: '常用词一次看几个，点「换一批」继续；点某个词就把它放到主卡片上。',
       before: () => { el.dictPanel.open = true; ensureDict(); },
     },
     {

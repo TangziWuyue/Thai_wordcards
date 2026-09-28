@@ -155,6 +155,25 @@ const EN_STRIP = /^(?:used to express|used as|a word used to|to express)\s+/i;
 // 「alternative form of กฎ」「misspelling of …」这类是参见条目，不是词义，不能当释义用
 const EN_META = /\b(?:form|spelling|misspelling|shortening|clipping|synonym|plural|abbreviation|romanization|transliteration|name) of\b/i;
 
+/** 只留字母，用来比对「英文释义」和「泰文罗马音」是不是同一个东西 */
+function lettersOnly(x) {
+  return String(x || '').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z]/g, '');
+}
+
+/**
+ * 「เร → re」「โด → do」「ฟา → fa」这类：wiktionary 把音符名的罗马音当成了释义，
+ * 对学词没有意义，不如不显示。只挡极短的（≤3 个字母），
+ * 免得误伤 ninja / gram / mint 这种本来就长得跟罗马音一样的借词释义。
+ */
+function isRomanization(en, rom) {
+  const a = lettersOnly(en);
+  const b = lettersOnly(rom);
+  if (!a || !b || a.length > 3 || b.length > 6) return false;
+  return a === b || b.startsWith(a);
+}
+
 function loadKaikki() {
   const map = new Map();
   for (const line of readSource('kaikki').split('\n')) {
@@ -239,6 +258,7 @@ async function main() {
     const zhText = v ? v.zh : '';
     let en = zhText ? '' : (k.en || lexitron.get(w) || '');
     if (en && EN_META.test(en)) en = ''; // LEXiTRON 偶尔也有参见条目，一并挡掉
+    if (en && isRomanization(en, k.rom)) en = ''; // 只有罗马音、没有词义
     return [w, k.rom, zhText, v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0, en];
   });
 
