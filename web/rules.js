@@ -487,6 +487,44 @@ const ThaiRules = (() => {
   }
 
   /**
+   * 固定模式：把「自己挑的一个辅音 / 一个元音」拼成一个音节。
+   * 纯逻辑放在这里，界面（app.js）只负责把结果画出来，测试可以直接跑这个函数。
+   *
+   *   onset 有、vowelId 无 → 只选辅音：strict 时补 สระออ，显示成 กอ（字母本身的读法）；
+   *                          关掉规则就不补，卡片上只留这个辅音
+   *   onset 无、vowelId 有 → 只选元音：strict 时用 อ 当载体，显示成 อา（课本写单元音的方式）；
+   *                          关掉规则且这个元音本身有字形时不补；
+   *                          「无元音符号」这类没有字形的必须补，否则卡片一片空白；
+   *                           ฤ ฤๅ ฦ ฦๅ 自己能站住，任何时候都不补
+   *   两个都有             → 正常拼成一个音节，如 กา
+   *
+   * 两个都没选返回 null。
+   */
+  function fixedParts({ onset = null, vowelId = null, strict = true } = {}) {
+    if (!onset && !vowelId) return null;
+    const vowel = vowelId ? VOWEL_MAP.get(vowelId) : null;
+    if (vowelId && !vowel) return null;
+    const vowelForm = vowel ? `${vowel.lead || ''}${vowel.follow || ''}${vowel.tail || ''}` : '';
+    const needCarrier = !!vowel && !vowel.canBeOnset && (strict || !vowelForm);
+    if (onset) {
+      return {
+        vowelId: vowelId || (strict ? 'o_long' : 'none'),
+        onset,
+        cluster: null,
+        tone: 'none',
+        final: null,
+      };
+    }
+    return {
+      vowelId,
+      onset: needCarrier ? 'อ' : null,
+      cluster: null,
+      tone: 'none',
+      final: null,
+    };
+  }
+
+  /**
    * 自检：返回问题列表，空数组表示码点顺序与规则都合法。
    * 先把字符串按 parts 逐段吃掉、记下每个字符的角色，再检查角色顺序，
    * 这样首辅音与尾辅音同字（如 ปลื่ป）也不会误判。
@@ -734,6 +772,7 @@ const ThaiRules = (() => {
     consonantIPA,
     clusterNote,
     check,
+    fixedParts,
     generate,
     describe,
     isShortVowel,

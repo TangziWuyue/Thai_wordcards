@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>泰语组合练习</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b1b1b'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23fff'%3E%E0%B8%81%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="fonts.css">
-  <link rel="stylesheet" href="fonts-cjk.css">
-  <link rel="stylesheet" href="style.css">
+  <!-- ?v= 是给浏览器看的版本号：页面更新后强制重新取这几个文件。
+       不加的话可能拿到「新的 app.js + 旧的 rules.js」这种组合，
+       新增的函数对不上就会直接报错、整个模式失效。发版时把这个号 +1。 -->
+  <link rel="stylesheet" href="fonts.css?v=3">
+  <link rel="stylesheet" href="fonts-cjk.css?v=3">
+  <link rel="stylesheet" href="style.css?v=3">
   <!-- 脚本能跑就给 html 加个标记，用来隐藏下面那段「没能运行起来」的提示。
        放在 head 里执行，正常打开时不会有闪烁；不执行脚本的预览器则会一直显示提示。 -->
   <script>document.documentElement.classList.add('js');</script>
@@ -118,11 +121,6 @@
             <div class="seg" id="fontSeg" role="group" aria-label="泰文字体"></div>
 
             <div class="label-row">
-              <span class="label">音标</span>
-            </div>
-            <div class="seg" id="romanSeg" role="group" aria-label="音标写法"></div>
-
-            <div class="label-row">
               <span class="label">外观</span>
             </div>
             <div class="seg" id="themeSeg" role="group" aria-label="外观"></div>
@@ -166,8 +164,8 @@
     </div>
   </main>
 
-  <script src="rules.js"></script>
-  <script src="dict.js"></script>
-  <script src="app.js"></script>
+  <script src="rules.js?v=3"></script>
+  <script src="dict.js?v=3"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

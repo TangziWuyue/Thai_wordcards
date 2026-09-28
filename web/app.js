@@ -42,7 +42,6 @@
     { id: 'light', label: '浅色' },
     { id: 'dark', label: '深色' },
   ];
-  const ROMAN_SEGS = R.ROMAN_SYSTEMS.map((s) => ({ id: s.id, label: s.label }));
   // 随机组合的范围，从宽到严。原来只有一个「遵守拼写规则」开关，
   // 现在把「只拼常用词」并进来做成同一档：一档比一档严，不会出现「不检查规则却只出常用词」这种自相矛盾的状态
   const RANGES = [
@@ -71,7 +70,6 @@
     autoSpeak: false,
     font: 'sarabun',
     theme: 'auto',
-    romanSystem: 'latin',
     // 'random' = 随机组合；'fixed' = 自己挑一个辅音 / 一个元音来拼读
     mode: 'random',
     fixedOnset: null,
@@ -108,7 +106,6 @@
     vowelNone: document.getElementById('vowelNone'),
     fontSeg: document.getElementById('fontSeg'),
     themeSeg: document.getElementById('themeSeg'),
-    romanSeg: document.getElementById('romanSeg'),
     randomBtn: document.getElementById('randomBtn'),
     speakBtn: document.getElementById('speakBtn'),
     modeBtn: document.getElementById('modeBtn'),
@@ -143,7 +140,6 @@
         autoSpeak: state.autoSpeak,
         font: state.font,
         theme: state.theme,
-        romanSystem: state.romanSystem,
         mode: state.mode,
         fixedOnset: state.fixedOnset,
         fixedVowelId: state.fixedVowelId,
@@ -175,7 +171,6 @@
       if (typeof data.autoSpeak === 'boolean') state.autoSpeak = data.autoSpeak;
       if (FONTS.some((f) => f.id === data.font)) state.font = data.font;
       if (THEMES.some((t) => t.id === data.theme)) state.theme = data.theme;
-      if (R.ROMAN_SYSTEMS.some((s) => s.id === data.romanSystem)) state.romanSystem = data.romanSystem;
       if (data.mode === 'fixed' || data.mode === 'random') state.mode = data.mode;
       if (typeof data.fixedOnset === 'string') state.fixedOnset = data.fixedOnset;
       if (typeof data.fixedVowelId === 'string') state.fixedVowelId = data.fixedVowelId;
@@ -300,7 +295,6 @@
         const rows = [
           ['类别', [R.CLASS_LABEL[cls], ...flags].join(' · ')],
           ['罗马注音', c.roman || '—'],
-          ['国际音标', R.consonantIPA(c.ch)],
           ['例词', c.example ? `${c.ch} ${c.example}${c.gloss ? `（${c.gloss}）` : ''}` : ''],
         ].filter(([, v]) => v);
         const on = fixed ? state.fixedOnset === c.ch : state.consonants.has(c.ch);
@@ -397,24 +391,13 @@
       renderCard();
       return;
     }
-    const vowel = vowelId ? R.VOWELS.find((v) => v.id === vowelId) : null;
-    const vowelForm = vowel ? `${vowel.lead || ''}${vowel.follow || ''}${vowel.tail || ''}` : '';
-    // 只选元音时要补载体吗：遵守规则时补；「无元音符号」这种本身没有字形的也必须补，
-    // 否则卡片会是一片空白。ฤ ฤๅ ฦ ฦๅ 自己能站住，不补。
-    const needCarrier = !!vowel && !vowel.canBeOnset && (state.strict || !vowelForm);
-    const next = onset
-      // 只选辅音时：遵守拼写规则就补一个 สระออ（读作 กอ，字母本身的读法）；
-      //            关掉规则就不补，卡片上只留这个辅音
-      ? { vowelId: vowelId || (state.strict ? 'o_long' : 'none'), onset, cluster: null, tone: 'none', final: null }
-      // 只选元音时：遵守拼写规则就补一个 อ 当载体（课本写单元音的方式）；
-      //            关掉规则就不补。ฤ ฤๅ ฦ ฦๅ 自己能站住，任何时候都不补。
-      : {
-        vowelId,
-        onset: needCarrier ? 'อ' : null,
-        cluster: null,
-        tone: 'none',
-        final: null,
-      };
+    // 拼装规则放在规则引擎里（R.fixedParts），这里只管画
+    const next = R.fixedParts({ onset, vowelId, strict: state.strict });
+    if (!next) {
+      state.parts = null;
+      renderCard();
+      return;
+    }
     // 之前选过的声调如果还能用就留着，来回换字母时不用重新点
     const prevTone = state.parts ? state.parts.tone : 'none';
     if (prevTone && prevTone !== 'none') {
@@ -448,7 +431,7 @@
     const fixed = state.mode === 'fixed';
     // 全选/全不选只对随机模式有意义，固定模式下藏起来
     for (const btn of [el.consAll, el.consNone, el.vowelAll, el.vowelNone]) btn.hidden = fixed;
-    // 这四项只影响随机组合：固定模式灰掉、选不中（字体/音标/外观、拼写规则两种模式都保留）
+    // 这四项只影响随机组合：固定模式灰掉、选不中（字体/外观、组合范围两种模式都保留）
     const randomOnly = [
       [el.rowClusters, el.optClusters],
       [el.rowFinal, el.optFinal],
@@ -491,7 +474,6 @@
     const rows = [
       ['名称', `${v.name} · ${v.en}`],
       ['罗马注音', v.roman],
-      ['国际音标', v.ipa],
       ['长短', v.short ? '短音' : '长音'],
       ['例词', v.example],
       ['说明', notes.join(' · ')],
@@ -547,12 +529,6 @@
       renderSettings();
       save();
     });
-    buildSeg(el.romanSeg, ROMAN_SEGS, state.romanSystem, (id) => {
-      state.romanSystem = id;
-      renderSettings();
-      renderCard();
-      save();
-    });
     buildSeg(el.themeSeg, THEMES, state.theme, (id) => {
       state.theme = id;
       applyTheme();
@@ -605,7 +581,7 @@
       commonBtn.title = fixed ? '固定模式下不适用（常用词只影响随机组合）' : '';
     }
     el.optionsHint.textContent = fixed
-      ? '固定模式只用到字体、音标和外观；灰掉的几项只对随机组合生效'
+      ? '固定模式只用到字体和外观；灰掉的几项只对随机组合生效'
       : '';
   }
 
@@ -677,7 +653,8 @@
       return;
     }
 
-    const info = R.describe(state.parts, state.strict, state.romanSystem);
+    // 注音只用罗马注音（国际音标已经从界面上去掉了，引擎里还留着数据与函数）
+    const info = R.describe(state.parts, state.strict, 'latin');
     // 关闭规则检查时允许生成「规则上不合法」的组合，这种情况不算异常
     if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
 
@@ -695,9 +672,8 @@
     } else {
       el.syllable.textContent = info.text;
     }
-    const systemLabel = state.romanSystem === 'ipa' ? '国际音标 IPA' : '罗马注音';
     // อ 之类的字母在罗马注音里本来就没有对应写法，显示成 — 而不是空斜杠
-    el.roman.textContent = `/${info.roman || '—'}/ · ${systemLabel}，不含声调`;
+    el.roman.textContent = `/${info.roman || '—'}/ · 罗马注音，不含声调`;
 
     const breakdown = [];
     if (info.isVowelOnset) breakdown.push(renderPart('声母', '元音充当声母'));
@@ -722,15 +698,23 @@
       btn.title = opt.allowed ? `${opt.name}${opt.mark ? ` ${opt.mark}` : ''}` : opt.reason;
       if (!opt.allowed && !disabledReasons.includes(opt.reason)) disabledReasons.push(opt.reason);
     }
-    el.toneHint.textContent = disabledReasons.length
-      ? `${disabledReasons.join('；')}（可在选项中关闭规则检查）`
-      : '';
-    if (state.commonFallback) {
-      const note = '当前词表里没抽到常用词，先给一个普通音节（多勾几个字母更容易抽中）';
-      el.toneHint.textContent = el.toneHint.textContent
-        ? `${el.toneHint.textContent}；${note}`
-        : note;
+    // 提示行：规则问题 > 声调原因 > 常用词兜底
+    const hints = [];
+    if (state.strict && info.issues.length) {
+      // 固定模式没有尾辅音可选，像 ั / เ-ิ / เ-็ 这类「必须带尾辅音」的元音
+      // 单独选出来就拼不成完整音节——这件事必须写出来，光在控制台警告用户看不见
+      const needsFinal = info.issues.includes('该元音必须带尾辅音');
+      hints.push(state.mode === 'fixed' && needsFinal
+        ? '这个元音必须带尾辅音，固定模式下拼不完整：换一个元音，或改用随机组合'
+        : info.issues.join('；'));
     }
+    if (disabledReasons.length) {
+      hints.push(`${disabledReasons.join('；')}（可在选项中关闭规则检查）`);
+    }
+    if (state.commonFallback) {
+      hints.push('当前词表里没抽到常用词，先给一个普通音节（多勾几个字母更容易抽中）');
+    }
+    el.toneHint.textContent = hints.join('；');
     updateDictHit();
   }
 
@@ -1078,7 +1062,7 @@
     {
       sel: '#optionsPanel',
       title: '选项',
-      text: '字体、音标、外观在这里调；固定模式下用不到的会变灰。',
+      text: '字体和外观在这里调；固定模式下用不到的会变灰。',
       before: () => { el.optionsPanel.open = true; },
     },
     {
