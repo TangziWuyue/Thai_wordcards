@@ -187,6 +187,11 @@ function loadKaikki() {
     const w = o.word;
     if (!w) continue;
     const rom = (o.forms || []).find((f) => (f.tags || []).includes('romanization'))?.form || '';
+    // 维基词典的发音区：Phonemic = 实际读音的泰文拼写（ไทย → ไท、สัตว์ → สัด），
+    // IPA 里带声调（/ruː˦˥/），这两样正好补上「词的特殊读法」
+    const sounds = o.sounds || [];
+    const phon = (sounds.find((x) => (x.raw_tags || []).includes('Phonemic')) || {}).other || '';
+    const ipa = (sounds.find((x) => x.ipa) || {}).ipa || '';
     const prev = map.get(w) || { rom: '', posList: [], en: '' };
     const code = POS_CODE[String(o.pos || '').toLowerCase()];
     if (code && !prev.posList.includes(code)) prev.posList.push(code);
@@ -202,12 +207,18 @@ function loadKaikki() {
         break;
       }
     }
-    map.set(w, { rom: prev.rom || rom, posList: prev.posList, en });
+    map.set(w, {
+      rom: prev.rom || rom,
+      posList: prev.posList,
+      en,
+      phon: prev.phon || phon,
+      ipa: prev.ipa || ipa,
+    });
   }
   const out = new Map();
   for (const [w, v] of map) {
     const pos = POS_ORDER.find((p) => v.posList.includes(p)) || '';
-    out.set(w, { rom: v.rom, pos, en: v.en });
+    out.set(w, { rom: v.rom, pos, en: v.en, phon: v.phon, ipa: v.ipa });
   }
   return out;
 }
@@ -250,7 +261,7 @@ async function main() {
 
   const entries = all.map((w) => {
     const v = vocab.get(w);
-    const k = kaikki.get(w) || { rom: '', pos: '', en: '' };
+    const k = kaikki.get(w) || { rom: '', pos: '', en: '', phon: '', ipa: '' };
     // 人工补的基础词表里标了词性的（ครับ 这类语气词）优先用它
     // 第 6 位是英文释义：**只在没有中文释义时才存**，这样界面上不可能出现
     // 「这个词明明有中文却显示英文」。优先维基词典（LEXiTRON 的 eentry 会挑偏义项：
@@ -259,7 +270,10 @@ async function main() {
     let en = zhText ? '' : (k.en || lexitron.get(w) || '');
     if (en && EN_META.test(en)) en = ''; // LEXiTRON 偶尔也有参见条目，一并挡掉
     if (en && isRomanization(en, k.rom)) en = ''; // 只有罗马音、没有词义
-    return [w, k.rom, zhText, v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0, en];
+    // 第 7、8 位是维基词典的发音：实际读音拼写（拼写和读音不一样时才有意义）与带声调的 IPA。
+    // 拿不到就空着，界面按「没有发音信息」处理
+    const phon = k.phon && k.phon !== w ? k.phon : '';
+    return [w, k.rom, zhText, v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0, en, phon, k.ipa || ''];
   });
 
   const withZh = entries.filter((e) => e[2]).length;

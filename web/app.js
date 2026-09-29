@@ -680,7 +680,12 @@
       if (state.word) hint.textContent = '来自辞典 · 点「随机组合」回到随机练习';
       else if (state.mode === 'fixed') hint.textContent = '固定模式：点下面的字母，选一个辅音和/或一个元音';
       else hint.textContent = '点「随机组合」开始';
-      setChildren(el.parts, hint);
+      // 辞典点过来的词：把它的实际读音一并写出来（拼写 ≠ 读音的那种词最需要这一行）
+      if (entry && entry[6]) {
+        setChildren(el.parts, renderPart('读音', entry[6]), hint);
+      } else {
+        setChildren(el.parts, hint);
+      }
       el.toneHint.textContent = '';
       updateDictHit();
       for (const btn of el.tones.children) {
@@ -734,6 +739,10 @@
     breakdown.push(renderPart('声调', info.spokenTone
       ? `${markLabel} → 读第${info.spokenTone}调 ${info.spokenToneName}`
       : info.toneName));
+    // 这个拼写如果正好是个真词、而它的实际读音跟拼写不一样（ไทย 读 ไท、สัตว์ 读 สัด），
+    // 就把实际读音补一行。数据来自维基词典的 Phonemic 字段
+    const dictEntry = D.lookup(R.assemble(state.parts));
+    if (dictEntry && dictEntry[6]) breakdown.push(renderPart('读音', dictEntry[6]));
     setChildren(el.parts, ...breakdown);
 
     const disabledReasons = [];
