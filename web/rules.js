@@ -91,7 +91,9 @@ const ThaiRules = (() => {
       example: 'ปะ = pa', lead: '', follow: '', tail: 'ะ',
       short: true, allowsFinal: false },
     { id: 'aa', group: 'single', name: 'สระ อา', en: 'sara aa', roman: 'a',
-      example: 'มา = ma', lead: '', follow: 'า', tail: '',
+      // า 是 spacing 元音，码点上必须排在声调符号之后（มา = ม + ้ + า），
+      // 和 อำ / อะ / ออ 一样归 tail 段；放 follow 会拼出 มา้ 这种错序
+      example: 'มา = ma', lead: '', follow: '', tail: 'า',
       short: false, allowsFinal: true },
     { id: 'i', group: 'single', name: 'สระ อิ', en: 'sara i', roman: 'i',
       example: 'มิ = mi', lead: '', follow: 'ิ', tail: '',
@@ -464,13 +466,17 @@ const ThaiRules = (() => {
         ? CONSONANT_IPA[c.roman]
         : c.roman;
     };
-    const vowelRoman = useIPA ? vowel.ipa : vowel.roman;
+    // 畸形 parts 兜底：check() 会把「没有声母 / 元音不认识 / 这个字不能作尾辅音」
+    // 当成可以报告的问题，所以 describe() 这条路不能直接抛异常——
+    // 与下面几行的 vowel ? … / (FINALS[x] || {}) 保持一致
+    const vowelRoman = vowel ? (useIPA ? vowel.ipa : vowel.roman) : '';
 
     const pair = `${parts.onset}${parts.cluster || ''}`;
     const replaced = REPLACED_CLUSTERS[pair];
     // 整体换读音的假簇（ทราย = saai）
     if (replaced) {
-      const final = parts.final ? (useIPA ? FINALS[parts.final].ipa : FINALS[parts.final].roman) : '';
+      const entry = FINALS[parts.final] || {};
+      const final = parts.final ? (useIPA ? (entry.ipa || '') : (entry.roman || '')) : '';
       return (useIPA ? replaced.ipa : replaced.book) + vowelRoman + final;
     }
 
@@ -479,9 +485,10 @@ const ThaiRules = (() => {
 
     let final = '';
     if (parts.final) {
-      const entry = FINALS[parts.final];
+      const entry = FINALS[parts.final] || {};
       // ไทย / สวย 这类：尾辅音读出来跟元音结尾同一个音，就只写一次
-      final = vowel.ipa.endsWith(entry.ipa) ? '' : (useIPA ? entry.ipa : entry.roman);
+      const sameSound = vowel && entry.ipa && vowel.ipa.endsWith(entry.ipa);
+      final = sameSound ? '' : (useIPA ? (entry.ipa || '') : (entry.roman || ''));
     }
     return onset + cluster + vowelRoman + final;
   }

@@ -160,8 +160,10 @@
       const knownVowels = new Set(SELECTABLE_VOWELS);
       const cons = (data.consonants || []).filter((ch) => known.has(ch));
       const vows = (data.vowels || []).filter((id) => knownVowels.has(id));
-      if (cons.length) state.consonants = new Set(cons);
-      if (vows.length) state.vowels = new Set(vows);
+      // 判「有没有存过」而不是「数组非空」：用户点过「全不选」时存的就是空数组，
+      // 用长度判断会把他的选择当成没存过、刷新后又恢复成默认全选
+      if (Array.isArray(data.consonants)) state.consonants = new Set(cons);
+      if (Array.isArray(data.vowels)) state.vowels = new Set(vows);
       if (typeof data.allowClusters === 'boolean') state.allowClusters = data.allowClusters;
       if (typeof data.allowFinal === 'boolean') state.allowFinal = data.allowFinal;
       if (typeof data.allowVowelOnset === 'boolean') state.allowVowelOnset = data.allowVowelOnset;
@@ -173,8 +175,10 @@
       if (FONTS.some((f) => f.id === data.font)) state.font = data.font;
       if (THEMES.some((t) => t.id === data.theme)) state.theme = data.theme;
       if (data.mode === 'fixed' || data.mode === 'random') state.mode = data.mode;
-      if (typeof data.fixedOnset === 'string') state.fixedOnset = data.fixedOnset;
-      if (typeof data.fixedVowelId === 'string') state.fixedVowelId = data.fixedVowelId;
+      // 固定模式选中的字母也要过白名单：脏数据（改坏的 localStorage）会渲染成
+      // 「XYZอ」这种乱码卡片，而且固定模式下没有入口能清掉它
+      if (known.has(data.fixedOnset)) state.fixedOnset = data.fixedOnset;
+      if (knownVowels.has(data.fixedVowelId)) state.fixedVowelId = data.fixedVowelId;
     } catch { /* 数据坏了就用默认值 */ }
   }
 
@@ -232,12 +236,14 @@
   const LONG_PRESS_MS = 450;
   let pressTimer = null;
   let longPressAt = 0; // 用时间戳而不是布尔：长按后万一没派发 click，也不会把下一次点击吃掉
+  let longPressBtn = null; // 同时记下是哪个字块长按的——只跳过那一个字块紧跟的 click
 
   function startPress(btn, pointerType) {
     if (pointerType === 'mouse') return; // 鼠标走 mouseenter
     clearTimeout(pressTimer);
     pressTimer = setTimeout(() => {
       longPressAt = Date.now();
+      longPressBtn = btn;
       showTip(btn);
     }, LONG_PRESS_MS);
   }
@@ -268,10 +274,13 @@
     btn.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       longPressAt = Date.now();
+      longPressBtn = btn;
       showTip(btn);
     });
     btn.addEventListener('click', (e) => {
-      if (Date.now() - longPressAt < 1000) {
+      // 只吃掉「刚长按过的这个字块」的那一次 click。
+      // 不判断是哪个字块的话，长按 A 之后一秒内点 B 也会被吞掉
+      if (btn === longPressBtn && Date.now() - longPressAt < 1000) {
         e.preventDefault();
         return;
       }
@@ -416,7 +425,12 @@
       // 接着刚才随机出来的那个音节练：把声母和元音带进固定模式
       if (state.parts) {
         state.fixedOnset = state.parts.onset;
-        state.fixedVowelId = state.parts.vowelId === 'o_long' ? null : state.parts.vowelId;
+        // 只带「词表里真的能勾选」的元音：o_implied（无元音符号的闭音节）在词表里
+        // 没有对应字块，带进来会卡成「卡片只显示一个辅音、元音栏什么都没选中」，
+        // 而且没有任何入口能清掉（开关在固定模式下是灰的，刷新也还在）。
+        // o_long 仍然过滤掉：它是「只选辅音」时的补位元音，用户并没有选过它
+        const vid = state.parts.vowelId;
+        state.fixedVowelId = (vid !== 'o_long' && SELECTABLE_VOWELS.includes(vid)) ? vid : null;
       }
     }
     applyMode();
@@ -540,14 +554,21 @@
       state.range = id;
       syncRange();
       // 选到「常用词」就顺手把词表取回来，不然第一次点随机组合还得现等
-      if (id === 'common') D.loadWords().catch(() => { /* 取不到就退回普通随机 */ });
+      // 选到「常用词」就顺手把词表取回来，不然第一次点随机组合还得现等；
+      // 取完（或失败）都要重画一次提示，因为提示文案跟「词库好没好」有关
+      if (id === 'common') {
+        D.loadWords().catch(() => { /* 取不到就退回普通随机，提示里会说明 */ })
+          .then(() => applyRangeHint());
+      }
       // 固定模式下这一档决定要不要用 อ 补位，得重新拼一遍
       if (state.mode === 'fixed') applyFixed();
       else renderCard();
       renderSettings();
-      applyRangeHint();
       save();
     });
+    // 放在最后统一调：buildSeg 会重建按钮、把 disabled 清零，
+    // 字体/主题那两个 onPick 也会走到这里，不补这一下「常用词」在固定模式下的禁用态就丢了
+    applyRangeHint();
   }
 
   /** range 是唯一信息源，strict 从它推出来，免得两处状态对不上 */
@@ -573,7 +594,12 @@
 
   function applyRangeHint() {
     const fixed = state.mode === 'fixed';
-    el.rangeHint.textContent = RANGE_HINT[state.range][fixed ? 'fixed' : 'random'];
+    // 常用词档要靠词库；词库没加载出来时不能再承诺「一定是真实存在的词」，
+    // 否则页面会一边说要出真词、一边全出无义音节，还一个字都不解释
+    const offline = state.range === 'common' && !fixed && !D.ready();
+    el.rangeHint.textContent = offline
+      ? '词库没加载出来：暂时按普通音节拼，联网后重开本页即可'
+      : RANGE_HINT[state.range][fixed ? 'fixed' : 'random'];
     // 「常用词」只对随机组合有意义（固定模式是手动挑字母），灰掉但保留选择，
     // 切回随机模式还是这一档
     const commonBtn = [...el.rangeSeg.children].find((b) => b.dataset.id === 'common');
@@ -681,6 +707,9 @@
       span.className = R.BELOW_COMBINING_CHARS.has(l.follow) ? 'bare-mark below' : 'bare-mark';
       span.textContent = l.follow;
       setChildren(el.syllable, span);
+      // 这条分支不走 setSyllable，得自己把缩放值复位，
+      // 否则会留着上一个长音节的比例，一个符号被缩得明显偏小
+      el.syllable.style.setProperty('--syl-scale', '1');
     } else {
       setSyllable(info.text);
     }
@@ -721,7 +750,9 @@
         : info.issues.join('；'));
     }
     if (disabledReasons.length) {
-      hints.push(`${disabledReasons.join('；')}（可在选项中关闭规则检查）`);
+      // 规则检查现在是「组合范围」三档控件管的，它不在「选项」面板里——
+      // 旧文案指向了一个已经不存在的开关，用户翻遍选项也找不到
+      hints.push(`${disabledReasons.join('；')}（组合范围切到「任意」即不限）`);
     }
     if (state.commonFallback) {
       hints.push('词表里没抽到常用词，先给普通音节，多勾几个字母更容易中');
@@ -874,11 +905,13 @@
         renderDictBatch();
         el.dictNote.textContent = D.note();
         el.dictSource.textContent = D.source();
+        applyRangeHint(); // 词库好了，「常用词」档的提示要从降级文案切回来
       })
       .catch(() => {
         el.dictList.textContent = '';
         el.dictNote.textContent = '词库没加载出来：这部分数据要联网取，检查网络后重新打开本页。';
         el.dictSource.textContent = '';
+        applyRangeHint();
       });
   }
 
@@ -906,7 +939,7 @@
     if (!state.vowels.size || (!state.consonants.size && !vowelOnsetAvailable)) {
       state.parts = null;
       renderCard();
-      el.syllable.textContent = '—';
+      setSyllable('—');
       el.roman.textContent = '请先在词表里至少勾选一个辅音和一个元音';
       return;
     }
@@ -934,7 +967,7 @@
       // 清掉上一张卡，避免「卡片上还留着上一个音节的字形」和提示互相矛盾
       state.parts = null;
       renderCard();
-      el.syllable.textContent = '—';
+      setSyllable('—');
       el.roman.textContent = '当前词表组不出音节，试试多勾几个字母';
       return;
     }
@@ -1220,6 +1253,9 @@
     tour.mask.hidden = true;
     tour.hole.hidden = true;
     tour.tip.hidden = true;
+    // 第 7 步会临时切到固定模式做演示，所以退出引导时统一切回来。
+    // 只写在最后一步的 before 里不够——从第 7 步点「跳过」就直接退了，模式会停在固定
+    if (state.mode !== (tour.prevMode || 'random')) setMode(tour.prevMode || 'random');
     renderCard();
     if (markDone) {
       try {

@@ -242,3 +242,64 @@ test('辞典：常用词档抽到的词都在词表里，且都有中文释义',
   assert.equal(blank.length, 0, `有 ${blank.length} 个常用词没有中文释义`);
   console.log(`    · 辞典：全文 ${ALL_WORDS.size} 词 / 常用 ${COMMON.size} 词`);
 });
+
+// ── 用辞典真实词做判据的回归测试 ──────────────────────────────────────
+// check() 与 assemble() 共用同一个 layout()，所以「顺序写错」时 check() 恒返回 []，
+// 自己验自己发现不了。这一组断言拿独立语料（辞典 27522 条真实泰语词）当判据。
+
+test('码点顺序：spacing 元音（า ะ ำ）必须排在声调符号之后', () => {
+  const SPACING = ['\u0e32', '\u0e30', '\u0e33']; // า ะ ำ
+  const TONES = ['\u0e48', '\u0e49', '\u0e4a', '\u0e4b'];
+  const bad = [];
+  for (const c of CONSONANTS) {
+    for (const id of VOWELS) {
+      for (const t of R.TONES) {
+        const text = R.assemble({ onset: c, vowelId: id, tone: t.id, cluster: null, final: null });
+        for (const sp of SPACING) {
+          for (const tn of TONES) {
+            // 「า + 声调符号」这种顺序在真实泰语里不存在
+            if (text.includes(sp + tn)) bad.push(`${id}/${t.id}: ${text}`);
+          }
+        }
+      }
+    }
+  }
+  assert.deepEqual(bad.slice(0, 5), [], `有 ${bad.length} 个组合把 spacing 元音排到了声调符号前面`);
+});
+
+test('码点顺序：拿辞典真实词反查，常用词里的带调字必须拼得出来', () => {
+  // 期望值一律用码点写（泰文形近字符肉眼分不出），且这些词必须真的在辞典里（独立语料佐证顺序）
+  const cp = String.fromCodePoint;
+  const MA = cp(0x0e21, 0x0e49, 0x0e32);             // ม้า 马
+  const KAAN = cp(0x0e01, 0x0e49, 0x0e32, 0x0e19);   // ก้าน 树干
+  const NGAAI = cp(0x0e07, 0x0e48, 0x0e32, 0x0e22);  // ง่าย 容易
+  const KHAA = cp(0x0e04, 0x0e48, 0x0e32);            // ค่า 价值
+  const KRAPAU = cp(0x0e01, 0x0e23, 0x0e30, 0x0e40, 0x0e1b, 0x0e4b, 0x0e32); // กระเป๋า 包
+  const cases = [
+    [MA, { onset: cp(0x0e21), vowelId: 'aa', tone: 'tho' }],
+    [KAAN, { onset: cp(0x0e01), vowelId: 'aa', tone: 'tho', final: cp(0x0e19) }],
+    [NGAAI, { onset: cp(0x0e07), vowelId: 'aa', tone: 'ek', final: cp(0x0e22) }],
+    [KHAA, { onset: cp(0x0e04), vowelId: 'aa', tone: 'ek' }],
+    [KRAPAU, null], // 多音节词，只查辞典里在不在
+  ];
+  for (const [word, parts] of cases) {
+    assert.ok(ALL_WORDS.has(word), `辞典里应该有 ${word}`);
+    if (!parts) continue;
+    const text = R.assemble({ ...parts, cluster: null, final: parts.final || null });
+    assert.equal(text, word, `${word} 拼出来不对（得到 ${text}）`);
+  }
+  // 辞典全库里「声调符号 → า」有 2600 多条，「า → 声调符号」必须一条都没有
+  let toneThenAa = 0;
+  let aaThenTone = 0;
+  const TONE = [0x0e48, 0x0e49, 0x0e4a, 0x0e4b];
+  for (const word of ALL_WORDS) {
+    const cps = [...word].map((c) => c.codePointAt(0));
+    for (let i = 0; i < cps.length - 1; i += 1) {
+      if (TONE.includes(cps[i]) && cps[i + 1] === 0x0e32) toneThenAa += 1;
+      if (cps[i] === 0x0e32 && TONE.includes(cps[i + 1])) aaThenTone += 1;
+    }
+  }
+  assert.ok(toneThenAa > 2000, `辞典里「声调符号 → า」应该很多，实际 ${toneThenAa}`);
+  assert.equal(aaThenTone, 0, `辞典里不该有「า → 声调符号」的顺序，实际 ${aaThenTone} 条`);
+  console.log(`    · 顺序判据：辞典里「声调符号→า」${toneThenAa} 条 /「า→声调符号」${aaThenTone} 条`);
+});

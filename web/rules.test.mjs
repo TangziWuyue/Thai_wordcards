@@ -80,10 +80,10 @@ test('拼装顺序：前引元音在码点里排在辅音之前', () => {
 });
 
 test('拼装顺序：声调符号在元音前段之后、尾辅音之前', () => {
-  // ก้าน = ก + า + ้ + น
+  // ก้าน = ก + ้ + า + น    （า 是 spacing 元音，码点在声调符号之后）
   const p = parts('aa', 'ก', { tone: 'tho', final: 'น' });
   // 形近字符肉眼难辨，期望值直接用码点拼，避免测试本身写错顺序
-  assert.equal(ThaiRules.assemble(p), String.fromCodePoint(0x0e01, 0x0e32, 0x0e49, 0x0e19));
+  assert.equal(ThaiRules.assemble(p), String.fromCodePoint(0x0e01, 0x0e49, 0x0e32, 0x0e19));
   assert.deepEqual(ThaiRules.check(p), []);
 });
 
@@ -319,8 +319,8 @@ test('常见词抽查：辅音簇 / 前引元音 / 尾辅音组合拼出来是�
     [parts('ae', 'ห', { final: 'ม' }), [0x0e41, 0x0e2b, 0x0e21]],
     // เอ๋ = เ + อ + ๋
     [parts('e', 'อ', { tone: 'chattawa' }), [0x0e40, 0x0e2d, 0x0e4b]],
-    // ง่าย = ง + า + ่ + ย
-    [parts('aa', 'ง', { tone: 'ek', final: 'ย' }), [0x0e07, 0x0e32, 0x0e48, 0x0e22]],
+    // ง่าย = ง + ่ + า + ย
+    [parts('aa', 'ง', { tone: 'ek', final: 'ย' }), [0x0e07, 0x0e48, 0x0e32, 0x0e22]],
   ];
   for (const [p, expected] of cases) {
     assert.deepEqual(cps(ThaiRules.assemble(p)), expected, ThaiRules.assemble(p));
