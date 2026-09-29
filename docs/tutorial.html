@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-29T13:01:34.672Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-29T13:09:13.538Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -81,7 +81,7 @@
 }
 
 /* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
-   界面中文用到的 2089 个字，按需切成 61 个子集。
+   界面中文用到的 2090 个字，按需切成 61 个子集。
    授权：SIL OFL 1.1，见 fonts/NOTICE.md。 */
 
 @font-face {
@@ -1742,7 +1742,18 @@ kbd {
   cursor: default;
 }
 
-.res.empty:hover { background: transparent; }
+.res.note {
+  display: block;
+  padding: 7px 10px 8px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  cursor: default;
+}
+
+.res.empty:hover, .res.note:hover { background: transparent; }
 
 /* ── 目录：滚到哪一节哪一节变黑 ───────────────────────── */
 .toc {
@@ -3294,6 +3305,40 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   }
 
   /**
+   * 把一行登记进搜索索引。
+   * 分三档，搜索按档位依次退让：
+   *   core —— 这一行**本身**：字形、字母名（不含名称里的例词）、注音、标签、所属小节
+   *   p    —— 再加上完整名称（辅音的名称里带着例词，如 ฃอ ขวด）
+   *   a    —— 再加上例词和讲解正文
+   * 不这么分的话，搜 ด 会被其他字母名称里的例词（ขวด、มีด、ฤดู）和讲解里的「跟 ด 同音」带出一堆。
+   * 手写行（尾辅音那几行）也要走这里，不然搜索会取不到 p / a。
+   */
+  function register(box, say, info) {
+    box.id = `r${INDEX.length + 1}`;
+    const tags = info.tags || [];
+    const glyph = info.glyph || '';
+    // core 里的名字默认用整条名称；辅音那几行会单独传「不含例词」的那一截
+    const coreName = info.core === undefined ? (info.name || '') : info.core;
+    const core = [glyph, coreName, info.roman || '', tags.join(' '), currentSection]
+      .join(' ').toLowerCase();
+    const p = `${core} ${info.name || ''}`.toLowerCase();
+    INDEX.push({
+      id: box.id,
+      section: currentSection,
+      glyph,
+      name: info.name || '',
+      roman: info.roman || '',
+      tags,
+      extra: info.extra || '',
+      text: say || '',
+      el: box,
+      core,
+      p,
+      a: `${p} ${info.extra || ''} ${say || ''}`.toLowerCase(),
+    });
+  }
+
+  /**
    * 一行：左侧字形，右侧「名称 + 注音 + 讲解」。
    * extra 是一整行宽的附加内容（例词 / 字母清单），放在讲解下面。
    * info 是给搜索用的：字形、名称、注音、标签、例词、这一节的标题。
@@ -3307,20 +3352,7 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
     for (const node of nameNodes) meta.append(node);
     box.append(g, meta, el('p', 't-say', say));
     if (extra) box.append(extra);
-    if (info) {
-      box.id = `r${INDEX.length + 1}`;
-      INDEX.push({
-        id: box.id,
-        section: currentSection,
-        glyph: info.glyph || '',
-        name: info.name || '',
-        roman: info.roman || '',
-        tags: info.tags || [],
-        extra: info.extra || '',
-        text: say || '',
-        el: box,
-      });
-    }
+    if (info) register(box, say, info);
     return box;
   }
 
@@ -3391,6 +3423,8 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
         rows.append(row([thai('span', '', c.ch)], meta, D.SAY_CONS[c.ch], null, {
           glyph: c.ch,
           name: `${c.ch}อ ${c.example}`,
+          // 名称里带着例词（ฃอ ขวด），搜索时只把「ฃอ」这一半当成本身
+          core: `${c.ch} ${c.ch}อ`,
           roman: c.roman || '',
           tags: [R.CLASS_LABEL[c.cls], c.rare ? '借词用字' : '', c.obsolete ? '已废弃' : ''].filter(Boolean),
           extra: `${c.example} ${c.gloss || ''}`,
@@ -3452,17 +3486,12 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
       const letters = el('div', 't-letters');
       letters.append(thai('span', '', chars.join(' ')));
       box.append(letters, exampleItem(D.FINAL_EXAMPLES[sound]));
-      box.id = `r${INDEX.length + 1}`;
-      INDEX.push({
-        id: box.id,
-        section: currentSection,
+      register(box, D.SAY_FINAL[sound] || '', {
         glyph: `-${sound}`,
         name: `尾音 -${sound}`,
         roman: `-${sound}`,
         tags: [R.FINALS[chars[0]].sonorant ? '清尾辅音 · 活音节' : '浊尾辅音 · 死音节'],
         extra: `${chars.join(' ')} ${D.FINAL_EXAMPLES[sound].word} ${D.FINAL_EXAMPLES[sound].gloss}`,
-        text: D.SAY_FINAL[sound] || '',
-        el: box,
       });
       rows.append(box);
     }
@@ -3619,23 +3648,33 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   }
 
   // ── 搜索：输入字母 / 注音 / 中文都能查，选中就跳过去并高亮 ──────────
-  const search = { input: null, list: null, clear: null, matches: [], active: -1 };
+  const search = { input: null, list: null, clear: null, matches: [], nodes: [], active: -1 };
 
-  /** 一行能搜到的全部文字 */
-  function haystack(item) {
-    return [item.glyph, item.name, item.roman, item.tags.join(' '), item.extra, item.text, item.section]
-      .join(' ')
-      .toLowerCase();
-  }
-
+  /**
+   * 严格搜索，三档依次退让：
+   *   1. core —— 字形 / 字母名 / 注音 / 标签 / 所在小节
+   *   2. p    —— 再加上完整名称（辅音的名称里带例词）
+   *   3. a    —— 再加上例词和讲解正文（会带一句说明）
+   * 前两档能命中就绝不显示第三档，所以搜 ด 不会再被 ขวด、มีด、ฤดู 带出一堆别的字母。
+   */
   function findMatches(query) {
     // 空格分开的几个词要同时命中（搜「辅音 送气」只出辅音里提到送气的）
     const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return [];
-    return INDEX.filter((item) => {
-      const hay = haystack(item);
-      return terms.every((t) => hay.includes(t));
-    }).slice(0, 12);
+    if (!terms.length) return { list: [], tier: 'core' };
+    const core = [];
+    const named = [];
+    const loose = [];
+    for (const item of INDEX) {
+      if (terms.every((t) => item.core.includes(t))) core.push(item);
+      else if (terms.every((t) => item.p.includes(t))) named.push(item);
+      else if (terms.every((t) => item.a.includes(t))) loose.push(item);
+    }
+    const q = query.trim().toLowerCase();
+    // 字形跟查询一模一样（搜 ด 出 ด）的排最前面
+    core.sort((x, y) => (x.glyph.toLowerCase() === q ? 0 : 1) - (y.glyph.toLowerCase() === q ? 0 : 1));
+    if (core.length) return { list: core.slice(0, 12), tier: 'core' };
+    if (named.length) return { list: named.slice(0, 12), tier: 'name' };
+    return { list: loose.slice(0, 12), tier: 'loose' };
   }
 
   function closeResults() {
@@ -3644,13 +3683,13 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   }
 
   function paintActive() {
-    const items = [...search.list.children];
-    items.forEach((li, i) => {
+    // 只看可选中的那些 li —— 顶部那条「讲解里提到」的说明不算一格
+    search.nodes.forEach((li, i) => {
       li.classList.toggle('active', i === search.active);
       if (i === search.active) li.scrollIntoView({ block: 'nearest' });
     });
-    search.input.setAttribute('aria-activedescendant',
-      search.active >= 0 && items[search.active] ? items[search.active].id : '');
+    const active = search.nodes[search.active];
+    search.input.setAttribute('aria-activedescendant', active ? active.id : '');
   }
 
   /** 跳到某一行并闪一下，让人看清落在哪 */
@@ -3667,7 +3706,9 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   function renderResults() {
     const query = search.input.value;
     search.clear.hidden = !query;
-    search.matches = findMatches(query);
+    const found = findMatches(query);
+    search.matches = found.list;
+    search.nodes = [];
     search.active = -1;
     while (search.list.firstChild) search.list.firstChild.remove();
     if (!query.trim()) {
@@ -3681,6 +3722,12 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
       search.list.hidden = false;
       return;
     }
+    // 退到「例词和讲解里提到」时说明一句，免得用户以为搜错了
+    if (found.tier === 'loose') {
+      const note = el('li', 'res note', '字形和名称里没有，下面是例词或讲解里提到的');
+      note.setAttribute('aria-disabled', 'true');
+      search.list.append(note);
+    }
     search.matches.forEach((item, i) => {
       const li = el('li', 'res');
       li.id = `res${i}`;
@@ -3693,6 +3740,7 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
       li.append(main, el('span', 'res-snippet', item.text));
       li.addEventListener('mousedown', (e) => { e.preventDefault(); jumpTo(item); });
       search.list.append(li);
+      search.nodes.push(li);
     });
     search.list.hidden = false;
   }

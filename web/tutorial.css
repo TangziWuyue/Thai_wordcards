@@ -129,7 +129,18 @@
   cursor: default;
 }
 
-.res.empty:hover { background: transparent; }
+.res.note {
+  display: block;
+  padding: 7px 10px 8px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  cursor: default;
+}
+
+.res.empty:hover, .res.note:hover { background: transparent; }
 
 /* ── 目录：滚到哪一节哪一节变黑 ───────────────────────── */
 .toc {
