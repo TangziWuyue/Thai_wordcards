@@ -445,6 +445,19 @@ const ThaiRules = (() => {
     return t ? t.mark : '';
   }
 
+  /**
+   * 从 IPA 里读出声调（第 1~5 调）。维基词典用赵元任五度标记法：
+   *   ˧ 中平(33) · ˨˩ 低平(21) · ˥˩ 降(51) · ˦˥ 高(45) · ˩˩˦ 升(114)
+   * 一个 IPA 里可能有好几组（多音节），取最后一组（主音节/末音节）。
+   * 读不出来返回 null。
+   */
+  function toneFromIPA(ipa) {
+    const groups = String(ipa || '').match(/[\u02e5\u02e6\u02e7\u02e8\u02e9]+/g);
+    if (!groups || !groups.length) return null;
+    const IPA_TONE = { '\u02e7': 1, '\u02e8\u02e9': 2, '\u02e5\u02e9': 3, '\u02e6\u02e5': 4, '\u02e9\u02e9\u02e6': 5 };
+    return IPA_TONE[groups[groups.length - 1]] || null;
+  }
+
   /** 该元音在这个音节里是否算短元音（供界面/说明使用） */
   function isShortVowel(vowel, hasFinal) {
     if (!vowel) return false;
@@ -825,6 +838,7 @@ const ThaiRules = (() => {
     classOf,
     SPOKEN_TONES,
     spokenTone,
+    toneFromIPA,
     toneMark,
     toneOptions,
     allowedTones,

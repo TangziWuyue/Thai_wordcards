@@ -303,3 +303,19 @@ test('码点顺序：拿辞典真实词反查，常用词里的带调字必须�
   assert.equal(aaThenTone, 0, `辞典里不该有「า → 声调符号」的顺序，实际 ${aaThenTone} 条`);
   console.log(`    · 顺序判据：辞典里「声调符号→า」${toneThenAa} 条 /「า→声调符号」${aaThenTone} 条`);
 });
+
+test('词级例外：英语借词的实际声调高于拼写规则算出来的，卡片以 IPA 为准', () => {
+  // 这类词不多（单音节真词里 35/2461），但学习者照着规则念会错，所以卡片上要标出来。
+  // 期望值来自维基词典的 IPA，不是我们自己推的
+  const cases = [
+    [String.fromCodePoint(0x0e41, 0x0e2d, 0x0e1b), 4], // แอป app
+    [String.fromCodePoint(0x0e1a, 0x0e2d, 0x0e2a), 4], // บอส boss
+    [String.fromCodePoint(0x0e40, 0x0e04, 0x0e2a), 4], // เคส case
+  ];
+  for (const [word, want] of cases) {
+    const entry = DICT.words.find((e) => e[0] === word);
+    assert.ok(entry, `辞典里应该有 ${word}`);
+    assert.ok(entry[7], `${word} 应该有 IPA`);
+    assert.equal(R.toneFromIPA(entry[7]), want, `${word}（IPA ${entry[7]}）实际读第 ${want} 调`);
+  }
+});

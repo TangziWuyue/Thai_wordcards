@@ -177,9 +177,10 @@ html.js .js-fallback { display: none; }
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--muted);
-  /* 分解行固定按三行占位：音节不同、有没有辅音簇和尾辅音，分解是 1 行还是 3 行
-     都不该让卡片高度变、更不该让下面的按钮上下跳 */
-  min-height: 68px;
+  /* 分解行按最高情况占位：普通音节是 1 行，但「辅音簇 + 尾辅音 + 声调例外 + 读音」
+     全凑齐时能到 5 行（80 字左右），按 5 行预留，避免被裁
+     （原来 68px = 4 行，加了「读音」和借词例外两段之后不够） */
+  min-height: 85px;
   align-content: flex-start;
 }
 

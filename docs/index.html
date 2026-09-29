@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-29T10:30:15.203Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-29T11:29:25.077Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -84,7 +84,7 @@
 }
 
 /* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
-   界面中文用到的 2072 个字，按需切成 60 个子集。
+   界面中文用到的 2073 个字，按需切成 60 个子集。
    授权：SIL OFL 1.1，见 fonts/NOTICE.md。 */
 
 @font-face {
@@ -806,9 +806,10 @@ html.js .js-fallback { display: none; }
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--muted);
-  /* 分解行固定按三行占位：音节不同、有没有辅音簇和尾辅音，分解是 1 行还是 3 行
-     都不该让卡片高度变、更不该让下面的按钮上下跳 */
-  min-height: 68px;
+  /* 分解行按最高情况占位：普通音节是 1 行，但「辅音簇 + 尾辅音 + 声调例外 + 读音」
+     全凑齐时能到 5 行（80 字左右），按 5 行预留，避免被裁
+     （原来 68px = 4 行，加了「读音」和借词例外两段之后不够） */
+  min-height: 85px;
   align-content: flex-start;
 }
 
@@ -2192,6 +2193,19 @@ const ThaiRules = (() => {
     return t ? t.mark : '';
   }
 
+  /**
+   * 从 IPA 里读出声调（第 1~5 调）。维基词典用赵元任五度标记法：
+   *   ˧ 中平(33) · ˨˩ 低平(21) · ˥˩ 降(51) · ˦˥ 高(45) · ˩˩˦ 升(114)
+   * 一个 IPA 里可能有好几组（多音节），取最后一组（主音节/末音节）。
+   * 读不出来返回 null。
+   */
+  function toneFromIPA(ipa) {
+    const groups = String(ipa || '').match(/[\u02e5\u02e6\u02e7\u02e8\u02e9]+/g);
+    if (!groups || !groups.length) return null;
+    const IPA_TONE = { '\u02e7': 1, '\u02e8\u02e9': 2, '\u02e5\u02e9': 3, '\u02e6\u02e5': 4, '\u02e9\u02e9\u02e6': 5 };
+    return IPA_TONE[groups[groups.length - 1]] || null;
+  }
+
   /** 该元音在这个音节里是否算短元音（供界面/说明使用） */
   function isShortVowel(vowel, hasFinal) {
     if (!vowel) return false;
@@ -2572,6 +2586,7 @@ const ThaiRules = (() => {
     classOf,
     SPOKEN_TONES,
     spokenTone,
+    toneFromIPA,
     toneMark,
     toneOptions,
     allowedTones,
@@ -3463,12 +3478,21 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
     // 声调这一行要回答「实际读第几调」——写什么符号只是手段。
     // 低辅音 + 长元音 + ้（比如 รู้）写的是 โท，读出来却是 ตรี，只显示符号名会误导
     const markLabel = state.parts.tone === 'none' ? '不标' : `标 ${R.toneMark(state.parts.tone)}`;
-    breakdown.push(renderPart('声调', info.spokenTone
-      ? `${markLabel} → 读第${info.spokenTone}调 ${info.spokenToneName}`
-      : info.toneName));
     // 这个拼写如果正好是个真词、而它的实际读音跟拼写不一样（ไทย 读 ไท、สัตว์ 读 สัด），
     // 就把实际读音补一行。数据来自维基词典的 Phonemic 字段
     const dictEntry = D.lookup(R.assemble(state.parts));
+    // 词表里带 IPA 的真词：以 IPA 的声调为准。英语借词（บอส=老板、แอป=app、เคส=case…）
+    // 一律读第 4 调，拼写规则算出来是第 2/3 调，这类例外必须标出来
+    const ipaTone = dictEntry && dictEntry[7] ? R.toneFromIPA(dictEntry[7]) : null;
+    let toneText = info.toneName;
+    if (info.spokenTone) {
+      toneText = `${markLabel} → 读第${info.spokenTone}调 ${info.spokenToneName}`;
+      if (ipaTone && ipaTone !== info.spokenTone) {
+        toneText = `${markLabel} → 实际第${ipaTone}调 ${R.SPOKEN_TONES[ipaTone].thai}`
+          + `（按规则第${info.spokenTone}调）`;
+      }
+    }
+    breakdown.push(renderPart('声调', toneText));
     if (dictEntry && dictEntry[6]) breakdown.push(renderPart('读音', dictEntry[6]));
     setChildren(el.parts, ...breakdown);
 
