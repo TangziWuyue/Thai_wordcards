@@ -128,3 +128,23 @@ test('教学页：页面上的说明不会指向不存在的控件或数据', ()
     assert.ok(c.example, `${c.ch} 没有传统例词，教学页的名称会空一截`);
   }
 });
+
+test('教学页：发音讲解按《基础泰语（1）》的口径，别改回英语类比', () => {
+  // 这几条是照课本第 10、36、45、55 页改过来的，改回去就是又跟课本对不上了
+  assert.match(D.SAY_CONS['จ'], /汉语拼音 z/, 'จ 课本对标汉语拼音 z，不是 j');
+  assert.match(D.SAY_CONS['ฉ'], /汉语拼音 c/, 'ฉ 课本对标汉语拼音 c，不是 q');
+  assert.match(D.SAY_VOWEL.ue, /汉语拼音 e/, 'อึ 课本对标汉语拼音 e');
+  assert.match(D.SAY_VOWEL.e_short, /没有对应/, 'เอ 系列课本说汉语里没有对应音');
+  assert.match(D.SAY_VOWEL.ae_short, /没有对应/, 'แอ 系列同上');
+  assert.match(D.SAY_VOWEL.uea, /没有对应/, 'เอือ 课本说汉语里没有对应音');
+  // 高辅音的名称是第五声调，低辅音里跟高辅音同音的那些要说明「名称读第一声调」
+  for (const ch of ['ข', 'ฉ', 'ถ', 'ผ', 'ฝ', 'ส', 'ห']) {
+    assert.match(D.SAY_CONS[ch], /声调/, `${ch} 是高辅音，讲解里要提声调`);
+  }
+  for (const ch of ['ค', 'ช', 'ท', 'พ', 'ฟ', 'ฮ', 'ฬ']) {
+    assert.match(D.SAY_CONS[ch], /第一声调/, `${ch} 要说明名称读第一声调`);
+  }
+  // 尾辅音改用课本术语：清尾 / 浊尾
+  assert.match(D.SAY_FINAL.k, /喉咙/);
+  assert.match(D.SAY_FINAL.ng, /鼻/);
+});

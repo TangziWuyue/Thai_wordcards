@@ -15,6 +15,10 @@
   const D = window.TutorialData;
   const $ = (id) => document.getElementById(id);
 
+  // 搜索索引：每一行渲染时把自己登记进来，搜索框才有东西可查
+  const INDEX = [];
+  let currentSection = '';
+
   // ── DOM 小工具 ────────────────────────────────────────────────────
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -32,8 +36,10 @@
   /**
    * 一行：左侧字形，右侧「名称 + 注音 + 讲解」。
    * extra 是一整行宽的附加内容（例词 / 字母清单），放在讲解下面。
+   * info 是给搜索用的：字形、名称、注音、标签、例词、这一节的标题。
+   * 每一行都会拿到一个稳定的 id，搜索跳过来就靠它。
    */
-  function row(glyphNodes, nameNodes, say, extra) {
+  function row(glyphNodes, nameNodes, say, extra, info) {
     const box = el('div', 'trow');
     const g = el('div', 't-glyph');
     for (const node of glyphNodes) g.append(node);
@@ -41,6 +47,20 @@
     for (const node of nameNodes) meta.append(node);
     box.append(g, meta, el('p', 't-say', say));
     if (extra) box.append(extra);
+    if (info) {
+      box.id = `r${INDEX.length + 1}`;
+      INDEX.push({
+        id: box.id,
+        section: currentSection,
+        glyph: info.glyph || '',
+        name: info.name || '',
+        roman: info.roman || '',
+        tags: info.tags || [],
+        extra: info.extra || '',
+        text: say || '',
+        el: box,
+      });
+    }
     return box;
   }
 
@@ -96,6 +116,7 @@
   // ── 一、辅音 ──────────────────────────────────────────────────────
   function renderConsonants() {
     const host = $('consTable');
+    currentSection = '辅音';
     for (const cls of ['mid', 'high', 'low']) {
       const list = R.CONSONANTS.filter((c) => c.cls === cls);
       host.append(groupBox(cls === 'mid' ? 'อักษรกลาง' : cls === 'high' ? 'อักษรสูง' : 'อักษรต่ำ',
@@ -107,7 +128,13 @@
         meta.push(roman(c.roman || '—'));
         if (c.rare) meta.push(tag('借词用字'));
         if (c.obsolete) meta.push(tag('已废弃'));
-        rows.append(row([thai('span', '', c.ch)], meta, D.SAY_CONS[c.ch]));
+        rows.append(row([thai('span', '', c.ch)], meta, D.SAY_CONS[c.ch], null, {
+          glyph: c.ch,
+          name: `${c.ch}อ ${c.example}`,
+          roman: c.roman || '',
+          tags: [R.CLASS_LABEL[c.cls], c.rare ? '借词用字' : '', c.obsolete ? '已废弃' : ''].filter(Boolean),
+          extra: `${c.example} ${c.gloss || ''}`,
+        }));
       }
       host.append(rows);
     }
@@ -116,12 +143,14 @@
   // ── 二、元音 ──────────────────────────────────────────────────────
   function renderVowels() {
     const host = $('vowelTable');
+    currentSection = '元音';
     for (const group of R.VOWEL_GROUPS) {
       const list = R.VOWELS.filter((v) => v.group === group.id);
       if (!list.length) continue;
       host.append(groupBox(group.thai, group.label, list.length));
       const rows = el('div', 'tut-rows vowels');
       for (const v of list) {
+        const form = `${v.lead || ''}${v.follow || ''}${v.tail || ''}`;
         // 顺序按「念得出来」排：泰文名称 → 罗马注音 → 长短/限制 → 英文名称
         const meta = [thai('span', 't-name', v.name), roman(v.roman)];
         // 超额元音里的 ฤ ฦ 系列按课本不算长短音，只标「自带声母」
@@ -131,7 +160,14 @@
         if (v.noTone) meta.push(tag('不写声调'));
         meta.push(el('span', 't-gloss', v.en));
         rows.append(row(vowelGlyph(v), meta, D.SAY_VOWEL[v.id] || '',
-          v.example ? exampleLine(v.example) : null));
+          v.example ? exampleLine(v.example) : null, {
+            glyph: form || '无',
+            name: v.name,
+            roman: v.roman,
+            tags: [group.label, v.short ? '短音' : '长音', v.noTone ? '不写声调' : '',
+              v.requiresFinal ? '必须有尾音' : ''].filter(Boolean),
+            extra: v.example || '',
+          }));
       }
       host.append(rows);
     }
@@ -140,6 +176,7 @@
   // ── 三、尾辅音 ────────────────────────────────────────────────────
   function renderFinals() {
     const host = $('finalTable');
+    currentSection = '尾辅音';
     const rows = el('div', 'tut-rows finals');
     // 每种读音一行：左边是它读什么，右边列「哪些字母落在这一组」
     for (const sound of ['k', 't', 'p', 'n', 'ng', 'm', 'y', 'w']) {
@@ -155,6 +192,18 @@
       const letters = el('div', 't-letters');
       letters.append(thai('span', '', chars.join(' ')));
       box.append(letters, exampleItem(D.FINAL_EXAMPLES[sound]));
+      box.id = `r${INDEX.length + 1}`;
+      INDEX.push({
+        id: box.id,
+        section: currentSection,
+        glyph: `-${sound}`,
+        name: `尾音 -${sound}`,
+        roman: `-${sound}`,
+        tags: [R.FINALS[chars[0]].sonorant ? '清尾辅音 · 活音节' : '浊尾辅音 · 死音节'],
+        extra: `${chars.join(' ')} ${D.FINAL_EXAMPLES[sound].word} ${D.FINAL_EXAMPLES[sound].gloss}`,
+        text: D.SAY_FINAL[sound] || '',
+        el: box,
+      });
       rows.append(box);
     }
     host.append(rows);
@@ -170,6 +219,7 @@
   // ── 四、声调 ──────────────────────────────────────────────────────
   function renderTones() {
     const host = $('toneTable');
+    currentSection = '声调';
     // 类名别用 .tones —— 那是练习页「声调按钮」的网格样式，套上来会把这五张行排成五列
     const rows = el('div', 'tut-rows tonelist');
     for (const n of [1, 2, 3, 4, 5]) {
@@ -178,7 +228,13 @@
       // 声调符号单独放会飘成一条横杠，垫一个 อ 它才落在正常位置（跟练习页一个道理）
       const glyph = n === 1 ? el('span', 't-none', '—') : thai('span', '', `อ${D.TONE_SIGN[n]}`);
       rows.append(row([glyph], meta, D.TONE_HOW[n],
-        exampleItem(D.TONE_EXAMPLE[n])));
+        exampleItem(D.TONE_EXAMPLE[n]), {
+          glyph: n === 1 ? '—' : `อ${D.TONE_SIGN[n]}`,
+          name: `第 ${n} 调 · ${t.zh}`,
+          roman: t.thai,
+          tags: [`第 ${n} 调`],
+          extra: `${D.TONE_EXAMPLE[n].word} ${D.TONE_EXAMPLE[n].roman} ${D.TONE_EXAMPLE[n].gloss}`,
+        }));
     }
     host.append(rows);
 
@@ -302,6 +358,142 @@
     for (const sec of secs) io.observe(sec);
   }
 
+  // ── 搜索：输入字母 / 注音 / 中文都能查，选中就跳过去并高亮 ──────────
+  const search = { input: null, list: null, clear: null, matches: [], active: -1 };
+
+  /** 一行能搜到的全部文字 */
+  function haystack(item) {
+    return [item.glyph, item.name, item.roman, item.tags.join(' '), item.extra, item.text, item.section]
+      .join(' ')
+      .toLowerCase();
+  }
+
+  function findMatches(query) {
+    // 空格分开的几个词要同时命中（搜「辅音 送气」只出辅音里提到送气的）
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return [];
+    return INDEX.filter((item) => {
+      const hay = haystack(item);
+      return terms.every((t) => hay.includes(t));
+    }).slice(0, 12);
+  }
+
+  function closeResults() {
+    search.list.hidden = true;
+    search.active = -1;
+  }
+
+  function paintActive() {
+    const items = [...search.list.children];
+    items.forEach((li, i) => {
+      li.classList.toggle('active', i === search.active);
+      if (i === search.active) li.scrollIntoView({ block: 'nearest' });
+    });
+    search.input.setAttribute('aria-activedescendant',
+      search.active >= 0 && items[search.active] ? items[search.active].id : '');
+  }
+
+  /** 跳到某一行并闪一下，让人看清落在哪 */
+  function jumpTo(item) {
+    closeResults();
+    for (const other of INDEX) other.el.classList.remove('hit');
+    item.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // 先读一次布局，同一个目标连点两次也能重新亮
+    void item.el.offsetWidth;
+    item.el.classList.add('hit');
+    setTimeout(() => item.el.classList.remove('hit'), 2400);
+  }
+
+  function renderResults() {
+    const query = search.input.value;
+    search.clear.hidden = !query;
+    search.matches = findMatches(query);
+    search.active = -1;
+    while (search.list.firstChild) search.list.firstChild.remove();
+    if (!query.trim()) {
+      closeResults();
+      return;
+    }
+    if (!search.matches.length) {
+      const empty = el('li', 'res empty', '没找到，换个写法试试（可以搜泰文字母、罗马注音、中文意思）');
+      empty.setAttribute('aria-disabled', 'true');
+      search.list.append(empty);
+      search.list.hidden = false;
+      return;
+    }
+    search.matches.forEach((item, i) => {
+      const li = el('li', 'res');
+      li.id = `res${i}`;
+      li.setAttribute('role', 'option');
+      li.append(thai('span', 'res-glyph', item.glyph));
+      const main = el('span', 'res-main');
+      main.append(el('b', '', item.name));
+      if (item.roman) main.append(el('span', 'res-roman', item.roman));
+      if (item.tags.length) main.append(el('span', 'res-sec', item.tags[0]));
+      li.append(main, el('span', 'res-snippet', item.text));
+      li.addEventListener('mousedown', (e) => { e.preventDefault(); jumpTo(item); });
+      search.list.append(li);
+    });
+    search.list.hidden = false;
+  }
+
+  function buildSearch() {
+    search.input = $('tutSearch');
+    search.list = $('tutResults');
+    search.clear = $('tutSearchClear');
+    if (!search.input) return;
+
+    search.input.addEventListener('input', renderResults);
+    search.input.addEventListener('focus', () => { if (search.input.value.trim()) renderResults(); });
+    search.input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (search.list.hidden) renderResults();
+        if (!search.matches.length) return;
+        e.preventDefault();
+        const step = e.key === 'ArrowDown' ? 1 : -1;
+        search.active = (search.active + step + search.matches.length) % search.matches.length;
+        paintActive();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const item = search.matches[search.active >= 0 ? search.active : 0];
+        if (item) jumpTo(item);
+        return;
+      }
+      if (e.key === 'Escape') {
+        search.input.value = '';
+        search.clear.hidden = true;
+        closeResults();
+        search.input.blur();
+      }
+    });
+    search.clear.addEventListener('click', () => {
+      search.input.value = '';
+      search.clear.hidden = true;
+      closeResults();
+      search.input.focus();
+    });
+    // 点到别处就收起下拉
+    document.addEventListener('click', (e) => {
+      if (!search.input.contains(e.target) && !search.list.contains(e.target)) closeResults();
+    });
+    // 按 / 直接跳到搜索框（跟很多文档站一个习惯）
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      search.input.focus();
+    });
+    // 允许用 ?q=xxx 打开就带着搜索结果（方便把某个音的链接发给别人）
+    const seed = new URLSearchParams(location.search).get('q');
+    if (seed) {
+      search.input.value = seed;
+      renderResults();
+    }
+  }
+
   function main() {
     renderAnatomy();
     renderConsonants();
@@ -309,6 +501,7 @@
     renderFinals();
     renderTones();
     renderSettings();
+    buildSearch();
     buildToc();
   }
 

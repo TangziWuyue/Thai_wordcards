@@ -1,20 +1,157 @@
 /* 教学页专用样式。基础变量、字体、暗色都由 style.css 提供，这里只管排版。 */
 
-.tut .app,
-.tut { max-width: 860px; }
+/* 表格类内容比练习页宽一些好读，但也别拉得太开（style.css 的媒体查询会给到 1060px） */
+.app.tut { max-width: 940px; }
 
-/* ── 目录：贴在顶上，滚到哪一节哪一节变黑 ───────────────── */
-.toc {
+/* ── 顶部固定区：搜索框 + 目录 ─────────────────────────── */
+.tut-top {
   position: sticky;
   top: 0;
   z-index: 20;
+  margin: 0 -8px 28px;
+  padding: 8px 8px 0;
+  background: var(--bg);
+}
+
+.tut-search { position: relative; margin-bottom: 10px; }
+
+.tut-search input {
+  width: 100%;
+  padding: 9px 34px 9px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.tut-search input:focus {
+  border-color: var(--fg);
+  outline: none;
+}
+
+.tut-search input::placeholder { color: var(--dot); }
+
+.tut-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tut-search-clear:hover { background: var(--soft); color: var(--fg); }
+
+.tut-results {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 62vh;
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.tut-results[hidden] { display: none; }
+
+.res {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 1fr);
+  gap: 1px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.res.active, .res:hover { background: var(--soft); }
+
+.res-glyph {
+  grid-row: span 2;
+  align-self: center;
+  font-family: var(--thai);
+  font-size: 19px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.res-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.res-main b { font-weight: 600; }
+
+.res-roman { color: var(--muted); font-size: 11.5px; }
+
+.res-sec {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.res-snippet {
+  grid-column: 2;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.res.empty {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: default;
+}
+
+.res.empty:hover { background: transparent; }
+
+/* ── 目录：滚到哪一节哪一节变黑 ───────────────────────── */
+.toc {
   display: flex;
   gap: 2px;
-  margin: 0 -8px 28px;
-  padding: 8px;
-  background: var(--bg);
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
+}
+
+/* 搜索命中的那一行闪一下，让人看清落在哪 */
+.trow.hit { animation: tutHit 2.4s ease; }
+
+@keyframes tutHit {
+  0%, 72% {
+    background: var(--soft);
+    box-shadow: inset 3px 0 0 var(--fg);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
 }
 
 .toc-link {
@@ -36,9 +173,9 @@
 
 /* ── 章节 ─────────────────────────────────────────────── */
 .tut-sec {
-  margin: 0 0 52px;
+  margin: 0 0 60px;
   /* 点目录跳过来时别被吸顶的目录挡住标题 */
-  scroll-margin-top: 60px;
+  scroll-margin-top: 130px;
 }
 
 .tut-sec h2 {
@@ -49,10 +186,10 @@
 }
 
 .tut-sec > p {
-  margin: 0 0 18px;
+  margin: 0 0 22px;
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
 .tut-sec > p b { color: var(--fg); font-weight: 600; }
@@ -72,8 +209,8 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin: 26px 0 6px;
-  padding-bottom: 6px;
+  margin: 32px 0 4px;
+  padding-bottom: 9px;
   border-bottom: 1px solid var(--line);
   color: var(--muted);
   font-size: 11px;
@@ -98,7 +235,7 @@
   display: grid;
   grid-template-columns: var(--t-glyph-w) minmax(0, 1fr);
   column-gap: 12px;
-  padding: 12px 0;
+  padding: 15px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -159,17 +296,17 @@
 
 .t-say {
   grid-column: 2;
-  margin: 4px 0 0;
-  font-size: 12.5px;
-  line-height: 1.7;
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.8;
 }
 
 .t-ex, .t-letters {
   grid-column: 2;
-  margin-top: 4px;
+  margin-top: 6px;
   color: var(--muted);
   font-size: 11.5px;
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
 .t-ex-word {
@@ -221,17 +358,17 @@
 
 /* ── 小贴士 ───────────────────────────────────────────── */
 .tip-box {
-  margin: 22px 0 0;
-  padding: 14px 16px;
+  margin: 28px 0 0;
+  padding: 16px 18px;
   background: var(--soft);
   border-radius: var(--radius);
   font-size: 12.5px;
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
 .tip-box p { margin: 0; }
 
-.tip-box p + p { margin-top: 8px; }
+.tip-box p + p { margin-top: 10px; }
 
 .tip-box .tip-title {
   margin-top: 14px;
@@ -251,15 +388,15 @@
 
 .trule {
   display: grid;
-  grid-template-columns: 4.6em repeat(6, minmax(6.2em, 1fr));
-  min-width: 42em;
+  grid-template-columns: 5em repeat(6, minmax(6.6em, 1fr));
+  min-width: 45em;
 }
 
 .trule > div {
-  padding: 9px 10px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 .trule > div + div { border-left: 1px solid var(--line); }
@@ -288,8 +425,9 @@
 @media (min-width: 780px) {
   .trow {
     grid-template-columns: var(--t-glyph-w) var(--t-meta-w) minmax(0, 1fr);
-    column-gap: 18px;
-    padding: 11px 0;
+    column-gap: 20px;
+    row-gap: 2px;
+    padding: 13px 0;
     align-items: baseline;
   }
 

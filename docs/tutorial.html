@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-29T12:39:15.995Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-29T13:01:34.672Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1613,21 +1613,158 @@ kbd {
 
 /* 教学页专用样式。基础变量、字体、暗色都由 style.css 提供，这里只管排版。 */
 
-.tut .app,
-.tut { max-width: 860px; }
+/* 表格类内容比练习页宽一些好读，但也别拉得太开（style.css 的媒体查询会给到 1060px） */
+.app.tut { max-width: 940px; }
 
-/* ── 目录：贴在顶上，滚到哪一节哪一节变黑 ───────────────── */
-.toc {
+/* ── 顶部固定区：搜索框 + 目录 ─────────────────────────── */
+.tut-top {
   position: sticky;
   top: 0;
   z-index: 20;
+  margin: 0 -8px 28px;
+  padding: 8px 8px 0;
+  background: var(--bg);
+}
+
+.tut-search { position: relative; margin-bottom: 10px; }
+
+.tut-search input {
+  width: 100%;
+  padding: 9px 34px 9px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.tut-search input:focus {
+  border-color: var(--fg);
+  outline: none;
+}
+
+.tut-search input::placeholder { color: var(--dot); }
+
+.tut-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tut-search-clear:hover { background: var(--soft); color: var(--fg); }
+
+.tut-results {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 62vh;
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.tut-results[hidden] { display: none; }
+
+.res {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 1fr);
+  gap: 1px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.res.active, .res:hover { background: var(--soft); }
+
+.res-glyph {
+  grid-row: span 2;
+  align-self: center;
+  font-family: var(--thai);
+  font-size: 19px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.res-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.res-main b { font-weight: 600; }
+
+.res-roman { color: var(--muted); font-size: 11.5px; }
+
+.res-sec {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.res-snippet {
+  grid-column: 2;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.res.empty {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: default;
+}
+
+.res.empty:hover { background: transparent; }
+
+/* ── 目录：滚到哪一节哪一节变黑 ───────────────────────── */
+.toc {
   display: flex;
   gap: 2px;
-  margin: 0 -8px 28px;
-  padding: 8px;
-  background: var(--bg);
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
+}
+
+/* 搜索命中的那一行闪一下，让人看清落在哪 */
+.trow.hit { animation: tutHit 2.4s ease; }
+
+@keyframes tutHit {
+  0%, 72% {
+    background: var(--soft);
+    box-shadow: inset 3px 0 0 var(--fg);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
 }
 
 .toc-link {
@@ -1649,9 +1786,9 @@ kbd {
 
 /* ── 章节 ─────────────────────────────────────────────── */
 .tut-sec {
-  margin: 0 0 52px;
+  margin: 0 0 60px;
   /* 点目录跳过来时别被吸顶的目录挡住标题 */
-  scroll-margin-top: 60px;
+  scroll-margin-top: 130px;
 }
 
 .tut-sec h2 {
@@ -1662,10 +1799,10 @@ kbd {
 }
 
 .tut-sec > p {
-  margin: 0 0 18px;
+  margin: 0 0 22px;
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
 .tut-sec > p b { color: var(--fg); font-weight: 600; }
@@ -1685,8 +1822,8 @@ kbd {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin: 26px 0 6px;
-  padding-bottom: 6px;
+  margin: 32px 0 4px;
+  padding-bottom: 9px;
   border-bottom: 1px solid var(--line);
   color: var(--muted);
   font-size: 11px;
@@ -1711,7 +1848,7 @@ kbd {
   display: grid;
   grid-template-columns: var(--t-glyph-w) minmax(0, 1fr);
   column-gap: 12px;
-  padding: 12px 0;
+  padding: 15px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1772,17 +1909,17 @@ kbd {
 
 .t-say {
   grid-column: 2;
-  margin: 4px 0 0;
-  font-size: 12.5px;
-  line-height: 1.7;
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.8;
 }
 
 .t-ex, .t-letters {
   grid-column: 2;
-  margin-top: 4px;
+  margin-top: 6px;
   color: var(--muted);
   font-size: 11.5px;
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
 .t-ex-word {
@@ -1834,17 +1971,17 @@ kbd {
 
 /* ── 小贴士 ───────────────────────────────────────────── */
 .tip-box {
-  margin: 22px 0 0;
-  padding: 14px 16px;
+  margin: 28px 0 0;
+  padding: 16px 18px;
   background: var(--soft);
   border-radius: var(--radius);
   font-size: 12.5px;
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
 .tip-box p { margin: 0; }
 
-.tip-box p + p { margin-top: 8px; }
+.tip-box p + p { margin-top: 10px; }
 
 .tip-box .tip-title {
   margin-top: 14px;
@@ -1864,15 +2001,15 @@ kbd {
 
 .trule {
   display: grid;
-  grid-template-columns: 4.6em repeat(6, minmax(6.2em, 1fr));
-  min-width: 42em;
+  grid-template-columns: 5em repeat(6, minmax(6.6em, 1fr));
+  min-width: 45em;
 }
 
 .trule > div {
-  padding: 9px 10px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 .trule > div + div { border-left: 1px solid var(--line); }
@@ -1901,8 +2038,9 @@ kbd {
 @media (min-width: 780px) {
   .trow {
     grid-template-columns: var(--t-glyph-w) var(--t-meta-w) minmax(0, 1fr);
-    column-gap: 18px;
-    padding: 11px 0;
+    column-gap: 20px;
+    row-gap: 2px;
+    padding: 13px 0;
     align-items: baseline;
   }
 
@@ -1921,7 +2059,7 @@ kbd {
   </style>
 </head>
 <body>
-  <main class="app">
+  <main class="app tut">
     <div class="notice js-fallback">
       <p class="notice-title">这个页面没能运行起来</p>
       <p>表格里的字要由脚本填进去，你现在用的是「预览」，它不执行脚本。</p>
@@ -1936,7 +2074,16 @@ kbd {
       <p class="sub">44 个辅音 · 32 个元音 · 尾辅音 · 声调，一次讲清</p>
     </header>
 
-    <nav class="toc" id="toc" aria-label="目录"></nav>
+    <div class="tut-top">
+      <div class="tut-search">
+        <input type="search" id="tutSearch" placeholder="查字母、注音、例词…（按 / 也可以）"
+               autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false"
+               aria-controls="tutResults" aria-label="在教学中搜索">
+        <button type="button" id="tutSearchClear" class="tut-search-clear" aria-label="清空" hidden>×</button>
+        <ul class="tut-results" id="tutResults" role="listbox" hidden></ul>
+      </div>
+      <nav class="toc" id="toc" aria-label="目录"></nav>
+    </div>
 
     <section class="tut-sec" id="s-intro" data-title="概览">
       <h2>一个泰语音节由什么组成</h2>
@@ -1945,78 +2092,66 @@ kbd {
       <div class="tut-rows plain" id="anatomy"></div>
       <div class="tip-box">
         <p class="tip-title">刚开始只要记住</p>
-        <p>看到一个字，先找出声母，再找元音在哪，最后看有没有尾音和声调符号。
-          这四块找齐了，读音就出来了——练习页就是把这个过程反过来，让你自己拼一个出来念。</p>
+        <p>看到一个字，先找声母，再找元音，最后看尾音和声调符号。四块找齐，读音就出来了。</p>
       </div>
     </section>
 
     <section class="tut-sec" id="s-cons" data-title="辅音 44">
       <h2>一、辅音 44 个</h2>
       <p>辅音可以当声母（写在音节开头），其中大部分还能当尾音。
-        按声调规则分成中类、高类、低类三组——<b>这个分组不是按读音高低分的，是按写声调符号后读出来的调分的</b>，
-        所以同一个 k 的音会有两个字母：ข 是高类、ค 是低类，读法一样，配上声调符号后读法就不同了。</p>
+        按声调规则分成中类、高类、低类——<b>这个分组不看读音高低，看的是写声调符号后读出来的调</b>。
+        所以同一个 k 音有两个字母：ข 高类、ค 低类，读法一样，配声调符号后就分开了。</p>
       <div id="consTable"></div>
       <div class="tip-box">
-        <p class="tip-title">念字母名称时的声调</p>
-        <p>课本里有一条容易忽略的规则：<b>中辅音、低辅音的字母名称读第一声调，高辅音的字母名称读第五声调</b>。
-          所以 ก 念 ko（平），ข 念 khǒ（升）——两个字母的辅音部分一样，调不一样。</p>
-        <p class="tip-title">送气和不送气的区别</p>
-        <p>ก / ข、ต / ท、ป / พ、จ / ช 两两之间，差别只在「有没有气喷出来」。
-          把手掌放在嘴前念 ข ท พ ช，会明显感觉到气流；念 ก ต ป จ 就没有。
-          普通话的 g/d/b/j 是不送气的，k/t/p/q 是送气的，可以对着找感觉。</p>
-        <p class="tip-title">标着「借词用字」的那些</p>
-        <p>ฎ ฏ ฐ ฑ ฒ ณ ศ ษ ฬ ฆ ฌ ญ ภ ธ 这些字母只出现在从梵语、巴利语借来的词里，
-          读音都跟某个常用字母一样（ฎ=ด、ฏ=ต、ศ=ส……）。初学阶段认得就行，不用急着背。</p>
+        <p class="tip-title">字母名称读第几声</p>
+        <p>中辅音、低辅音的名称读第一声，高辅音读第五声。所以 ก 念 ko（平），ข 念 khǒ（升）。</p>
+        <p class="tip-title">送气 / 不送气</p>
+        <p>ก/ข、ต/ท、ป/พ、จ/ช 只差在有没有气喷出来。把手放在嘴前念 ข ท พ ช，能明显感觉到气流。</p>
+        <p class="tip-title">借词用字</p>
+        <p>ฎ ฏ ฐ ฑ ฒ ณ ศ ษ ฬ ฆ ฌ ญ ภ ธ 只出现在梵语、巴利语借词里，读音都跟某个常用字母相同（ฎ=ด、ฏ=ต、ศ=ส…），认得就行。</p>
       </div>
     </section>
 
     <section class="tut-sec" id="s-vowels" data-title="元音 32">
       <h2>二、元音 32 个</h2>
       <p>课本把元音分成单元音 18、复合元音 6、超额元音 8，合起来 32 个「รูป」（写法）。
-        书里单独标一个元音时写成 <b>-า</b> 这样，横杠代表辅音的位置；这一页为了让你看清它贴到字母上是什么样，
-        统一用一个 <b>อ</b> 当底座，所以 เ-าะ 就写成 เอาะ。</p>
+        书里单独标元音时写成 <b>-า</b>（横杠代表辅音），这里统一用 <b>อ</b> 当底座，好让你看清贴上字母的样子。</p>
       <div id="vowelTable"></div>
       <div class="tip-box">
         <p class="tip-title">长短音要分清楚</p>
-        <p>泰语靠长短音区别词义，长得一样、只是拖不拖长的两个音就是两个词。
-          短音要干脆收住，长音要拖够——这比声调更容易被忽略，练的时候先把长短念稳。</p>
-        <p class="tip-title">标着「必须有尾音」的那些</p>
-        <p>ไม้หันอากาศ（อั）、สระ เออ（เ-ิ）、ไม้ไต่คู้（เ-็）这三个写法只在闭音节里出现，后面一定要跟尾辅音（กัน、เกิด、เก็ง）。
-          另外 เ-็ 这类元音不写声调符号，选了它就只能读没符号的调。</p>
+        <p>泰语靠长短音区别词义：只差拖不拖长就是两个词。短音干脆收住，长音拖够——这比声调更容易被忽略。</p>
+        <p class="tip-title">必须有尾音的那几个</p>
+        <p>อั、เ-ิ、เ-็ 只在闭音节里出现，后面一定跟尾辅音（กัน、เกิด、เก็ง）。เ-็ 还不写声调符号。</p>
       </div>
     </section>
 
     <section class="tut-sec" id="s-finals" data-title="尾辅音">
       <h2>三、尾辅音（ตัวสะกด）</h2>
       <p>音节收尾的那个辅音叫尾辅音。泰语有 37 个字母能当尾音，但<b>读出来只有 8 种声音</b>——
-        字母长得不一样，落在尾巴上就合并成同一个音，这叫「中和」。
-        课本把 -ng -n -m -y -w 这五种叫<b>清尾辅音</b>（声音能一直发下去），把 -k -t -p 这三种叫<b>浊尾辅音</b>（憋一下就断）。</p>
+        字母长得不一样，落在尾巴上会合并成同一个音，这叫「中和」。
+        -ng -n -m -y -w 叫<b>清尾辅音</b>（能一直发下去），-k -t -p 叫<b>浊尾辅音</b>（憋一下就断）。</p>
       <div id="finalTable"></div>
       <p class="tut-note" id="finalCannot"></p>
       <div class="tip-box">
-        <p class="tip-title">最容易踩的坑：t 组</p>
-        <p>จ ฉ ช ซ ฎ ฏ ฐ ฑ ฒ ด ต ถ ท ธ ศ ษ ส 这 18 个字母当尾音时一律读 t。
-          所以 รถ（车）读 rót，尾巴上那个 ถ 不读 th。</p>
+        <p class="tip-title">t 组最容易踩坑</p>
+        <p>จ ฉ ช ซ ฎ ฏ ฐ ฑ ฒ ด ต ถ ท ธ ศ ษ ส 这 18 个字母当尾音时一律读 t：รถ（车）读 rót，尾巴上的 ถ 不读 th。</p>
         <p class="tip-title">活音节和死音节</p>
-        <p>尾巴是响音（-ng -n -m -y -w）的音节叫<b>活音节</b>，可以一直发下去；
-          尾巴是塞音（-k -t -p）的憋一下就断，叫<b>死音节</b>。
-          这个区别直接决定不写声调符号时读第几调，下一节就要用到。</p>
+        <p>尾巴是清尾辅音的叫<b>活音节</b>，是浊尾辅音的叫<b>死音节</b>。不写声调符号时读第几调，全看这个。</p>
       </div>
     </section>
 
     <section class="tut-sec" id="s-tones" data-title="声调">
       <h2>四、声调</h2>
       <p>泰语有 5 个声调，写下来只有 4 个符号（还有一个「不写符号」）。
-        调号只是写在纸上的记号，<b>读第几调是算出来的</b>：看辅音属于哪一类、音节是死是活、有没有写符号。</p>
+        调号只是写在纸上的记号，<b>读第几调是算出来的</b>：辅音类别 + 音节死活 + 有没有写符号。</p>
       <div id="toneTable"></div>
-      <p class="tut-note">下面这张表就是算法本身，横着看一行，就能查出任意一个音节读第几调。</p>
+      <p class="tut-note">下面这张表就是算法本身：横着看一行，就能查出任意音节读第几调。</p>
       <div class="tone-rules" id="toneRules"></div>
       <div class="tip-box">
         <p class="tip-title">写得一样，读得可能不一样</p>
-        <p>低类辅音 + 长元音 + ไม้โท，写的是 โท，实际读第 4 调，比如 รู้、ม้า、ค้า。
-          这就是为什么不能只看符号——练习页每次都会直接告诉你「实际读第几调」。</p>
+        <p>低类辅音 + 长元音 + ไม้โท：写的是 โท，实际读第 4 调，比如 รู้、ม้า、ค้า。所以不能只看符号。</p>
         <p class="tip-title">ไม้ตรี · ไม้จัตวา 只有中类能用</p>
-        <p>ไม้ตรี 和 ไม้จัตวา 只跟中类辅音搭配，高类和低类没有这两个符号的用法。</p>
+        <p>这两个符号只跟中类辅音搭配，高类和低类用不上。</p>
       </div>
       <p class="tut-cta"><a class="btn primary" href="index.html">去练习页拼一个试试</a></p>
     </section>
@@ -2963,7 +3098,7 @@ const TutorialData = (() => {
     ร: '舌尖向上齿龈后面卷起，舌身成凹形，气流从舌端泄出，声带振动，是弹舌音。汉语里没有对应的音，口语里常读成 l。',
     ล: '舌端抵住上齿龈，舌前部向硬腭抬起，气流从舌头两侧泄出。相当于汉语拼音 l 与 o 相拼（lo）。',
     ว: '下唇稍向内收、轻触上齿，气流从唇间泄出。相当于汉语拼音 w 与 o 相拼（wo）。',
-    ฬ: '跟 ล 同音，只出现在巴利语借词里（如 จุฬา 风筝）。',
+    ฬ: '跟 ล 同音（名称也读第一声调），只出现在巴利语借词里（如 จุฬา 风筝）。',
     ฮ: '发音和口形跟高辅音 ห 一样，但名称读第一声调。多用来拼写外来词里的 h（如 ฮ่องกง 香港）。',
   };
 
@@ -3140,6 +3275,10 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   const D = window.TutorialData;
   const $ = (id) => document.getElementById(id);
 
+  // 搜索索引：每一行渲染时把自己登记进来，搜索框才有东西可查
+  const INDEX = [];
+  let currentSection = '';
+
   // ── DOM 小工具 ────────────────────────────────────────────────────
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -3157,8 +3296,10 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   /**
    * 一行：左侧字形，右侧「名称 + 注音 + 讲解」。
    * extra 是一整行宽的附加内容（例词 / 字母清单），放在讲解下面。
+   * info 是给搜索用的：字形、名称、注音、标签、例词、这一节的标题。
+   * 每一行都会拿到一个稳定的 id，搜索跳过来就靠它。
    */
-  function row(glyphNodes, nameNodes, say, extra) {
+  function row(glyphNodes, nameNodes, say, extra, info) {
     const box = el('div', 'trow');
     const g = el('div', 't-glyph');
     for (const node of glyphNodes) g.append(node);
@@ -3166,6 +3307,20 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
     for (const node of nameNodes) meta.append(node);
     box.append(g, meta, el('p', 't-say', say));
     if (extra) box.append(extra);
+    if (info) {
+      box.id = `r${INDEX.length + 1}`;
+      INDEX.push({
+        id: box.id,
+        section: currentSection,
+        glyph: info.glyph || '',
+        name: info.name || '',
+        roman: info.roman || '',
+        tags: info.tags || [],
+        extra: info.extra || '',
+        text: say || '',
+        el: box,
+      });
+    }
     return box;
   }
 
@@ -3221,6 +3376,7 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   // ── 一、辅音 ──────────────────────────────────────────────────────
   function renderConsonants() {
     const host = $('consTable');
+    currentSection = '辅音';
     for (const cls of ['mid', 'high', 'low']) {
       const list = R.CONSONANTS.filter((c) => c.cls === cls);
       host.append(groupBox(cls === 'mid' ? 'อักษรกลาง' : cls === 'high' ? 'อักษรสูง' : 'อักษรต่ำ',
@@ -3232,7 +3388,13 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
         meta.push(roman(c.roman || '—'));
         if (c.rare) meta.push(tag('借词用字'));
         if (c.obsolete) meta.push(tag('已废弃'));
-        rows.append(row([thai('span', '', c.ch)], meta, D.SAY_CONS[c.ch]));
+        rows.append(row([thai('span', '', c.ch)], meta, D.SAY_CONS[c.ch], null, {
+          glyph: c.ch,
+          name: `${c.ch}อ ${c.example}`,
+          roman: c.roman || '',
+          tags: [R.CLASS_LABEL[c.cls], c.rare ? '借词用字' : '', c.obsolete ? '已废弃' : ''].filter(Boolean),
+          extra: `${c.example} ${c.gloss || ''}`,
+        }));
       }
       host.append(rows);
     }
@@ -3241,12 +3403,14 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   // ── 二、元音 ──────────────────────────────────────────────────────
   function renderVowels() {
     const host = $('vowelTable');
+    currentSection = '元音';
     for (const group of R.VOWEL_GROUPS) {
       const list = R.VOWELS.filter((v) => v.group === group.id);
       if (!list.length) continue;
       host.append(groupBox(group.thai, group.label, list.length));
       const rows = el('div', 'tut-rows vowels');
       for (const v of list) {
+        const form = `${v.lead || ''}${v.follow || ''}${v.tail || ''}`;
         // 顺序按「念得出来」排：泰文名称 → 罗马注音 → 长短/限制 → 英文名称
         const meta = [thai('span', 't-name', v.name), roman(v.roman)];
         // 超额元音里的 ฤ ฦ 系列按课本不算长短音，只标「自带声母」
@@ -3256,7 +3420,14 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
         if (v.noTone) meta.push(tag('不写声调'));
         meta.push(el('span', 't-gloss', v.en));
         rows.append(row(vowelGlyph(v), meta, D.SAY_VOWEL[v.id] || '',
-          v.example ? exampleLine(v.example) : null));
+          v.example ? exampleLine(v.example) : null, {
+            glyph: form || '无',
+            name: v.name,
+            roman: v.roman,
+            tags: [group.label, v.short ? '短音' : '长音', v.noTone ? '不写声调' : '',
+              v.requiresFinal ? '必须有尾音' : ''].filter(Boolean),
+            extra: v.example || '',
+          }));
       }
       host.append(rows);
     }
@@ -3265,6 +3436,7 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   // ── 三、尾辅音 ────────────────────────────────────────────────────
   function renderFinals() {
     const host = $('finalTable');
+    currentSection = '尾辅音';
     const rows = el('div', 'tut-rows finals');
     // 每种读音一行：左边是它读什么，右边列「哪些字母落在这一组」
     for (const sound of ['k', 't', 'p', 'n', 'ng', 'm', 'y', 'w']) {
@@ -3280,6 +3452,18 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
       const letters = el('div', 't-letters');
       letters.append(thai('span', '', chars.join(' ')));
       box.append(letters, exampleItem(D.FINAL_EXAMPLES[sound]));
+      box.id = `r${INDEX.length + 1}`;
+      INDEX.push({
+        id: box.id,
+        section: currentSection,
+        glyph: `-${sound}`,
+        name: `尾音 -${sound}`,
+        roman: `-${sound}`,
+        tags: [R.FINALS[chars[0]].sonorant ? '清尾辅音 · 活音节' : '浊尾辅音 · 死音节'],
+        extra: `${chars.join(' ')} ${D.FINAL_EXAMPLES[sound].word} ${D.FINAL_EXAMPLES[sound].gloss}`,
+        text: D.SAY_FINAL[sound] || '',
+        el: box,
+      });
       rows.append(box);
     }
     host.append(rows);
@@ -3295,6 +3479,7 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
   // ── 四、声调 ──────────────────────────────────────────────────────
   function renderTones() {
     const host = $('toneTable');
+    currentSection = '声调';
     // 类名别用 .tones —— 那是练习页「声调按钮」的网格样式，套上来会把这五张行排成五列
     const rows = el('div', 'tut-rows tonelist');
     for (const n of [1, 2, 3, 4, 5]) {
@@ -3303,7 +3488,13 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
       // 声调符号单独放会飘成一条横杠，垫一个 อ 它才落在正常位置（跟练习页一个道理）
       const glyph = n === 1 ? el('span', 't-none', '—') : thai('span', '', `อ${D.TONE_SIGN[n]}`);
       rows.append(row([glyph], meta, D.TONE_HOW[n],
-        exampleItem(D.TONE_EXAMPLE[n])));
+        exampleItem(D.TONE_EXAMPLE[n]), {
+          glyph: n === 1 ? '—' : `อ${D.TONE_SIGN[n]}`,
+          name: `第 ${n} 调 · ${t.zh}`,
+          roman: t.thai,
+          tags: [`第 ${n} 调`],
+          extra: `${D.TONE_EXAMPLE[n].word} ${D.TONE_EXAMPLE[n].roman} ${D.TONE_EXAMPLE[n].gloss}`,
+        }));
     }
     host.append(rows);
 
@@ -3427,6 +3618,142 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
     for (const sec of secs) io.observe(sec);
   }
 
+  // ── 搜索：输入字母 / 注音 / 中文都能查，选中就跳过去并高亮 ──────────
+  const search = { input: null, list: null, clear: null, matches: [], active: -1 };
+
+  /** 一行能搜到的全部文字 */
+  function haystack(item) {
+    return [item.glyph, item.name, item.roman, item.tags.join(' '), item.extra, item.text, item.section]
+      .join(' ')
+      .toLowerCase();
+  }
+
+  function findMatches(query) {
+    // 空格分开的几个词要同时命中（搜「辅音 送气」只出辅音里提到送气的）
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return [];
+    return INDEX.filter((item) => {
+      const hay = haystack(item);
+      return terms.every((t) => hay.includes(t));
+    }).slice(0, 12);
+  }
+
+  function closeResults() {
+    search.list.hidden = true;
+    search.active = -1;
+  }
+
+  function paintActive() {
+    const items = [...search.list.children];
+    items.forEach((li, i) => {
+      li.classList.toggle('active', i === search.active);
+      if (i === search.active) li.scrollIntoView({ block: 'nearest' });
+    });
+    search.input.setAttribute('aria-activedescendant',
+      search.active >= 0 && items[search.active] ? items[search.active].id : '');
+  }
+
+  /** 跳到某一行并闪一下，让人看清落在哪 */
+  function jumpTo(item) {
+    closeResults();
+    for (const other of INDEX) other.el.classList.remove('hit');
+    item.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // 先读一次布局，同一个目标连点两次也能重新亮
+    void item.el.offsetWidth;
+    item.el.classList.add('hit');
+    setTimeout(() => item.el.classList.remove('hit'), 2400);
+  }
+
+  function renderResults() {
+    const query = search.input.value;
+    search.clear.hidden = !query;
+    search.matches = findMatches(query);
+    search.active = -1;
+    while (search.list.firstChild) search.list.firstChild.remove();
+    if (!query.trim()) {
+      closeResults();
+      return;
+    }
+    if (!search.matches.length) {
+      const empty = el('li', 'res empty', '没找到，换个写法试试（可以搜泰文字母、罗马注音、中文意思）');
+      empty.setAttribute('aria-disabled', 'true');
+      search.list.append(empty);
+      search.list.hidden = false;
+      return;
+    }
+    search.matches.forEach((item, i) => {
+      const li = el('li', 'res');
+      li.id = `res${i}`;
+      li.setAttribute('role', 'option');
+      li.append(thai('span', 'res-glyph', item.glyph));
+      const main = el('span', 'res-main');
+      main.append(el('b', '', item.name));
+      if (item.roman) main.append(el('span', 'res-roman', item.roman));
+      if (item.tags.length) main.append(el('span', 'res-sec', item.tags[0]));
+      li.append(main, el('span', 'res-snippet', item.text));
+      li.addEventListener('mousedown', (e) => { e.preventDefault(); jumpTo(item); });
+      search.list.append(li);
+    });
+    search.list.hidden = false;
+  }
+
+  function buildSearch() {
+    search.input = $('tutSearch');
+    search.list = $('tutResults');
+    search.clear = $('tutSearchClear');
+    if (!search.input) return;
+
+    search.input.addEventListener('input', renderResults);
+    search.input.addEventListener('focus', () => { if (search.input.value.trim()) renderResults(); });
+    search.input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (search.list.hidden) renderResults();
+        if (!search.matches.length) return;
+        e.preventDefault();
+        const step = e.key === 'ArrowDown' ? 1 : -1;
+        search.active = (search.active + step + search.matches.length) % search.matches.length;
+        paintActive();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const item = search.matches[search.active >= 0 ? search.active : 0];
+        if (item) jumpTo(item);
+        return;
+      }
+      if (e.key === 'Escape') {
+        search.input.value = '';
+        search.clear.hidden = true;
+        closeResults();
+        search.input.blur();
+      }
+    });
+    search.clear.addEventListener('click', () => {
+      search.input.value = '';
+      search.clear.hidden = true;
+      closeResults();
+      search.input.focus();
+    });
+    // 点到别处就收起下拉
+    document.addEventListener('click', (e) => {
+      if (!search.input.contains(e.target) && !search.list.contains(e.target)) closeResults();
+    });
+    // 按 / 直接跳到搜索框（跟很多文档站一个习惯）
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      search.input.focus();
+    });
+    // 允许用 ?q=xxx 打开就带着搜索结果（方便把某个音的链接发给别人）
+    const seed = new URLSearchParams(location.search).get('q');
+    if (seed) {
+      search.input.value = seed;
+      renderResults();
+    }
+  }
+
   function main() {
     renderAnatomy();
     renderConsonants();
@@ -3434,6 +3761,7 @@ if (typeof window !== 'undefined') window.TutorialData = TutorialData;
     renderFinals();
     renderTones();
     renderSettings();
+    buildSearch();
     buildToc();
   }
 
