@@ -654,6 +654,16 @@
     return span;
   }
 
+  /** 和 renderPart 一样，但值可以是节点——用来放「อ + 声调符号」这种组合 */
+  function renderPartNodes(label, ...valueNodes) {
+    const span = document.createElement('span');
+    span.append(`${label} `);
+    const b = document.createElement('b');
+    b.append(...valueNodes);
+    span.append(b);
+    return span;
+  }
+
   /**
    * 往卡片上放泰文。字号按字数缩：7 个码点的长组合在窄卡片上会折成两行，
    * 一折行卡片高度就翻倍、整页跟着跳，所以字越多缩得越小，永远占一行。
@@ -735,22 +745,35 @@
     if (state.parts.final) breakdown.push(renderPart('尾辅音', state.parts.final));
     // 声调这一行要回答「实际读第几调」——写什么符号只是手段。
     // 低辅音 + 长元音 + ้（比如 รู้）写的是 โท，读出来却是 ตรี，只显示符号名会误导
-    const markLabel = state.parts.tone === 'none' ? '不标' : `标 ${R.toneMark(state.parts.tone)}`;
     // 这个拼写如果正好是个真词、而它的实际读音跟拼写不一样（ไทย 读 ไท、สัตว์ 读 สัด），
     // 就把实际读音补一行。数据来自维基词典的 Phonemic 字段
     const dictEntry = D.lookup(R.assemble(state.parts));
     // 词表里带 IPA 的真词：以 IPA 的声调为准。英语借词（บอส=老板、แอป=app、เคส=case…）
     // 一律读第 4 调，拼写规则算出来是第 2/3 调，这类例外必须标出来
     const ipaTone = dictEntry && dictEntry[7] ? R.toneFromIPA(dictEntry[7]) : null;
-    let toneText = info.toneName;
-    if (info.spokenTone) {
-      toneText = `${markLabel} → 读第${info.spokenTone}调 ${info.spokenToneName}`;
-      if (ipaTone && ipaTone !== info.spokenTone) {
-        toneText = `${markLabel} → 实际第${ipaTone}调 ${R.SPOKEN_TONES[ipaTone].thai}`
-          + `（按规则第${info.spokenTone}调）`;
-      }
+    // 声调符号是组合符号，直接写进文字里会浮在右上角、看着像一条孤零零的横杠。
+    // 和声调按钮一个做法：垫一个 อ 当底座，符号就落在正常位置
+    const toneNodes = [];
+    if (state.parts.tone === 'none') {
+      toneNodes.push('不标 ');
+    } else {
+      toneNodes.push('标 ');
+      const base = document.createElement('span');
+      base.className = 'ghost-base';
+      base.textContent = 'อ';
+      base.setAttribute('aria-hidden', 'true');
+      toneNodes.push(base, R.toneMark(state.parts.tone), ' ');
     }
-    breakdown.push(renderPart('声调', toneText));
+    if (!info.spokenTone) {
+      toneNodes.push(info.toneName);
+    } else if (ipaTone && ipaTone !== info.spokenTone) {
+      // 借词这类词级例外：以词典 IPA 为准，同时把规则算出来的也写出来
+      toneNodes.push(`→ 实际第${ipaTone}调 ${R.SPOKEN_TONES[ipaTone].thai}`
+        + `（按规则第${info.spokenTone}调）`);
+    } else {
+      toneNodes.push(`→ 读第${info.spokenTone}调 ${info.spokenToneName}`);
+    }
+    breakdown.push(renderPartNodes('声调', ...toneNodes));
     if (dictEntry && dictEntry[6]) breakdown.push(renderPart('读音', dictEntry[6]));
     setChildren(el.parts, ...breakdown);
 
