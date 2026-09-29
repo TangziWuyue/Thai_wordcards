@@ -731,18 +731,26 @@
     // อ 之类的字母在罗马注音里本来就没有对应写法，显示成 — 而不是空斜杠
     el.roman.textContent = `/${info.roman || '—'}/ · 罗马注音，不含声调`;
 
+    // 这一行是给零基础看的，用大白话：声母 / 元音 / 尾音 / 声调。
+    // 原来的「首辅音 ค 低类 · 元音 สระ ออ（长音）· 尾辅音 ก · 标 อ๋ → 读第4调 ตรี」术语太密：
+    // 首辅音→声母（中文里现成的说法）、低类→低辅音（说明这是哪一类）、
+    // สระ 是泰语的「元音」，前面已经写了「元音」就不用再重复、尾辅音→尾音
     const breakdown = [];
-    if (info.isVowelOnset) breakdown.push(renderPart('声母', '元音充当声母'));
-    else breakdown.push(renderPart('首辅音', `${state.parts.onset} ${info.onsetClassLabel}`));
+    if (info.isVowelOnset) breakdown.push(renderPart('声母', '没有，这个元音自己当声母'));
+    else {
+      // 「中类」+「辅音」= 中类辅音念着别扭，这里写「中辅音」
+      const cls = { mid: '中', high: '高', low: '低' }[info.onsetClass] || '';
+      breakdown.push(renderPart('声母', cls ? `${state.parts.onset}（${cls}辅音）` : state.parts.onset));
+    }
     if (state.parts.cluster) {
       const cluster = `${state.parts.onset}${state.parts.cluster}`;
       breakdown.push(renderPart('辅音簇', info.clusterNote ? `${cluster}（${info.clusterNote}）` : cluster));
     }
     // 关闭拼写规则时会用到「无元音」这个内部项，这时不显示元音那一栏
     if (state.parts.vowelId !== 'none') {
-      breakdown.push(renderPart('元音', `${info.vowelName}（${info.vowelLength}）`));
+      breakdown.push(renderPart('元音', `${info.vowelName.replace(/^สระ\s*/, '')}（${info.vowelLength}）`));
     }
-    if (state.parts.final) breakdown.push(renderPart('尾辅音', state.parts.final));
+    if (state.parts.final) breakdown.push(renderPart('尾音', state.parts.final));
     // 声调这一行要回答「实际读第几调」——写什么符号只是手段。
     // 低辅音 + 长元音 + ้（比如 รู้）写的是 โท，读出来却是 ตรี，只显示符号名会误导
     // 这个拼写如果正好是个真词、而它的实际读音跟拼写不一样（ไทย 读 ไท、สัตว์ 读 สัด），
@@ -755,9 +763,9 @@
     // 和声调按钮一个做法：垫一个 อ 当底座，符号就落在正常位置
     const toneNodes = [];
     if (state.parts.tone === 'none') {
-      toneNodes.push('不标 ');
+      toneNodes.push('不写 ');
     } else {
-      toneNodes.push('标 ');
+      toneNodes.push('写 ');
       const base = document.createElement('span');
       base.className = 'ghost-base';
       base.textContent = 'อ';
@@ -768,10 +776,9 @@
       toneNodes.push(info.toneName);
     } else if (ipaTone && ipaTone !== info.spokenTone) {
       // 借词这类词级例外：以词典 IPA 为准，同时把规则算出来的也写出来
-      toneNodes.push(`→ 实际第${ipaTone}调 ${R.SPOKEN_TONES[ipaTone].thai}`
-        + `（按规则第${info.spokenTone}调）`);
+      toneNodes.push(`→ 实际读第${ipaTone}调（按规则应该第${info.spokenTone}调）`);
     } else {
-      toneNodes.push(`→ 读第${info.spokenTone}调 ${info.spokenToneName}`);
+      toneNodes.push(`→ 读第${info.spokenTone}调`);
     }
     breakdown.push(renderPartNodes('声调', ...toneNodes));
     if (dictEntry && dictEntry[6]) breakdown.push(renderPart('读音', dictEntry[6]));
