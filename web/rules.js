@@ -177,16 +177,18 @@ const ThaiRules = (() => {
       short: false, allowsFinal: false, noTone: true, canBeOnset: true },
     { id: 'am', group: 'extra', name: 'สระ อำ', en: 'sara am', roman: 'am',
       example: 'รำ = ram', lead: '', follow: '', tail: 'ำ',
-      short: true, allowsFinal: false },
+      // sonorantEnd：这个元音本身以清尾（ม 鼻音）收尾，所以算 คำเป็น（活音节），
+      // 声调按活音节规则走。它同时仍是「短音」（课本里归短元音），两件事不冲突
+      short: true, allowsFinal: false, sonorantEnd: true },
     { id: 'ai_mai', group: 'extra', name: 'สระ ใอ', en: 'sara ai mai muan', roman: 'ai',
       example: 'ใย = yai', lead: 'ใ', follow: '', tail: '',
-      short: false, allowsFinal: true },
+      short: false, allowsFinal: true, sonorantEnd: true },
     { id: 'ai', group: 'extra', name: 'สระ ไอ', en: 'sara ai mai malai', roman: 'ai',
       example: 'ไทย = thai', lead: 'ไ', follow: '', tail: '',
-      short: false, allowsFinal: true },
+      short: false, allowsFinal: true, sonorantEnd: true },
     { id: 'ao', group: 'extra', name: 'สระ เอา', en: 'sara ao', roman: 'ao',
       example: 'เมา = mao', lead: 'เ', follow: '', tail: 'า',
-      short: false, allowsFinal: true },
+      short: false, allowsFinal: true, sonorantEnd: true },
     // ── 拼写变体 4（不单独计入 32）──
     { id: 'a_short', group: 'variant', name: 'ไม้หันอากาศ', en: 'mai han akat', roman: 'a',
       example: 'กัน = kan', lead: '', follow: 'ั', tail: '',
@@ -389,6 +391,53 @@ const ThaiRules = (() => {
   function classOf(ch) {
     const c = CONSONANT_MAP.get(ch);
     return c ? c.cls : null;
+  }
+
+  // ── 实际读出来的声调 ──────────────────────────────────────────────
+  // 教材把声调编成第 1~5 调（和泰语名称一一对应）：
+  //   1 สามัญ 中平 · 2 เอก 低平 · 3 โท 降 · 4 ตรี 高 · 5 จัตวา 升
+  const SPOKEN_TONES = {
+    1: { thai: 'สามัญ', zh: '中平' },
+    2: { thai: 'เอก', zh: '低平' },
+    3: { thai: 'โท', zh: '降调' },
+    4: { thai: 'ตรี', zh: '高调' },
+    5: { thai: 'จัตวา', zh: '升调' },
+  };
+  // 写了声调符号时，读几调只看「有效辅音类别 + 符号」，跟长短音、尾辅音无关
+  const MARK_TONE = {
+    mid: { ek: 2, tho: 3, tri: 4, chattawa: 5 },
+    high: { ek: 2, tho: 3 },
+    low: { ek: 3, tho: 4 },
+  };
+
+  /**
+   * 这个拼写**实际读第几调**（1~5）。声调符号只决定「写什么」，
+   * 真正读出来是几调要看辅音类别和音节死活：
+   *   低辅音 + 长元音 + ้（写的是 โท）→ 读第 4 调（ตรี）
+   * 算不出来时返回 null（元音充当声母、只选辅音这类没有声母/元音的情况）。
+   *
+   * 有效辅音类别就是首辅音本身：前引 ห 的 ห、真簇/假簇的第一个字母。
+   */
+  function spokenTone(parts) {
+    const cls = parts.onset ? classOf(parts.onset) : null;
+    if (!cls) return null;
+    const vowel = VOWEL_MAP.get(parts.vowelId);
+    if (!vowel || vowel.internal) return null;
+
+    const mark = parts.tone || 'none';
+    if (mark !== 'none') return MARK_TONE[cls][mark] || null;
+
+    // 没写符号：先判 คำเป็น / คำตาย（活音节 / 死音节）
+    //   有尾辅音 → 看清尾（ง น ม ย ว 这类响音）还是浊尾（ก ด บ 这类塞音）
+    //   没尾辅音 → 看元音本身：长音、或本身以响音收尾的（อำ ใอ ไอ เอา）算活音节
+    const live = parts.final
+      ? !!(FINALS[parts.final] || {}).sonorant
+      : (!vowel.short || !!vowel.sonorantEnd);
+
+    if (cls === 'mid') return live ? 1 : 2;
+    if (cls === 'high') return live ? 5 : 2;
+    // 低类：活音节读 1；死音节里短元音读 4（ตรี）、长元音读 3（โท）
+    return live ? 1 : (vowel.short ? 4 : 3);
   }
 
   function toneMark(toneId) {
@@ -724,6 +773,10 @@ const ThaiRules = (() => {
       toneName: tone.name,
       onsetClass: consonant.cls,
       onsetClassLabel: CLASS_LABEL[consonant.cls] || '',
+      // 实际读第几调（1~5），算不出来是 null
+      spokenTone: spokenTone(parts),
+      spokenToneName: SPOKEN_TONES[spokenTone(parts)]?.thai || '',
+      spokenToneZh: SPOKEN_TONES[spokenTone(parts)]?.zh || '',
       isVowelOnset: !parts.onset,
       onsetLabel: parts.onset
         ? `${parts.onset} ${CLASS_LABEL[consonant.cls] || ''}`.trim()
@@ -770,6 +823,8 @@ const ThaiRules = (() => {
     TONE_CHARS,
     isConsonant,
     classOf,
+    SPOKEN_TONES,
+    spokenTone,
     toneMark,
     toneOptions,
     allowedTones,

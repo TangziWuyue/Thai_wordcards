@@ -690,3 +690,106 @@ test('辅音与尾辅音分布：都来自勾选的词表，且都有覆盖', ()
   assert.ok(onsetSeen.size >= 30, `声母覆盖过少：${onsetSeen.size}`);
   assert.ok(finalSeen.size >= 15, `尾辅音覆盖过少：${finalSeen.size}`);
 });
+
+// ── 实际读第几调 ────────────────────────────────────────────────────
+// 判据来自《泰语声调（新）》那份教材文档：它把规则整理成
+// 「无尾音 / 有尾音」两段，并逐条给了例词和该读的调号（第 1~5 调）。
+// 这里把文档里的例子全部录进来，期望值照抄文档，不照抄实现。
+const DOC_TONE_CASES = [
+  // 中辅音：不标读 1（长）/ 2（短），标几读几
+  ['กะ', ['ก', 'a', 'none', null], 2],
+  ['ก้ะ', ['ก', 'a', 'tho', null], 3],
+  ['บา', ['บ', 'aa', 'none', null], 1],
+  ['บ๋า', ['บ', 'aa', 'chattawa', null], 5],
+  ['เบา', ['บ', 'ao', 'none', null], 1],
+  ['เป้า', ['ป', 'ao', 'tho', null], 3],
+  ['บาง', ['บ', 'aa', 'none', 'ง'], 1],
+  ['ปาก', ['ป', 'aa', 'none', 'ก'], 2],
+  // 高辅音：不标读 5（长）/ 2（短），标 2 读 2、标 3 读 3
+  ['ขะ', ['ข', 'a', 'none', null], 2],
+  ['ข้ะ', ['ข', 'a', 'tho', null], 3],
+  ['ขา', ['ข', 'aa', 'none', null], 5],
+  ['ข่า', ['ข', 'aa', 'ek', null], 2],
+  ['ข้า', ['ข', 'aa', 'tho', null], 3],
+  ['ขำ', ['ข', 'am', 'none', null], 5],
+  ['ข่ำ', ['ข', 'am', 'ek', null], 2],
+  ['ข้ำ', ['ข', 'am', 'tho', null], 3],
+  ['หาง', ['ห', 'aa', 'none', 'ง'], 5],
+  ['ฝาก', ['ฝ', 'aa', 'none', 'ก'], 2],
+  // 低辅音：不标读 1（长）/ 4（短），标 2 读 3、标 3 读 4
+  ['คะ', ['ค', 'a', 'none', null], 4],
+  ['ค่ะ', ['ค', 'a', 'ek', null], 3],
+  ['คา', ['ค', 'aa', 'none', null], 1],
+  ['ค่า', ['ค', 'aa', 'ek', null], 3],
+  ['ค้า', ['ค', 'aa', 'tho', null], 4],
+  ['พำ', ['พ', 'am', 'none', null], 1],
+  ['พ่ำ', ['พ', 'am', 'ek', null], 3],
+  ['พ้ำ', ['พ', 'am', 'tho', null], 4],
+  ['แมว', ['ม', 'ae', 'none', 'ว'], 1],
+  ['แม่ว', ['ม', 'ae', 'ek', 'ว'], 3],
+  ['แม้ว', ['ม', 'ae', 'tho', 'ว'], 4],
+  // 文档「总结」段：无尾音 / 有尾音两组例子
+  ['งู', ['ง', 'uu', 'none', null], 1],
+  ['ใน', ['น', 'ai_mai', 'none', null], 1],
+  ['วะ', ['ว', 'a', 'none', null], 4],
+  ['นะ', ['น', 'a', 'none', null], 4],
+  ['สี', ['ส', 'ii', 'none', null], 5],
+  ['ไส', ['ส', 'ai', 'none', null], 5],
+  ['สำ', ['ส', 'am', 'none', null], 5],
+  ['กา', ['ก', 'aa', 'none', null], 1],
+  ['กำ', ['ก', 'am', 'none', null], 1],
+  ['จะ', ['จ', 'a', 'none', null], 2],
+  ['ตุ', ['ต', 'u', 'none', null], 2],
+  ['จึง', ['จ', 'ue', 'none', 'ง'], 1],
+  ['โมง', ['ม', 'o', 'none', 'ง'], 1],
+  ['ฉาด', ['ฉ', 'aa', 'none', 'ด'], 2],
+  ['จด', ['จ', 'o_implied', 'none', 'ด'], 2],
+  ['หอม', ['ห', 'o_long', 'none', 'ม'], 5],
+  ['เข็ม', ['ข', 'e_taikhu', 'none', 'ม'], 5],
+  ['นัก', ['น', 'a_short', 'none', 'ก'], 4],
+  ['คับ', ['ค', 'a_short', 'none', 'บ'], 4],
+  ['ภาพ', ['พ', 'aa', 'none', 'พ'], 3],
+  ['เรียก', ['ร', 'ia', 'none', 'ก'], 3],
+];
+
+test('实际声调：教材文档里的 50 个例词全部对得上', () => {
+  const failures = [];
+  for (const [word, [onset, vowelId, tone, final], want] of DOC_TONE_CASES) {
+    const p = { onset, vowelId, tone, final, cluster: null };
+    const got = ThaiRules.spokenTone(p);
+    if (got !== want) {
+      failures.push(`${word}：文档是第 ${want} 调，算出来是第 ${got} 调`);
+    }
+  }
+  assert.deepEqual(failures, []);
+});
+
+test('实际声调：低辅音 + 长元音 + ไม้โท 读第 4 调（用户提的例子 รู้）', () => {
+  // รู้ = ร（低）+ ู（长）+ ้（写的是 โท）→ 读 ตรี，也就是第 4 调
+  assert.equal(ThaiRules.spokenTone(parts('uu', 'ร', { tone: 'tho' })), 4);
+  // 同一类：标 2（เอก）读第 3 调
+  assert.equal(ThaiRules.spokenTone(parts('uu', 'ร', { tone: 'ek' })), 3);
+});
+
+test('实际声调：พ/ฟ 这类「低类但长得像高类」的字母走低类规则', () => {
+  // พ 属低类（不是高类），所以 ฟ้า 读第 4 调、ฟ่า 读第 3 调
+  assert.equal(ThaiRules.spokenTone(parts('aa', 'ฟ', { tone: 'tho' })), 4);
+  assert.equal(ThaiRules.spokenTone(parts('aa', 'ฟ', { tone: 'ek' })), 3);
+  assert.equal(ThaiRules.spokenTone(parts('aa', 'ฟ')), 1); // 长元音、无符号 → 第 1 调
+});
+
+test('实际声调：前引 ห 与真簇都按第一个字母的类别算', () => {
+  // หมา：前引 ห（高类）→ 长元音无符号读第 5 调
+  assert.equal(ThaiRules.spokenTone({ onset: 'ห', cluster: 'ม', vowelId: 'aa', tone: 'none', final: null }), 5);
+  // ปลา：真簇，按 ป（中类）→ 读第 1 调
+  assert.equal(ThaiRules.spokenTone({ onset: 'ป', cluster: 'ล', vowelId: 'aa', tone: 'none', final: null }), 1);
+  // ทราย：假簇，按 ท（低类）→ 读第 1 调
+  assert.equal(ThaiRules.spokenTone({ onset: 'ท', cluster: 'ร', vowelId: 'ai', tone: 'none', final: 'ย' }), 1);
+});
+
+test('实际声调：算不出来的情况返回 null，不瞎猜', () => {
+  // 元音充当声母（ฤ 之类）：没有首辅音，类别无从谈起
+  assert.equal(ThaiRules.spokenTone({ onset: null, cluster: null, vowelId: 'rue', tone: 'none', final: null }), null);
+  // 只选辅音（内部项 none）：算不上音节
+  assert.equal(ThaiRules.spokenTone({ onset: 'ก', cluster: null, vowelId: 'none', tone: 'none', final: null }), null);
+});

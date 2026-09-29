@@ -728,7 +728,12 @@
       breakdown.push(renderPart('元音', `${info.vowelName}（${info.vowelLength}）`));
     }
     if (state.parts.final) breakdown.push(renderPart('尾辅音', state.parts.final));
-    breakdown.push(renderPart('声调', info.toneName));
+    // 声调这一行要回答「实际读第几调」——写什么符号只是手段。
+    // 低辅音 + 长元音 + ้（比如 รู้）写的是 โท，读出来却是 ตรี，只显示符号名会误导
+    const markLabel = state.parts.tone === 'none' ? '不标' : `标 ${R.toneMark(state.parts.tone)}`;
+    breakdown.push(renderPart('声调', info.spokenTone
+      ? `${markLabel} → 读第${info.spokenTone}调 ${info.spokenToneName}`
+      : info.toneName));
     setChildren(el.parts, ...breakdown);
 
     const disabledReasons = [];
