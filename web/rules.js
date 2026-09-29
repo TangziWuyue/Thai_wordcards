@@ -452,7 +452,8 @@ const ThaiRules = (() => {
    * 读不出来返回 null。
    */
   function toneFromIPA(ipa) {
-    const groups = String(ipa || '').match(/[\u02e5\u02e6\u02e7\u02e8\u02e9]+/g);
+    // 一个词可能存了好几个读法（用 | 分隔），取第一个当主读音
+    const groups = String(ipa || '').split('|')[0].match(/[\u02e5\u02e6\u02e7\u02e8\u02e9]+/g);
     if (!groups || !groups.length) return null;
     const IPA_TONE = { '\u02e7': 1, '\u02e8\u02e9': 2, '\u02e5\u02e9': 3, '\u02e6\u02e5': 4, '\u02e9\u02e9\u02e6': 5 };
     return IPA_TONE[groups[groups.length - 1]] || null;

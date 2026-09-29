@@ -319,3 +319,45 @@ test('词级例外：英语借词的实际声调高于拼写规则算出来的�
     assert.equal(R.toneFromIPA(entry[7]), want, `${word}（IPA ${entry[7]}）实际读第 ${want} 调`);
   }
 });
+
+test('实际声调：拿辞典 IPA 交叉验证所有「写的符号 ≠ 读的调」的例词', () => {
+  // 这一类最容易出错（标 ่ 却读第 3 调、标 ้ 却读第 4 调），所以单独盯。
+  // 判据是辞典第 8 位的 IPA（来自维基词典），不是我们自己的输出；
+  // 一个词可能收了好几个读法（用 | 分隔），命中任意一个即算对。
+  const IPA_TONE = {
+    '\u02e7': 1, '\u02e8\u02e9': 2, '\u02e5\u02e9': 3, '\u02e6\u02e5': 4, '\u02e9\u02e9\u02e6': 5,
+  };
+  const tonesOf = (ipa) => String(ipa).split('|').flatMap((one) => {
+    const g = one.match(/[\u02e5\u02e6\u02e7\u02e8\u02e9]+/g);
+    return g ? [IPA_TONE[g[g.length - 1]]].filter(Boolean) : [];
+  });
+  const MARK_OWN = { none: null, ek: 2, tho: 3, tri: 4, chattawa: 5 };
+  const byWord = new Map(DICT.words.map((e) => [e[0], e[7]]));
+
+  let checked = 0;
+  const bad = [];
+  for (const onset of CONSONANTS) {
+    for (const vowelId of VOWELS) {
+      for (const t of R.TONES) {
+        for (const final of [null, ...Object.keys(R.FINALS)]) {
+          const parts = { onset, vowelId, tone: t.id, cluster: null, final };
+          const text = R.assemble(parts);
+          const ipa = byWord.get(text);
+          if (!ipa) continue;
+          const mine = R.spokenTone(parts);
+          if (mine === null) continue;
+          const own = MARK_OWN[t.id];
+          if (own === null || own === mine) continue; // 只看「标 ≠ 读」
+          checked += 1;
+          const want = tonesOf(ipa);
+          if (!want.includes(mine)) {
+            bad.push(`${text}：算出第 ${mine} 调，辞典只列了第 ${want.join('/')} 调`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(checked >= 400, `「标 ≠ 读」的例词太少（${checked}），判据可能失效`);
+  assert.deepEqual(bad.slice(0, 5), []);
+  console.log(`    · 标≠读：${checked} 个真实单音节词，全部与辞典 IPA 一致`);
+});

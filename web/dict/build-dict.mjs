@@ -191,7 +191,9 @@ function loadKaikki() {
     // IPA 里带声调（/ruː˦˥/），这两样正好补上「词的特殊读法」
     const sounds = o.sounds || [];
     const phon = (sounds.find((x) => (x.raw_tags || []).includes('Phonemic')) || {}).other || '';
-    const ipa = (sounds.find((x) => x.ipa) || {}).ipa || '';
+    // 一个词可能收了好几个读法（ช่ะ 就同时有 /˨˩/ 和 /˥˩/），全都留着，用 | 分隔；
+    // 校验时「命中任意一个即可」，界面取第一个
+    const ipa = sounds.map((x) => x.ipa).filter(Boolean).join('|');
     const prev = map.get(w) || { rom: '', posList: [], en: '' };
     const code = POS_CODE[String(o.pos || '').toLowerCase()];
     if (code && !prev.posList.includes(code)) prev.posList.push(code);
