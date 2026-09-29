@@ -430,16 +430,18 @@
    * 让卡片做一次「滑出 → 换内容 → 滑入」。
    * dir = -1 表示往左走（随机 → 固定），1 表示往右走。
    * 只动 opacity / transform，卡片每行的高度是定死的，所以不会把下面的按钮顶走。
+   * 返回定时器 id，调用方需要时可以取消（连点模式按钮时要先把上一次落定）。
    */
-  function swapCard(dir, apply) {
+  function swapCard(dir, apply, done) {
     const card = el.card;
     if (!card || prefersReducedMotion()) {
       apply();
-      return;
+      if (done) done();
+      return null;
     }
     card.style.setProperty('--swap-x', `${dir * -14}px`);
     card.classList.add('swapping');
-    setTimeout(() => {
+    return setTimeout(() => {
       // 关掉过渡 → 把入场起点摆到另一侧 → 换内容 → 恢复过渡，让它自己滑回来
       card.classList.add('no-swap-anim');
       card.style.setProperty('--swap-x', `${dir * 14}px`);
@@ -447,6 +449,7 @@
       void card.offsetWidth; // 强制回流，让上面的起点真的生效
       card.classList.remove('no-swap-anim');
       card.classList.remove('swapping');
+      if (done) done();
     }, SWAP_MS);
   }
 
@@ -460,11 +463,32 @@
     setTimeout(() => btn.classList.remove('pulse'), 400);
   }
 
+  // 动画期间用户又点了：把上一次先落定再开始新的，否则连点会「丢一次」
+  // （state.mode 要等动画结束才更新，第二次点会算出同一个目标）
+  let pendingSwap = null;
+
+  /** 现在「算哪个模式」——动画没结束时算目标模式，这样连点能正确来回切 */
+  function currentMode() {
+    return pendingSwap ? pendingSwap.mode : state.mode;
+  }
+
   function setMode(mode) {
-    if (mode === state.mode) return;
+    if (pendingSwap) {
+      clearTimeout(pendingSwap.timer);
+      pendingSwap.apply();
+      pendingSwap = null;
+    }
+    if (mode === state.mode) {
+      // 上一次刚被「落定」，这一次等于没动。卡片可能还停在滑出那一帧
+      // （半透明 + 位移），这里把样式收干净，别让它卡在看不见的状态
+      if (el.card) el.card.classList.remove('swapping');
+      return;
+    }
     pulseModeButton();
     // 切到固定模式时内容往左走，切回随机时往右走（⇄ 在右边，方向感一致）
-    swapCard(mode === 'fixed' ? -1 : 1, () => applyModeChange(mode));
+    const apply = () => applyModeChange(mode);
+    const timer = swapCard(mode === 'fixed' ? -1 : 1, apply, () => { pendingSwap = null; });
+    pendingSwap = timer === null ? null : { mode, apply, timer };
   }
 
   function applyModeChange(mode) {
@@ -1140,7 +1164,7 @@
   el.consNone.addEventListener('click', () => setAllConsonants(false));
   el.vowelAll.addEventListener('click', () => setAllVowels(true));
   el.vowelNone.addEventListener('click', () => setAllVowels(false));
-  el.modeBtn.addEventListener('click', () => setMode(state.mode === 'fixed' ? 'random' : 'fixed'));
+  el.modeBtn.addEventListener('click', () => setMode(currentMode() === 'fixed' ? 'random' : 'fixed'));
 
   const bindings = [
     [el.optClusters, 'allowClusters'],

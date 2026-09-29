@@ -66,7 +66,14 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 
   **匹配规则本身在 `web/tutorial-search.js`**（纯逻辑、双端可用），因为这块返工过三次。最容易踩的坑是：**泰文和拉丁文必须按「整词相等」匹配，不能按包含**——否则搜 `ไ` 会被「ไม่」「ไต่」这些**词**带出一堆（ไม้หันอากาศ / ไม้ไต่คู้ / ไม่มีรูป），搜 `ต` 会被「ไต่ / ตรี / จัตวา」带出来，搜 `k` 会带出 `kh`。现在的规则是：泰文只看「字形里是否真的写着这个字」或「跟某个词整词相等」；拉丁文整词相等；中文因为没有词边界，仍按包含。`web/tutorial.test.mjs` 里有一组针对这几个字的回归测试，改规则先跑它。
 
-- **模式切换动画**（`app.js` 的 `swapCard()`）：切随机/固定时卡片内容滑出 → 换内容 → 从另一侧滑入，只动 `opacity` / `transform`（卡片每行定高，动布局就会跳），并跳过 `prefers-reduced-motion`。模式按钮的 `.pulse` 是同一节拍的即时反馈。
+- **模式切换动画**（`app.js` 的 `swapCard()` / `setMode()` / `currentMode()`）：切随机/固定时卡片内容滑出 → 换内容 → 从另一侧滑入，只动 `opacity` / `transform`（卡片每行定高，动布局就会跳），并跳过 `prefers-reduced-motion`。模式按钮的 `.pulse` 是同一节拍的即时反馈。
+  **连点必须先落定再开新的**：`state.mode` 要等动画结束（150ms）才更新，期间再点一次会算出同一个目标、第二次等于白点。所以 `setMode()` 开头会 `clearTimeout` + 立刻 `apply()` 上一次的待办，并且点击处理用的是 `currentMode()`（算的是「待办里的目标模式」，不是已生效的模式）。另外那条「已落定 → 这一次等于没动」的提前 return 里**要把 `swapping` 类摘掉**，否则卡片会卡在半透明状态。
+
+## 手工 / 自动测试注意事项
+
+- **页面把状态记在 localStorage 里**（模式、组合范围、词表勾选、字体、外观、是否看过引导），所以**穷举测试前先清掉**，否则结果依赖上一轮留下的状态：曾经出现过「点常用词没反应」——其实是上一轮把模式留在了固定模式，那一档本来就是灰的。清掉之后重跑才是干净结果。`web/__smoke.html`（已删）这类 iframe 冒烟脚本就是这么做的：`iframe.contentWindow.localStorage.clear()` 然后 `location.reload()`。
+- 判断浮层是否可见不能用 `offsetParent`：新手引导和更新通知都是 `position: fixed`，`offsetParent` 恒为 `null`，要用 `getClientRects().length`。
+- 这两处如果又出问题，最省事的自查方式：写个临时页面把 `index.html` / `tutorial.html` 挂在同源 iframe 里，给 `contentWindow` 挂 `error` / `unhandledrejection`，在父页面里直接 `click()` 驱动（iframe 里是真实 DOM，不像工具里的 evaluate 沙箱只有有限 API）。
 - 字体全部打包在仓库里，不依赖系统装了什么：泰文用 Sarabun（默认，泰国政府文书标准体）与 Noto Serif Thai；界面中文用 Noto Sans SC 的子集。都是 SIL OFL 1.1，版权与来源见 `web/fonts/NOTICE.md`。**不要再加「系统字体」选项**，也不要在字体栈里放系统泰文字体名，否则换机器字形会变。
 - 两套泰文字体在 `fonts.css` 里都带 `ascent-override: 107%` / `descent-override: 30%` / `line-gap-override: 0%`。**换字体或改字号时要保留这组 override**：两套字体原生度量差很多（Sarabun 1.068/0.232，Noto Serif Thai 1.064/0.534），不统一的话同样行高下衬线体会整体偏上。
 - `--ui` 字体栈里带 `var(--thai)`：注释行里混着泰文（`首辅音 ก 中类`），不这样会掉到系统泰文字体上。
