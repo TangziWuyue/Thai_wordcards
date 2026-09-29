@@ -126,7 +126,7 @@ uv run python
   2. 改过界面文案或辞典 → 重跑 `node web/fonts/build-cjk-subset.mjs`（取字范围含 `data/dict.js`）；
   3. `node web/build-standalone.mjs` 重新打包，再把 `dist/泰语组合练习.html`、`dist/使用说明.txt` 复制到 `docs/`（线上就是这一份）；
   4. 把 `index.html` 里本地资源的 `?v=` 号 +1（否则浏览器可能拿到新旧混搭的文件）；
-  5. 改 `pyproject.toml` 的版本号、更新 `README.md` 顶部的版本历史；
+  5. 更新 `README.md` 顶部的版本号与版本历史。**版本号约定**：README 顶部的 `beta3.1` 对应「beta3 标签内的第一次修复」，同一标签内的后续修复继续用 `.2` `.3`；`pyproject.toml` 只在打新标签时才动（它是 Python 包版本，跟网页版本不是一回事）；改 `WHATS_NEW.version` 让老用户再看到一次通知——**涉及「之前学到的内容是错的」这类修复必须改**，否则老用户不会知道要纠正。
   6. 提交 → `git push origin main` → 打标签（换版本时用 `git tag -f` 挪旧的，再 `git push --force origin <tag>`）→ 等 Pages 状态变成 `built`。
 - Python 侧一律用 `uv run ...` 执行脚本或命令，保证使用项目虚拟环境和锁定版本；前端是零依赖静态页，直接用 `node` / `python3 -m http.server` 即可。
 - 新增依赖用 `uv add`，由 `uv` 维护 `pyproject.toml` 和 `uv.lock`，不要手工往 `.venv` 里装包。

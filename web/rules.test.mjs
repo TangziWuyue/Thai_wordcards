@@ -531,6 +531,24 @@ test('อักษรควบไม่แท้：จริง / ทราย /
   for (const p of [jing, saai, sii]) assert.deepEqual(ThaiRules.check(p), []);
 });
 
+test('假簇路径也要做尾辅音去重（不能因为提前 return 绕过去重规则）', () => {
+  // 尾辅音读音跟元音结尾相同时只写一次，这条规则对普通组合和假簇都要生效。
+  // 之前假簇分支提前 return，拼出 ทราย = saii、ทรำม = samm 这种重复注音。
+  const cases = [
+    ['ai', 'ท', { cluster: 'ร', final: 'ย' }, 'sai'],   // ทราย（不再是 saii）
+    ['ai_mai', 'ท', { cluster: 'ร', final: 'ย' }, 'sai'], // ใทรย
+    ['ao', 'ท', { cluster: 'ร', final: 'ว' }, 'sao'],   // เทราว（不再是 saoo）
+    ['am', 'ท', { cluster: 'ร', final: 'ม' }, 'sam'],   // ทรำม（不再是 samm）
+    // 对照组：不是同音结尾时，尾辅音照常写出来
+    ['am', 'ท', { cluster: 'ร', final: 'ก' }, 'samk'],
+    ['i', 'จ', { cluster: 'ร', final: 'ง' }, 'jing'],
+  ];
+  for (const [vowelId, onset, extra, expected] of cases) {
+    const p = parts(vowelId, onset, extra);
+    assert.equal(ThaiRules.romanize(p, 'latin'), expected, ThaiRules.assemble(p));
+  }
+});
+
 test('真辅音簇：ปลา / ความ / กร 都按两个字读', () => {
   assert.equal(ThaiRules.romanize(parts('aa', 'ป', { cluster: 'ล' }), 'latin'), 'pla');
   assert.equal(ThaiRules.romanize(parts('aa', 'ค', { cluster: 'ว', final: 'ม' }), 'latin'), 'khwam');

@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-29T04:01:00.262Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-29T05:00:28.850Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -84,7 +84,7 @@
 }
 
 /* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
-   界面中文用到的 2070 个字，按需切成 60 个子集。
+   界面中文用到的 2071 个字，按需切成 60 个子集。
    授权：SIL OFL 1.1，见 fonts/NOTICE.md。 */
 
 @font-face {
@@ -1987,7 +1987,7 @@ const ThaiRules = (() => {
   ];
 
   // ③ อักษรควบไม่แท้（假簇）：第二个字母不按字面读
-  //    จริง = jing（ร 不发音）   ศรี = sii（ร 不发音）    ทราย = saai（整体读 s）
+  //    จริง = jing（ร 不发音）   ศรี = si（ร 不发音）    ทราย = sai（整体读 s）
   const SILENT_SECOND_CLUSTERS = [
     ['จ', 'ร'], ['ศ', 'ร'],
   ];
@@ -2220,23 +2220,24 @@ const ThaiRules = (() => {
 
     const pair = `${parts.onset}${parts.cluster || ''}`;
     const replaced = REPLACED_CLUSTERS[pair];
-    // 整体换读音的假簇（ทราย = saai）
-    if (replaced) {
+
+    // 尾辅音去重：读音跟元音结尾同一个音就只写一次（ไทย = thai 而不是 thaiy、
+    // สาย = sai）。这一段必须在「假簇」分支之前算——假簇原来提前 return，
+    // 绕过了这条规则，拼出 ทราย = saii / ทรำม = samm 这种重复注音。
+    let final = '';
+    if (parts.final) {
       const entry = FINALS[parts.final] || {};
-      const final = parts.final ? (useIPA ? (entry.ipa || '') : (entry.roman || '')) : '';
+      const sameSound = vowel && entry.ipa && vowel.ipa.endsWith(entry.ipa);
+      final = sameSound ? '' : (useIPA ? (entry.ipa || '') : (entry.roman || ''));
+    }
+
+    // 整体换读音的假簇（ทราย = sai）
+    if (replaced) {
       return (useIPA ? replaced.ipa : replaced.book) + vowelRoman + final;
     }
 
     const onset = SILENT_H_PAIRS.has(pair) ? '' : letter(parts.onset);
     const cluster = parts.cluster && !SILENT_SECOND_PAIRS.has(pair) ? letter(parts.cluster) : '';
-
-    let final = '';
-    if (parts.final) {
-      const entry = FINALS[parts.final] || {};
-      // ไทย / สวย 这类：尾辅音读出来跟元音结尾同一个音，就只写一次
-      const sameSound = vowel && entry.ipa && vowel.ipa.endsWith(entry.ipa);
-      final = sameSound ? '' : (useIPA ? (entry.ipa || '') : (entry.roman || ''));
-    }
     return onset + cluster + vowelRoman + final;
   }
 
@@ -3503,7 +3504,13 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
       // 这一行始终占位（见 style.css 里的 min-height），内容空着也不会让页面跳
       setChildren(el.dictHit);
       D.loadIndex()
-        .then(() => renderDictHit())
+        .then(() => {
+          renderDictHit();
+          // 首屏这条异步路径也要重画一次提示：初始化时 applyRangeHint() 跑在前面，
+          // 那时词库还没就绪，「常用词」档会被写成降级文案，不补这一下就永远不会自愈
+          // （单文件版明明离线可用，却一直说「联网后重开本页」）
+          applyRangeHint();
+        })
         .catch(() => { /* 取不到索引就当没有这个功能，卡片照常用 */ });
       return;
     }
@@ -3953,13 +3960,13 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
   // 发新版时改 WHATS_NEW.version（用版本号当 key，所以每版只会弹一次）。
   const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
   const WHATS_NEW = {
-    version: 'beta3',
+    // 版本号同时是 localStorage 的 key：改它老用户才会再看到一次通知。
+    // 这次是「之前学到的字形是错的」，属于必须让人看到的那类修复，所以加了 .1
+    version: 'beta3.1',
     items: [
-      '新增辞典：常用词一次看几个，点某个词就放到主卡片上放大显示。',
-      '卡片会标出「真词」还是「无义」；是真词就给释义，没有中文就给英文并标明。',
-      '新增「组合范围」三档：任意 / 按规则 / 常用词，在随机组合按钮下面。',
-      '去掉国际音标，只保留罗马注音。',
-      '换音节时页面不再上下跳动：卡片各行的位置固定了。',
+      '修正 สระ อา 带声调时的写法：声调符号和 า 的顺序错了，以前拼出来是 มา้，现在是 ม้า。',
+      '之前练过「อา + 声调」的音节，请照现在的卡片再看一眼写法。',
+      '同时修掉几处：引导中途跳过会卡在固定模式、手机上长按字母后马上点下一个没反应、词表「全不选」刷新后丢失。',
     ],
   };
 

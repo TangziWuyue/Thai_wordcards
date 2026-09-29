@@ -240,7 +240,7 @@ const ThaiRules = (() => {
   ];
 
   // ③ อักษรควบไม่แท้（假簇）：第二个字母不按字面读
-  //    จริง = jing（ร 不发音）   ศรี = sii（ร 不发音）    ทราย = saai（整体读 s）
+  //    จริง = jing（ร 不发音）   ศรี = si（ร 不发音）    ทราย = sai（整体读 s）
   const SILENT_SECOND_CLUSTERS = [
     ['จ', 'ร'], ['ศ', 'ร'],
   ];
@@ -473,23 +473,24 @@ const ThaiRules = (() => {
 
     const pair = `${parts.onset}${parts.cluster || ''}`;
     const replaced = REPLACED_CLUSTERS[pair];
-    // 整体换读音的假簇（ทราย = saai）
-    if (replaced) {
+
+    // 尾辅音去重：读音跟元音结尾同一个音就只写一次（ไทย = thai 而不是 thaiy、
+    // สาย = sai）。这一段必须在「假簇」分支之前算——假簇原来提前 return，
+    // 绕过了这条规则，拼出 ทราย = saii / ทรำม = samm 这种重复注音。
+    let final = '';
+    if (parts.final) {
       const entry = FINALS[parts.final] || {};
-      const final = parts.final ? (useIPA ? (entry.ipa || '') : (entry.roman || '')) : '';
+      const sameSound = vowel && entry.ipa && vowel.ipa.endsWith(entry.ipa);
+      final = sameSound ? '' : (useIPA ? (entry.ipa || '') : (entry.roman || ''));
+    }
+
+    // 整体换读音的假簇（ทราย = sai）
+    if (replaced) {
       return (useIPA ? replaced.ipa : replaced.book) + vowelRoman + final;
     }
 
     const onset = SILENT_H_PAIRS.has(pair) ? '' : letter(parts.onset);
     const cluster = parts.cluster && !SILENT_SECOND_PAIRS.has(pair) ? letter(parts.cluster) : '';
-
-    let final = '';
-    if (parts.final) {
-      const entry = FINALS[parts.final] || {};
-      // ไทย / สวย 这类：尾辅音读出来跟元音结尾同一个音，就只写一次
-      const sameSound = vowel && entry.ipa && vowel.ipa.endsWith(entry.ipa);
-      final = sameSound ? '' : (useIPA ? (entry.ipa || '') : (entry.roman || ''));
-    }
     return onset + cluster + vowelRoman + final;
   }
 
