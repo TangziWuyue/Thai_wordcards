@@ -180,6 +180,33 @@ html.js .js-fallback { display: none; }
 
 .syllable .bare-mark.below { transform: translateY(-0.42em); }
 
+/* ── 模式切换的衔接动画 ───────────────────────
+   随机 ↔ 固定切换时，卡片内容先滑出去、换好内容再滑进来，
+   新内容从切换方向的另一侧进场，看着像「翻到了另一面」。
+   卡片里每一行都是定高的，所以这里只用 opacity / transform，不碰布局。 */
+.card > * { transition: opacity 0.16s ease, transform 0.16s ease; }
+.card > *:nth-child(2) { transition-delay: 0.015s; }
+.card > *:nth-child(3) { transition-delay: 0.03s; }
+.card > *:nth-child(4) { transition-delay: 0.045s; }
+.card.swapping > * { opacity: 0; transform: translateX(var(--swap-x, 0px)); }
+
+/* 摆入场起点的那一瞬间不能有过渡，否则会被当成「滑过场」而不是「重新进来」 */
+.card.no-swap-anim > * { transition: none; }
+
+/* 模式按钮按下去时收一下，跟卡片换内容的节拍对上 */
+.split-toggle.pulse { animation: modePulse 0.36s ease; }
+
+@keyframes modePulse {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.86); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card > * { transition: none; }
+  .split-toggle.pulse { animation: none; }
+}
+
 .roman {
   margin: 0;
   color: var(--muted);

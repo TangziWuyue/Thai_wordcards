@@ -418,8 +418,56 @@
     renderCard();
   }
 
+  // ── 模式切换的衔接动画 ──────────────────────────────────────────────
+  // 时间线：卡片内容滑出（SWAP_MS）→ 换内容 → 从另一侧滑入
+  const SWAP_MS = 150;
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  /**
+   * 让卡片做一次「滑出 → 换内容 → 滑入」。
+   * dir = -1 表示往左走（随机 → 固定），1 表示往右走。
+   * 只动 opacity / transform，卡片每行的高度是定死的，所以不会把下面的按钮顶走。
+   */
+  function swapCard(dir, apply) {
+    const card = el.card;
+    if (!card || prefersReducedMotion()) {
+      apply();
+      return;
+    }
+    card.style.setProperty('--swap-x', `${dir * -14}px`);
+    card.classList.add('swapping');
+    setTimeout(() => {
+      // 关掉过渡 → 把入场起点摆到另一侧 → 换内容 → 恢复过渡，让它自己滑回来
+      card.classList.add('no-swap-anim');
+      card.style.setProperty('--swap-x', `${dir * 14}px`);
+      apply();
+      void card.offsetWidth; // 强制回流，让上面的起点真的生效
+      card.classList.remove('no-swap-anim');
+      card.classList.remove('swapping');
+    }, SWAP_MS);
+  }
+
+  /** 模式按钮按一下收一下，给个即时反馈（卡片内容要等一个节拍才换） */
+  function pulseModeButton() {
+    const btn = el.modeBtn;
+    if (!btn || prefersReducedMotion()) return;
+    btn.classList.remove('pulse');
+    void btn.offsetWidth;
+    btn.classList.add('pulse');
+    setTimeout(() => btn.classList.remove('pulse'), 400);
+  }
+
   function setMode(mode) {
     if (mode === state.mode) return;
+    pulseModeButton();
+    // 切到固定模式时内容往左走，切回随机时往右走（⇄ 在右边，方向感一致）
+    swapCard(mode === 'fixed' ? -1 : 1, () => applyModeChange(mode));
+  }
+
+  function applyModeChange(mode) {
     state.mode = mode;
     if (mode === 'fixed') {
       // 接着刚才随机出来的那个音节练：把声母和元音带进固定模式
