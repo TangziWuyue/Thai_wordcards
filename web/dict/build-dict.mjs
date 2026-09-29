@@ -122,8 +122,13 @@ function loadVocab() {
     if (!map.has(word)) {
       if (!zh) continue;
       map.set(word, { zh, example: '', translation: '', level: 'B1', pos });
-    } else if (pos) {
-      map.get(word).pos = pos;
+    } else {
+      const entry = map.get(word);
+      if (pos) entry.pos = pos;
+      // 释义正常不改（免得覆盖上游的写法），只订正「释义串了行」的那种：
+      // 上游有极个别条目的释义里混进了泰文（กล่าว 的释义写成了「说；กล่าว述（较正式）」），
+      // 这种情况用人工订正的那条盖掉。
+      if (zh && /[\u0E00-\u0E7F]/.test(entry.zh || '')) entry.zh = zh;
     }
   }
   return map;

@@ -354,9 +354,39 @@
   }
 
   // ── 搜索：输入字母 / 注音 / 中文都能查，选中就跳过去并高亮 ──────────
-  const search = { input: null, list: null, clear: null, matches: [], nodes: [], active: -1 };
+  const search = { input: null, list: null, clear: null, nodes: [], active: -1 };
+
+  // 练习页的文件名。发布单文件版时打包脚本会把它替换成实际文件名
+  const PRACTICE_PAGE = 'index.html';
+  const dict = window.ThaiDict;
+  const DICT_ROWS = 5;
+  const dictState = { ready: false, failed: false, loading: false };
+  const hasThaiText = (t) => /[\u0E00-\u0E7F]/.test(t);
 
   const findMatches = (query) => S.findMatches(INDEX, query);
+
+  /**
+   * 词库是按需联网加载的（1.6MB），教学页平时不碰它；
+   * 只有当搜索框里打进泰文时才顺手取回来，取完再画一次结果。
+   */
+  function ensureDict() {
+    if (!dict || dictState.ready || dictState.loading || dictState.failed) return;
+    dictState.loading = true;
+    dict.loadWords().then(() => {
+      dictState.ready = true;
+      dictState.loading = false;
+      if (search.input.value.trim()) renderResults();
+    }).catch(() => {
+      // 取不到就当没有查词功能，字母/元音搜索不受影响
+      dictState.failed = true;
+      dictState.loading = false;
+    });
+  }
+
+  /** 点辞典里的词：带着它跳到练习页，卡片上就是这个词（带注音和释义） */
+  function openWord(word) {
+    location.href = `${PRACTICE_PAGE}?word=${encodeURIComponent(word)}`;
+  }
 
   function closeResults() {
     search.list.hidden = true;
@@ -388,30 +418,39 @@
     const query = search.input.value;
     search.clear.hidden = !query;
     const found = findMatches(query);
-    search.matches = found.list;
+    const q = query.trim();
+    // 查词：只有泰文才去辞典里找（罗马注音、中文都不是词的拼写）
+    const words = dictState.ready ? dict.search(q, DICT_ROWS) : [];
+    if (hasThaiText(q)) ensureDict();
     search.nodes = [];
     search.active = -1;
+    let seq = 0;
     while (search.list.firstChild) search.list.firstChild.remove();
-    if (!query.trim()) {
+    if (!q) {
       closeResults();
       return;
     }
-    if (!search.matches.length) {
-      const empty = el('li', 'res empty', '没找到，换个写法试试（可以搜泰文字母、罗马注音、中文意思）');
+    if (!found.list.length && !words.length) {
+      // 词库还在下载时别说「没找到」，免得刚好卡在这个瞬间的人以为查不到
+      const loading = hasThaiText(q) && !dictState.ready && !dictState.failed;
+      const empty = el('li', 'res empty', loading
+        ? '正在查词库…'
+        : '没找到，换个写法试试（可以搜泰文字母、罗马注音、中文意思）');
       empty.setAttribute('aria-disabled', 'true');
       search.list.append(empty);
       search.list.hidden = false;
       return;
     }
-    // 退到「例词和讲解里提到」时说明一句，免得用户以为搜错了
-    if (found.tier === 'loose') {
+    // 退到「例词和讲解里提到」时说明一句，免得用户以为搜错了。
+    // 一条都没命中时别加这句——那时候下面只有辞典结果（或空提示），加在这里反而费解
+    if (found.list.length && found.tier === 'loose') {
       const note = el('li', 'res note', '字形和名称里没有，下面是例词或讲解里提到的');
       note.setAttribute('aria-disabled', 'true');
       search.list.append(note);
     }
-    search.matches.forEach((item, i) => {
+    found.list.forEach((item) => {
       const li = el('li', 'res');
-      li.id = `res${i}`;
+      li.id = `res${seq++}`;
       li.setAttribute('role', 'option');
       li.append(thai('span', 'res-glyph', item.glyph));
       const main = el('span', 'res-main');
@@ -419,10 +458,33 @@
       if (item.roman) main.append(el('span', 'res-roman', item.roman));
       if (item.tags.length) main.append(el('span', 'res-sec', item.tags[0]));
       li.append(main, el('span', 'res-snippet', item.text));
-      li.addEventListener('mousedown', (e) => { e.preventDefault(); jumpTo(item); });
+      li._go = () => jumpTo(item);
+      li.addEventListener('mousedown', (e) => { e.preventDefault(); li._go(); });
       search.list.append(li);
       search.nodes.push(li);
     });
+
+    // 辞典：打的是泰文时顺带把词库里的词列出来，点一个去练习页看它的卡片
+    if (words.length) {
+      const head = el('li', 'res group', '辞典 · 点一个词去练习页看卡片');
+      head.setAttribute('aria-disabled', 'true');
+      search.list.append(head);
+      for (const entry of words) {
+        const li = el('li', 'res word');
+        li.id = `res${seq++}`;
+        li.setAttribute('role', 'option');
+        li.append(thai('span', 'res-glyph', entry[0]));
+        const main = el('span', 'res-main');
+        if (entry[1]) main.append(el('span', 'res-roman', entry[1]));
+        if (entry[4]) main.append(el('span', 'res-sec', '常用'));
+        if (!entry[2] && entry[5]) main.append(el('span', 'res-sec', '英文'));
+        li.append(main, el('span', 'res-snippet', entry[2] || entry[5] || '无释义'));
+        li._go = () => openWord(entry[0]);
+        li.addEventListener('mousedown', (e) => { e.preventDefault(); li._go(); });
+        search.list.append(li);
+        search.nodes.push(li);
+      }
+    }
     search.list.hidden = false;
   }
 
@@ -437,17 +499,18 @@
     search.input.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         if (search.list.hidden) renderResults();
-        if (!search.matches.length) return;
+        if (!search.nodes.length) return;
         e.preventDefault();
         const step = e.key === 'ArrowDown' ? 1 : -1;
-        search.active = (search.active + step + search.matches.length) % search.matches.length;
+        search.active = (search.active + step + search.nodes.length) % search.nodes.length;
         paintActive();
         return;
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        const item = search.matches[search.active >= 0 ? search.active : 0];
-        if (item) jumpTo(item);
+        // 选中的可能是「字母/元音」行，也可能是「辞典」里的词，各走各的动作
+        const node = search.nodes[search.active >= 0 ? search.active : 0];
+        if (node && node._go) node._go();
         return;
       }
       if (e.key === 'Escape') {

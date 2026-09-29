@@ -91,6 +91,36 @@
     return byWord.get(text) || null;
   }
 
+  /**
+   * 按开头找词（教学页搜索框的「查词」用）。
+   * 顺序：完全一样的排第一 → 常用词里以它开头的 → 还不够再扫全表。
+   * 先扫常用词那 2000 多条，是让「打半个词」时先出最常见的那几个。
+   * 词库没加载好时返回空数组。
+   */
+  function search(text, limit) {
+    if (!data) return [];
+    const q = String(text || '').trim();
+    if (!q) return [];
+    const max = limit > 0 ? limit : 8;
+    const out = [];
+    const seen = new Set();
+    const push = (entry) => {
+      if (!entry || seen.has(entry[0])) return;
+      seen.add(entry[0]);
+      out.push(entry);
+    };
+    push(byWord.get(q));
+    for (const entry of common) {
+      if (out.length >= max) break;
+      if (entry[0].startsWith(q)) push(entry);
+    }
+    for (const entry of data.words) {
+      if (out.length >= max) break;
+      if (entry[0].startsWith(q)) push(entry);
+    }
+    return out.slice(0, max);
+  }
+
   // ── 「换一批」：洗牌抽取，抽完一轮再重洗，避免短时间内反复出现同一个词 ──
   let bag = [];
   function nextBatch(size) {
@@ -122,6 +152,6 @@
   }
 
   global.ThaiDict = {
-    loadWords, loadIndex, isWord, isCommon, ready, lookup, nextBatch, total, source, note,
+    loadWords, loadIndex, isWord, isCommon, ready, lookup, search, nextBatch, total, source, note,
   };
 })(window);

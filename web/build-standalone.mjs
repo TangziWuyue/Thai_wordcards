@@ -6,25 +6,42 @@
  * 产物不依赖任何外部文件、不依赖服务器、也不依赖系统装了什么字体，
  * 双击打开就能用（file:// 下没有任何跨域请求）。
  *
- * 两个产物之间用相对链接互相跳转（index.html ↔ tutorial.html），
- * 所以发的时候要么两个一起发，要么单独发练习页——单独发时那个链接点了会说找不到文件，
- * 页面本身的功能不受影响。
+ * 两个页面之间用相对链接互相跳转，链接目标名随产物目录变化：
+ *   dist/ 里是「泰语组合练习.html / 泰语教学.html」（发给别人，中文名好认）
+ *   docs/ 里是「index.html / tutorial.html」（GitHub Pages 的地址好看）
+ * 打包时会把源码里的 index.html / tutorial.html **整串替换**成目标目录里的实际文件名，
+ * 所以页面里的静态链接和 JS 里的跳转（教学页搜到的词会带着 ?word= 跳去练习页）都能对上。
+ * 单独发练习页时那个跳转链接点了会说找不到文件，页面本身的功能不受影响。
  *
  * 用法：
  *   node web/build-standalone.mjs
  * 产物：
- *   dist/泰语组合练习.html
- *   dist/泰语教学.html
- *   dist/使用说明.txt（随文件一起发给人看怎么打开）
+ *   dist/泰语组合练习.html、dist/泰语教学.html、dist/使用说明.txt（随文件一起发给人看怎么打开）
+ *   docs/index.html、docs/tutorial.html、docs/使用说明.txt（GitHub Pages 直接用）
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const WEB = import.meta.dirname;
 const ROOT = path.resolve(WEB, '..');
-const OUT_DIR = path.join(ROOT, 'dist');
 const GUIDE_SRC = path.join(ROOT, 'docs', '使用说明.txt');
-const GUIDE_OUT = path.join(OUT_DIR, '使用说明.txt');
+
+/**
+ * 写到哪几个目录、文件名怎么对应。
+ * names 的 key 是源码里的文件名，value 是这一份产物里的文件名。
+ */
+const TARGETS = [
+  {
+    label: 'dist',
+    dir: path.join(ROOT, 'dist'),
+    names: { 'index.html': '泰语组合练习.html', 'tutorial.html': '泰语教学.html' },
+  },
+  {
+    label: 'docs',
+    dir: path.join(ROOT, 'docs'),
+    names: { 'index.html': 'index.html', 'tutorial.html': 'tutorial.html' },
+  },
+];
 
 const BANNER = (name) => `<!--
   ${name}（单文件版）
@@ -44,16 +61,14 @@ const PAGES = [
   {
     name: '泰语组合练习',
     src: 'index.html',
-    out: '泰语组合练习.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css'],
     scripts: ['rules.js', 'dict.js', 'data/dict.js', 'app.js'],
   },
   {
     name: '泰语拼读入门',
     src: 'tutorial.html',
-    out: '泰语教学.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css', 'tutorial.css'],
-    scripts: ['rules.js', 'tutorial-data.js', 'tutorial-search.js', 'tutorial.js'],
+    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'tutorial-data.js', 'tutorial-search.js', 'tutorial.js'],
   },
 ];
 
@@ -75,7 +90,16 @@ async function inlineFonts(css) {
   return { css: out, count: urls.length, bytes };
 }
 
-async function buildPage(page, fontCache) {
+/** 把源码里的页面名换成这一份产物里的实际文件名（静态 href 和 JS 里的字符串都要换） */
+function retargetLinks(html, names) {
+  let out = html;
+  for (const [from, to] of Object.entries(names)) {
+    if (from !== to) out = out.replaceAll(from, to);
+  }
+  return out;
+}
+
+async function buildPage(page, fontCache, target) {
   const styles = [];
   let fontCount = 0;
   let fontBytes = 0;
@@ -99,39 +123,42 @@ async function buildPage(page, fontCache) {
     .replace(/^\s*<script src="[^"]+"><\/script>\s*$/gm, '')
     .replace('</head>', `  <style>\n${styles.join('\n')}\n  </style>\n</head>`)
     .replace('</body>', `  <script>\n${js.join('\n\n')}\n  </script>\n</body>`);
+  html = retargetLinks(html, target.names);
 
   // 自检：绝不能残留外部引用，否则发给别人就打不开 / 掉字体
   //   mailto: / tel: 是点开邮件的链接，不会联网取资源，不算外部引用
-  //   *.html 是两个单文件版之间的互跳（练习 ⇄ 教学），也不取资源
+  //   相对路径的 *.html 是两个页面之间的互跳（练习 ⇄ 教学），也不取资源
+  //   （文件名可能是中文，所以不能用 \w 判断）
   const leftovers = [...html.matchAll(/(?:src|href)="(?!data:|#|mailto:|tel:)([^"]+)"/g)]
     .map((m) => m[1])
-    .filter((url) => !/^[\w.-]+\.html$/.test(url));
+    .filter((url) => !/^[^/\\:?#]+\.html$/.test(url));
   const problems = [];
   if (leftovers.length) problems.push(`外部引用：${leftovers.join(', ')}`);
   if (/<link rel="stylesheet"/.test(html)) problems.push('仍有未内联的 <link rel="stylesheet">');
   if (/<script src=/.test(html)) problems.push('仍有未内联的 <script src>');
-  for (const name of [...page.styles, ...page.scripts, page.src]) {
+  for (const name of [...page.styles, ...page.scripts]) {
     if (html.includes(`"${name}"`)) problems.push(`残留对 ${name} 的引用`);
   }
   if (problems.length) throw new Error(`${page.src} 打包失败：\n  · ${problems.join('\n  · ')}`);
 
-  const outFile = path.join(OUT_DIR, page.out);
+  const outFile = path.join(target.dir, target.names[page.src]);
   await fs.writeFile(outFile, BANNER(page.name) + html);
   return { outFile, size: Buffer.byteLength(BANNER(page.name) + html), fontCount, fontBytes };
 }
 
-await fs.mkdir(OUT_DIR, { recursive: true });
 const fontCache = new Map();
 const kb = (n) => `${(n / 1024).toFixed(0)}KB`;
 try {
-  for (const page of PAGES) {
-    const res = await buildPage(page, fontCache);
-    console.log(`已生成 ${path.relative(ROOT, res.outFile)}`);
-    console.log(`  内联字体 ${res.fontCount} 处（${kb(res.fontBytes)}），产物大小 ${kb(res.size)}`);
+  for (const target of TARGETS) {
+    await fs.mkdir(target.dir, { recursive: true });
+    for (const page of PAGES) {
+      const res = await buildPage(page, fontCache, target);
+      console.log(`已生成 ${path.relative(ROOT, res.outFile)}（内联字体 ${res.fontCount} 处，产物 ${kb(res.size)}）`);
+    }
+    // 使用说明跟着产物目录走，发文件时两个一起发过去
+    await fs.copyFile(GUIDE_SRC, path.join(target.dir, '使用说明.txt'));
   }
-  // 使用说明一起放到 dist/，发文件时两个一起发过去
-  await fs.copyFile(GUIDE_SRC, GUIDE_OUT);
-  console.log(`已生成 ${path.relative(ROOT, GUIDE_OUT)}`);
+  console.log('已生成各目录的 使用说明.txt');
 } catch (err) {
   console.error(String(err.message || err));
   process.exitCode = 1;

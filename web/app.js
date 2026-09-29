@@ -1482,6 +1482,16 @@
 
   try {
     load();
+    // 从教学页的搜索框点过来的词（?word=ใช่）：直接摆到卡片上。
+    // 词是辞典里的整词，跟固定模式「自己挑字母」不是一回事，所以顺手切回随机模式
+    const sharedWord = (new URLSearchParams(location.search).get('word') || '').trim();
+    if (sharedWord) {
+      state.word = sharedWord;
+      state.mode = 'random';
+      // 词库是异步取的：现在先画一次（没有词库时注音会显示成「—」），
+      // 等它到了再画一次，注音和释义才齐全
+      D.loadWords().then(() => renderCard()).catch(() => { /* 取不到就只显示词形 */ });
+    }
     syncInputs();   // 开关的勾选状态要跟着刚读回来的设置走
     syncRange();    // strict 由 range 推出来，load() 之后必须重算一次
     applyFont();

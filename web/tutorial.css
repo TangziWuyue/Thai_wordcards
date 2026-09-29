@@ -142,6 +142,28 @@
 
 .res.empty:hover, .res.note:hover { background: transparent; }
 
+/* ── 搜索结果里的「辞典」那一组 ─────────────────────── */
+/* 分组标题：一条细线把词和上面的字母/元音结果分开 */
+.res.group {
+  display: block;
+  margin-top: 4px;
+  padding: 8px 10px 6px;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  cursor: default;
+}
+
+.res.group:hover { background: transparent; }
+
+/* 词条行：左边那一列放的是整个词，比单个字母宽，所以单独放宽 */
+.res.word { grid-template-columns: 6.5em minmax(0, 1fr); }
+
+.res.word .res-glyph { font-size: 17px; }
+
+.res.word .res-main { gap: 5px; }
+
 /* ── 目录：滚到哪一节哪一节变黑 ───────────────────────── */
 .toc {
   display: flex;

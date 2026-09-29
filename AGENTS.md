@@ -66,6 +66,9 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 
   **匹配规则本身在 `web/tutorial-search.js`**（纯逻辑、双端可用），因为这块返工过三次。最容易踩的坑是：**泰文和拉丁文必须按「整词相等」匹配，不能按包含**——否则搜 `ไ` 会被「ไม่」「ไต่」这些**词**带出一堆（ไม้หันอากาศ / ไม้ไต่คู้ / ไม่มีรูป），搜 `ต` 会被「ไต่ / ตรี / จัตวา」带出来，搜 `k` 会带出 `kh`。现在的规则是：泰文只看「字形里是否真的写着这个字」或「跟某个词整词相等」；拉丁文整词相等；中文因为没有词边界，仍按包含。`web/tutorial.test.mjs` 里有一组针对这几个字的回归测试，改规则先跑它。
 
+- **教学页搜索框也能查词**（`tutorial.js` 的 `ensureDict()` / `openWord()`）：搜索框里打进**泰文**时，除了查字母/元音，还会去词库里按前缀找词（`dict.search(q, 5)`，先 2000 多条常用词再扫全表），在结果里单列一段「辞典 · 点一个词去练习页看卡片」。点词会跳到 `index.html?word=<词>`，练习页的 `?word=` 分支把这个词摆到卡片上（会强制切回随机模式，并等词库到位后**再画一次**——否则注音会先显示成 `—`，这个坑踩过）。
+  词库 1.6MB 是**按需加载**的：教学页平时不碰它，只在第一次查泰文词时才 `dict.loadWords()`，取完自动重画结果；取不到就静默降级成「只有字母/元音搜索」，不报错。中文查询**不会**去查词库（没做中→泰反查）。
+
 - **模式切换动画**（`app.js` 的 `swapCard()` / `setMode()` / `currentMode()`）：切随机/固定时卡片内容滑出 → 换内容 → 从另一侧滑入，只动 `opacity` / `transform`（卡片每行定高，动布局就会跳），并跳过 `prefers-reduced-motion`。模式按钮的 `.pulse` 是同一节拍的即时反馈。
   **连点必须先落定再开新的**：`state.mode` 要等动画结束（150ms）才更新，期间再点一次会算出同一个目标、第二次等于白点。所以 `setMode()` 开头会 `clearTimeout` + 立刻 `apply()` 上一次的待办，并且点击处理用的是 `currentMode()`（算的是「待办里的目标模式」，不是已生效的模式）。另外那条「已落定 → 这一次等于没动」的提前 return 里**要把 `swapping` 类摘掉**，否则卡片会卡在半透明状态。
 
@@ -80,8 +83,14 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 - 字块的说明卡片（`.tip`）鼠标悬浮和键盘聚焦会弹；触屏靠 `pointerdown` 450ms 长按或 `contextmenu` 触发，长按后的那一次 click 会被跳过（用时间戳判断，避免把下一次点击也吃掉）。
 - 中文字体子集由 `node web/fonts/build-cjk-subset.mjs` 生成（需要联网），只取 `index.html` / `app.js` / `rules.js` 里真正出现过的中文。**改完界面文案要重跑**，否则新字会退回系统字体。
 - 辞典数据由 `node web/dict/build-dict.mjs` 生成（需要联网，原始语料缓存在 `web/dict/.cache/`，不入库），产物 `web/data/dict.js` 入库。**改辞典要重跑构建脚本**；字体子集的取字范围包含 `data/dict.js`，所以**改完辞典还要重跑一次字体子集**。
-- 发给别人的单文件版由 `node web/build-standalone.mjs` 生成（`dist/泰语组合练习.html`，约 4MB，字体与辞典数据全部内联）。**改完界面或辞典要重新生成**；脚本会自检外部引用，有残留就报错退出。`dist/` 在 `.gitignore` 里，产物不入库，只提交脚本。它同时会把 `docs/使用说明.txt` 复制到 `dist/`，那份说明是**直接编辑的源文件**（不是产物），改动后要跟着提交。
-- 单文件版现在**一次生成两个**：`dist/泰语组合练习.html`（约 4.7MB）和 `dist/泰语教学.html`（约 2.4MB）。两个文件用相对链接互跳（练习页 → `tutorial.html`，教学页 → `index.html`），所以放到 `docs/` 时必须分别叫 `index.html` 和 `tutorial.html`，改名就跳不过去。`build-standalone.mjs` 的自检允许相对 `.html` 链接，其余外部引用一律报错。
+- 单文件版由 `node web/build-standalone.mjs` **一次生成两个页面 × 两个目录**，字体与辞典数据全部内联：
+
+  | 目录 | 文件名 | 用途 |
+  | --- | --- | --- |
+  | `dist/` | `泰语组合练习.html`、`泰语教学.html` | 发给别人（中文名好认） |
+  | `docs/` | `index.html`、`tutorial.html` | GitHub Pages 直接部署 |
+
+  两个页面用相对链接互跳，**文件名随目录不同**，所以脚本会把源码里的 `index.html` / `tutorial.html` **整串替换**成目标目录里的实际文件名（静态 `href` 和 JS 里的 `PRACTICE_PAGE` 常量都要换，不然教学页「点词去练习页」会 404）。**改完界面或辞典要重新生成**，不用再手工 `cp` 到 `docs/`；脚本会自检外部引用，有残留就报错退出（相对 `.html` 链接放行，文件名可能是中文，别用 `\w` 判断）。`dist/` 在 `.gitignore` 里，产物不入库，只提交脚本；`docs/` 的产物要提交。`docs/使用说明.txt` 是**直接编辑的源文件**（不是产物），脚本会把它复制到两个目录，改动后要跟着提交。
 - 元音数据带课本字段：`name`（สระ อา）、`en`（sara aa）、`roman`（罗马注音，同时是卡片注音）、`example`（例词）、`short`（长/短音）。改这些字段前先对一遍课本，测试里有逐条比对。
 - 辅音的传统例词在 `CONSONANT_EXAMPLES`（`ก ไก่` …），字段是 `example` + `gloss`；测试要求 44 个字母都有，漏一个会失败。
 - 词表字块的悬浮卡片（`.tip`）由 `app.js` 里 `chip()` 的 `tipData` 驱动：`{ glyph | glyphNodes, rows }`，鼠标悬浮和键盘聚焦都会弹，定位会自动避开视口边缘；重建词表（`buildConsonants`/`buildVowels`）时要先 `hideTip()`。
@@ -163,8 +172,8 @@ uv run python
 - **发版流程**（缺一不可）：
   1. `node --test web/` 全过；
   2. 改过界面文案或辞典 → 重跑 `node web/fonts/build-cjk-subset.mjs`（取字范围含 `data/dict.js`）；
-  3. `node web/build-standalone.mjs` 重新打包，再复制到 `docs/`：`dist/泰语组合练习.html` → `docs/index.html`、`dist/泰语教学.html` → `docs/tutorial.html`、`dist/使用说明.txt` → `docs/使用说明.txt`（线上就是这三份，名字不能改，两个页面靠相对链接互跳）；
-  4. 把 `index.html` 和 `tutorial.html` 里本地资源的 `?v=` 号一起 +1（否则浏览器可能拿到新旧混搭的文件）；
+  3. `node web/build-standalone.mjs` 重新打包——**它会同时写 `dist/` 和 `docs/`**（含两个页面与 `使用说明.txt`，链接按各目录的文件名改写），不用再手工 `cp`；
+  4. 把 `index.html` 和 `tutorial.html` 里本地资源的 `?v=` 号一起 +1（否则浏览器可能拿到新旧混搭的文件）。**只要改过任何被页面引用的 js/css 就要加**——`dict.js` 加了个函数没升版本号，页面拿旧文件、`dict.search` 不存在，教学页查词直接卡在「正在查词库…」，这个坑踩过一次；
   5. 更新 `README.md` 顶部的版本号与版本历史。**版本号约定**：README 顶部的 `beta3.1` 对应「beta3 标签内的第一次修复」，同一标签内的后续修复继续用 `.2` `.3`；`pyproject.toml` 只在打新标签时才动（它是 Python 包版本，跟网页版本不是一回事）；改 `WHATS_NEW.version` 让老用户再看到一次通知——**涉及「之前学到的内容是错的」这类修复必须改**，否则老用户不会知道要纠正。
   6. 提交 → `git push origin main` → 打标签（换版本时用 `git tag -f` 挪旧的，再 `git push --force origin <tag>`）→ 等 Pages 状态变成 `built`。
 - Python 侧一律用 `uv run ...` 执行脚本或命令，保证使用项目虚拟环境和锁定版本；前端是零依赖静态页，直接用 `node` / `python3 -m http.server` 即可。
