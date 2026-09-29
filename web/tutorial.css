@@ -1,0 +1,306 @@
+/* 教学页专用样式。基础变量、字体、暗色都由 style.css 提供，这里只管排版。 */
+
+.tut .app,
+.tut { max-width: 860px; }
+
+/* ── 目录：贴在顶上，滚到哪一节哪一节变黑 ───────────────── */
+.toc {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  margin: 0 -8px 28px;
+  padding: 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.toc-link {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.toc-link:hover { background: var(--soft); color: var(--fg); }
+
+.toc-link[aria-current="true"] {
+  background: var(--inv-bg);
+  color: var(--inv-fg);
+}
+
+/* ── 章节 ─────────────────────────────────────────────── */
+.tut-sec {
+  margin: 0 0 52px;
+  /* 点目录跳过来时别被吸顶的目录挡住标题 */
+  scroll-margin-top: 60px;
+}
+
+.tut-sec h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.tut-sec > p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.tut-sec > p b { color: var(--fg); font-weight: 600; }
+
+.tut-note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.tut-cta { margin: 28px 0 0; }
+
+.tut-cta .btn { display: inline-block; text-decoration: none; }
+
+/* ── 分组小标题 ───────────────────────────────────────── */
+.tut-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 26px 0 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tut-group:first-child { margin-top: 0; }
+
+.tut-group b { color: var(--fg); font-weight: 600; font-size: 12px; }
+
+/* ── 表格：一行一个字母 / 一个音 ───────────────────────── */
+.tut-rows {
+  /* 字形那一列的宽度：元音写成 เอย + 元音的样子，比辅音宽 */
+  --t-glyph-w: 3.2em;
+  /* 名称列要放得下「สระ เอือ uae 长音 不写声调」这种组合，太窄会一直换行 */
+  --t-meta-w: 12em;
+}
+
+/* 最长的元音写法是 เอือะ（五个码点），这一列要留得下 */
+.tut-rows.vowels { --t-glyph-w: 5.4em; }
+
+.trow {
+  display: grid;
+  grid-template-columns: var(--t-glyph-w) minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.t-glyph {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: start;
+  text-align: center;
+  font-family: var(--thai);
+  font-size: 22px;
+  line-height: 1.5;
+  padding-top: 1px;
+}
+
+/* 元音那一列的 อ 是「占座」用的载体，和课本里 สระ เอา 的写法一致。
+   不要给它降透明度或改颜色：泰文组合符号会跟着载体一起变淡，字就看不清了。 */
+.t-glyph .t-carrier { opacity: 1; }
+
+.t-glyph.big, .plain .t-glyph { font-size: 30px; }
+
+.t-glyph .t-final-roman { font-size: 15px; }
+
+/* 「无」「—」这类占位是中文/符号，走 --ui（.t-glyph 上是泰文字体栈） */
+.t-none { font-family: var(--ui); color: var(--muted); font-size: 15px; }
+
+.t-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+/* 「名称」这一列混着泰文和中文（如「1 · 中平」「กอ ไก่」），走 --ui 的字体栈：
+   --ui 里已经挂着打包的泰文字体，混排时两边都不会掉到系统字体上 */
+.t-name {
+  font-family: var(--ui);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.t-gloss { color: var(--muted); font-size: 11px; }
+
+.t-roman {
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.t-tag {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.t-say {
+  grid-column: 2;
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.t-ex, .t-letters {
+  grid-column: 2;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.8;
+}
+
+.t-ex-word {
+  font-family: var(--thai);
+  font-size: 15px;
+  color: var(--fg);
+}
+
+/* 泰文和罗马注音连着排会黏在一起，中间要留一道缝 */
+.t-ex-roman { margin-left: 6px; color: var(--fg); }
+
+.t-ex-note { margin-left: 6px; }
+
+.t-letters span {
+  font-family: var(--thai);
+  font-size: 17px;
+  line-height: 2;
+  color: var(--fg);
+}
+
+/* 音节拆解那三行：左边是大字，右边一行说明。
+   这一块只有一行文字，不走上面那套「字形跨三行」的网格，
+   否则泰文大字的行框比文字高，两个会错开一截 */
+.tut-rows.plain .trow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 0;
+}
+
+.tut-rows.plain .t-glyph {
+  flex: none;
+  width: 3.4em;
+  grid-row: auto;
+}
+
+.tut-rows.plain .t-say {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 2px;
+}
+
+.t-piece { color: var(--muted); }
+
+.tut-rows.plain .t-name { font-family: var(--ui); font-weight: 500; }
+
+/* ── 小贴士 ───────────────────────────────────────────── */
+.tip-box {
+  margin: 22px 0 0;
+  padding: 14px 16px;
+  background: var(--soft);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+
+.tip-box p { margin: 0; }
+
+.tip-box p + p { margin-top: 8px; }
+
+.tip-box .tip-title {
+  margin-top: 14px;
+  font-weight: 600;
+}
+
+.tip-box .tip-title:first-child { margin-top: 0; }
+
+.tip-box b { font-weight: 600; }
+
+/* ── 声调规则表 ───────────────────────────────────────── */
+.tone-rules {
+  margin-top: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.trule {
+  display: grid;
+  grid-template-columns: 4.6em repeat(6, minmax(6.2em, 1fr));
+  min-width: 42em;
+}
+
+.trule > div {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.trule > div + div { border-left: 1px solid var(--line); }
+
+.trule.head > div {
+  color: var(--muted);
+  font-size: 11px;
+  border-bottom: 1px solid var(--fg);
+}
+
+/* 规则表第一列是「中类 / 高类 / 低类」，中文，走 --ui */
+.trule-cls { font-family: var(--ui); font-weight: 500; }
+
+.trule-cell { display: flex; flex-direction: column; gap: 2px; }
+
+.trule-one b { font-weight: 600; }
+
+.trule-one i {
+  margin-left: 5px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-style: normal;
+}
+
+/* ── 宽屏：名称与讲解并排，例词占满下面一行 ─────────────── */
+@media (min-width: 780px) {
+  .trow {
+    grid-template-columns: var(--t-glyph-w) var(--t-meta-w) minmax(0, 1fr);
+    column-gap: 18px;
+    padding: 11px 0;
+    align-items: baseline;
+  }
+
+  .t-glyph { grid-row: 1 / span 2; }
+  .t-say { grid-column: 3; margin-top: 0; }
+  .t-ex, .t-letters { grid-column: 2 / -1; }
+  .tut-rows.plain .t-say { grid-column: 2 / -1; }
+}
+
+@media (max-width: 420px) {
+  .t-glyph { font-size: 20px; }
+  .tut-rows.vowels { --t-glyph-w: 5em; }
+  .tut-group { margin-top: 20px; }
+}

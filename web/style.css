@@ -109,6 +109,23 @@ html.js .js-fallback { display: none; }
   letter-spacing: 0.04em;
 }
 
+/* 标题右边放「拼读教学 →」这类跳转链接（练习页 ↔ 教学页） */
+.head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.head-link {
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: underline dotted;
+  white-space: nowrap;
+}
+
+.head-link:hover { color: var(--fg); }
+
 .head .sub {
   margin: 6px 0 0;
   color: var(--muted);

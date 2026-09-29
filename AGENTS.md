@@ -16,9 +16,9 @@
 
 ## 项目现状
 
-`web/` 是目前唯一有功能的实现（静态页面 + 纯 JS 规则引擎 + 内置辞典数据），已有自测：`node --test web/` 共 44 项（规则引擎 38 + 选项全矩阵 6）。
+`web/` 是目前唯一有功能的实现（静态页面 + 纯 JS 规则引擎 + 内置辞典数据），已有自测：`node --test web/` 共 61 项（规则引擎 44 + 选项全矩阵 6 + 教学页 7 + 拼写顺序等）。
 
-- 已经做完：随机 / 固定两种模式、组合范围三档、词表勾选、声调自选、辞典（5000 余条中泰对照词 + 27522 条真词索引）、两种打包字体、暗色模式、卡片定高不跳动、系统语音朗读。
+- 已经做完：随机 / 固定两种模式、组合范围三档、词表勾选、声调自选、辞典（5000 余条中泰对照词 + 27522 条真词索引）、两种打包字体、暗色模式、卡片定高不跳动、系统语音朗读、**拼读教学页**（`tutorial.html`，练习页右上角进入）。
 - 还没有：自己的发音方案（现在用系统 TTS，安卓大多没声音）、录音打分、练习记录与间隔重复。
 - `src/thai_wordcards/__init__.py` 还是 `uv init` 的脚手架（只有打印 `Hello from thai-wordcards!` 的 `main()`），暂无 CLI 与后端功能。
 - 线上地址 <https://tangziwuyue.github.io/Thai_wordcards/>（GitHub Pages，从 `main` 的 `/docs` 目录部署），版本标签 `beta3`。
@@ -28,6 +28,10 @@
 ```
 web/index.html        页面结构
 web/style.css         样式（极简黑白灰）
+web/tutorial.html     教学页结构（辅音 / 元音 / 尾辅音 / 声调四部分）
+web/tutorial.css      教学页样式
+web/tutorial.js       教学页渲染逻辑（表格内容从 rules.js 现取）
+web/tutorial-data.js  教学页的文字内容：发音讲解、声调规则表
 web/fonts.css         打包字体的 @font-face
 web/app.js            界面逻辑：词表、随机、声调切换、朗读、辞典面板
 web/rules.js          拼写规则引擎（纯逻辑，无 DOM 依赖）
@@ -36,6 +40,7 @@ web/dict/             辞典构建脚本与人工补的基础词表
 web/data/dict.js      辞典数据产物（入库）
 web/rules.test.mjs    规则引擎自测
 web/combinations.test.mjs  选项全矩阵自测（随机模式 48 种搭配 + 固定模式全量）
+web/tutorial.test.mjs 教学页自测（讲解漏没漏、声调规则表对不对）
 web/fonts/            Sarabun / Noto Serif Thai 的 woff2 与 OFL 授权说明
 web/build-standalone.mjs  打包成单文件 HTML 的脚本（产物在 dist/，不入库）
 src/thai_wordcards/   Python 脚手架，暂无功能
@@ -44,6 +49,10 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 ## 技术栈
 
 - 前端：原生 HTML/CSS/JS，无构建步骤、无第三方依赖；用普通 `<script>` 加载（不用 ES module），保证双击 `web/index.html` 也能打开。
+- 教学页 (`web/tutorial.html`) 跟练习页共用 `style.css` 的变量与字体，自己再挂一个 `tutorial.css`。**类名前缀一律 `tut-` / `t-`**：`style.css` 里有 `.tones`、`.chip`、`.card` 这类通用类名，撞上就会被练习页的样式串味（`tut-rows` 上的 `.tones` 曾经把五张声调行排成五列）。
+- 教学页的表格内容（字形、名称、罗马注音、例词、尾辅音分组）**全部从 `rules.js` 现取**，不要另抄一份；只手写发音讲解，放在 `tutorial-data.js`。它有 `module.exports` / `window.TutorialData` 双出口，`web/tutorial.test.mjs` 靠 Node 直接读它逐条比对。
+- 教学页里**不要在正文里写孤立的泰文组合符号**（`่ ้ ๊ ๋ ั ิ`）：它们会飘到行框上方甚至被格子切掉。要写就垫一个 `อ`（`อ่`、`อั`）或直接写名称（`ไม้โท`）。
+- 实测：卡片上的元音载体 `อ` 不能降透明度或改颜色（泰文组合符号会跟着一起变淡），教学页元音表里也是同一个道理。
 - 字体全部打包在仓库里，不依赖系统装了什么：泰文用 Sarabun（默认，泰国政府文书标准体）与 Noto Serif Thai；界面中文用 Noto Sans SC 的子集。都是 SIL OFL 1.1，版权与来源见 `web/fonts/NOTICE.md`。**不要再加「系统字体」选项**，也不要在字体栈里放系统泰文字体名，否则换机器字形会变。
 - 两套泰文字体在 `fonts.css` 里都带 `ascent-override: 107%` / `descent-override: 30%` / `line-gap-override: 0%`。**换字体或改字号时要保留这组 override**：两套字体原生度量差很多（Sarabun 1.068/0.232，Noto Serif Thai 1.064/0.534），不统一的话同样行高下衬线体会整体偏上。
 - `--ui` 字体栈里带 `var(--thai)`：注释行里混着泰文（`首辅音 ก 中类`），不这样会掉到系统泰文字体上。
@@ -51,6 +60,7 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 - 中文字体子集由 `node web/fonts/build-cjk-subset.mjs` 生成（需要联网），只取 `index.html` / `app.js` / `rules.js` 里真正出现过的中文。**改完界面文案要重跑**，否则新字会退回系统字体。
 - 辞典数据由 `node web/dict/build-dict.mjs` 生成（需要联网，原始语料缓存在 `web/dict/.cache/`，不入库），产物 `web/data/dict.js` 入库。**改辞典要重跑构建脚本**；字体子集的取字范围包含 `data/dict.js`，所以**改完辞典还要重跑一次字体子集**。
 - 发给别人的单文件版由 `node web/build-standalone.mjs` 生成（`dist/泰语组合练习.html`，约 4MB，字体与辞典数据全部内联）。**改完界面或辞典要重新生成**；脚本会自检外部引用，有残留就报错退出。`dist/` 在 `.gitignore` 里，产物不入库，只提交脚本。它同时会把 `docs/使用说明.txt` 复制到 `dist/`，那份说明是**直接编辑的源文件**（不是产物），改动后要跟着提交。
+- 单文件版现在**一次生成两个**：`dist/泰语组合练习.html`（约 4.7MB）和 `dist/泰语教学.html`（约 2.4MB）。两个文件用相对链接互跳（练习页 → `tutorial.html`，教学页 → `index.html`），所以放到 `docs/` 时必须分别叫 `index.html` 和 `tutorial.html`，改名就跳不过去。`build-standalone.mjs` 的自检允许相对 `.html` 链接，其余外部引用一律报错。
 - 元音数据带课本字段：`name`（สระ อา）、`en`（sara aa）、`roman`（罗马注音，同时是卡片注音）、`example`（例词）、`short`（长/短音）。改这些字段前先对一遍课本，测试里有逐条比对。
 - 辅音的传统例词在 `CONSONANT_EXAMPLES`（`ก ไก่` …），字段是 `example` + `gloss`；测试要求 44 个字母都有，漏一个会失败。
 - 词表字块的悬浮卡片（`.tip`）由 `app.js` 里 `chip()` 的 `tipData` 驱动：`{ glyph | glyphNodes, rows }`，鼠标悬浮和键盘聚焦都会弹，定位会自动避开视口边缘；重建词表（`buildConsonants`/`buildVowels`）时要先 `hideTip()`。
@@ -132,8 +142,8 @@ uv run python
 - **发版流程**（缺一不可）：
   1. `node --test web/` 全过；
   2. 改过界面文案或辞典 → 重跑 `node web/fonts/build-cjk-subset.mjs`（取字范围含 `data/dict.js`）；
-  3. `node web/build-standalone.mjs` 重新打包，再把 `dist/泰语组合练习.html`、`dist/使用说明.txt` 复制到 `docs/`（线上就是这一份）；
-  4. 把 `index.html` 里本地资源的 `?v=` 号 +1（否则浏览器可能拿到新旧混搭的文件）；
+  3. `node web/build-standalone.mjs` 重新打包，再复制到 `docs/`：`dist/泰语组合练习.html` → `docs/index.html`、`dist/泰语教学.html` → `docs/tutorial.html`、`dist/使用说明.txt` → `docs/使用说明.txt`（线上就是这三份，名字不能改，两个页面靠相对链接互跳）；
+  4. 把 `index.html` 和 `tutorial.html` 里本地资源的 `?v=` 号一起 +1（否则浏览器可能拿到新旧混搭的文件）；
   5. 更新 `README.md` 顶部的版本号与版本历史。**版本号约定**：README 顶部的 `beta3.1` 对应「beta3 标签内的第一次修复」，同一标签内的后续修复继续用 `.2` `.3`；`pyproject.toml` 只在打新标签时才动（它是 Python 包版本，跟网页版本不是一回事）；改 `WHATS_NEW.version` 让老用户再看到一次通知——**涉及「之前学到的内容是错的」这类修复必须改**，否则老用户不会知道要纠正。
   6. 提交 → `git push origin main` → 打标签（换版本时用 `git tag -f` 挪旧的，再 `git push --force origin <tag>`）→ 等 Pages 状态变成 `built`。
 - Python 侧一律用 `uv run ...` 执行脚本或命令，保证使用项目虚拟环境和锁定版本；前端是零依赖静态页，直接用 `node` / `python3 -m http.server` 即可。

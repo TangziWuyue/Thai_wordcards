@@ -1,6 +1,6 @@
 # 泰语组合练习
 
-**版本：beta3.1**（2026-09-29）· 在线使用：<https://tangziwuyue.github.io/Thai_wordcards/>
+**版本：beta4**（2026-09-29）· 在线使用：<https://tangziwuyue.github.io/Thai_wordcards/>
 
 勾选若干泰语辅音与元音 → 按泰文拼写规则随机拼出一个音节 → 自己挑声调 → 跟着念出声。
 元音的名称、英文名、罗马注音、例词都对齐中国教材《基础泰语（1）》的元音表。
@@ -8,16 +8,32 @@
 组合出来的音节**大多没有实际词义，这是刻意的**：不背单词，只练「看到拼写就能读出来」这条肌肉记忆。
 不想看到无意义音节时，把「组合范围」切到 **常用词**，随机出来的每一个都是词表里真实存在的词。
 
+配套还有一个**拼读教学页** <https://tangziwuyue.github.io/Thai_wordcards/tutorial.html>，
+把 44 个辅音、32 个元音、尾辅音、声调规则逐条摊开讲，每个字母都配了发音讲解；练习页右上角有入口。
+
 ## 版本历史
 
 | 版本 | 日期 | 主要变化 |
 | --- | --- | --- |
+| **beta4** | 2026-09-29 | 新增**拼读教学页**：44 辅音 / 32 元音 / 尾辅音 / 声调规则逐条讲，含发音讲解与声调规则表 |
 | **beta3.1** | 2026-09-29 | 修 `สระ อา` 声调符号的码点顺序（见下）、假簇注音的尾辅音去重、首屏「词库没加载出来」误报等 |
 | beta3 | 2026-09-29 | 新增**辞典**与**组合范围三档**；首屏默认显示 `สวัสดี`；去掉国际音标选项；卡片每一行改成定高，换音节时整页不再跳动 |
 | beta2 | 2026-09-26 | 新增**固定模式**（自己挑辅音/元音拼读）；规则开关决定 `อ` 补位；选项按模式灰显 |
 | beta1 | — | 随机组合 + 声调自选 + 词表勾选 + 系统语音朗读 |
 
 ## 功能
+
+- **拼读教学页**（`tutorial.html`，练习页右上角进入）：仿 jyutping.io 教学页的结构，先讲「一个音节 = 声母 + 元音 + 尾音 + 声调」，再分四部分摊开：
+
+  | 部分 | 讲什么 |
+  | --- | --- |
+  | 辅音 44 | 按中类 / 高类 / 低类分组，每个字母给「名称（ก ไก่）、罗马注音、发音讲解」，借词用字与已废弃字母单独标出 |
+  | 元音 32 | 按单元音 18 / 复合元音 6 / 超额元音 8 分组，另列 4 个拼写变体；每个元音写成 `อ + 元音` 的样子，附长短音与例词 |
+  | 尾辅音 | 按实际读音的 8 组（-k -t -p -n -ng -m -y -w）讲「中和」，列出每组有哪些字母、哪些字母不能当尾音 |
+  | 声调 | 五个声调的调值与念法，加一张「辅音类别 × 有没有写符号 × 音节死活 → 读第几调」的规则表 |
+
+  表里的字形、名称、注音、例词全部从 `rules.js` 现取（练习页和教学页永远说同一件事），只有发音讲解是手写文案，放在 `tutorial-data.js`，测试逐条比对。
+  教学页也能单独打包成 `dist/泰语教学.html`，跟练习页放在一起可以互相跳转。
 
 > **beta3.1 的 bug 修复**：`สระ อา` 的 `า` 原先被放在元音「前段」，拼出来的 `มา้`（马）、`ก้า` 这类全是错序（`า` 跑到声调符号前面了）。泰文里 `า` 是 spacing 元音，码点上必须排在声调符号之后（`ม้า` = ม + ้ + า）。这条影响很大：所有带调的 อา 音节字形都是错的，**155 个音节拼写（含 35 个常用词）在「常用词」档里根本抽不到**——修复前这 155 个在辞典里的命中数是 0。另外一并修掉了：假簇（ทร）注音漏了尾辅音去重（`ทราย` 拼成 `saii`）、单文件版首屏误报「词库没加载出来」、引导第 7 步跳过会卡在固定模式、长按一个字后一秒内点另一个字块失效、固定模式下换字体/主题后「常用词」又能点了、`全不选` 刷新后丢失、「只选元音」等个别路径字号缩放残留、声调提示指向一个不存在的开关、脏 localStorage 渲染成乱码卡片、词库加载失败时仍承诺「一定是真词」。
 
@@ -70,7 +86,7 @@ python3 -m http.server 8901 --directory web
 ### 自测
 
 ```bash
-node --test web/      # 44 项：规则引擎 38 + 选项矩阵 6
+node --test web/      # 61 项：规则引擎 44 + 选项矩阵 6 + 教学页 7 + 拼写顺序等
 ```
 
 `web/combinations.test.mjs` 会把随机模式的 **48 种选项搭配**（组合范围 × 允许辅音簇 × 允许尾辅音 × 允许元音充当声母 × 允许无元音符号）各跑 200 次，固定模式把 **44 个辅音单选 / 35 个元音单选 / 44×35 个辅音元音搭配 × 是否检查规则** 全部跑一遍。
@@ -78,7 +94,7 @@ node --test web/      # 44 项：规则引擎 38 + 选项矩阵 6
 ### 打包成单文件发给别人
 
 ```bash
-node web/build-standalone.mjs      # 生成 dist/泰语组合练习.html
+node web/build-standalone.mjs      # 生成 dist/泰语组合练习.html 与 dist/泰语教学.html
 ```
 
 产物把 CSS、JS、字体、辞典数据全部内联进 HTML（约 4MB），**零外部引用**——发过去双击就能用，不需要联网、不需要装泰文字体，也不受 `file://` 跨域限制影响，断网也能查词。改动界面或辞典后重新跑一次即可（脚本会自检有没有残留外部引用，有就报错退出）。
@@ -105,9 +121,14 @@ python3 -m http.server 8901 --directory web
 node web/fonts/build-cjk-subset.mjs        # 改过界面文案才需要
 node web/build-standalone.mjs
 cp "dist/泰语组合练习.html" docs/index.html
+cp "dist/泰语教学.html" docs/tutorial.html
 cp "dist/使用说明.txt" docs/使用说明.txt
 git add -A && git commit -m "更新线上版本" && git push
 ```
+
+线上两个地址：<https://tangziwuyue.github.io/Thai_wordcards/>（练习页）与
+<https://tangziwuyue.github.io/Thai_wordcards/tutorial.html>（教学页）。
+两个单文件版之间用相对链接互相跳转，所以 `docs/` 里必须叫 `index.html` 和 `tutorial.html`。
 
 不想公开仓库的话，可以改用 Vercel / Cloudflare Pages / Netlify——它们支持从**私有**仓库部署，但需要各自注册账号。
 
@@ -139,6 +160,10 @@ node web/fonts/build-cjk-subset.mjs # 释义里的新汉字要补进字体子集
 ```
 web/index.html            页面结构
 web/style.css             样式（极简黑白灰）
+web/tutorial.html         教学页结构
+web/tutorial.css          教学页样式（表格排版，窄屏会重排）
+web/tutorial.js           教学页渲染：表里除了发音讲解都从 rules.js 现取
+web/tutorial-data.js      教学页的文字内容（发音讲解、声调规则表，双端可用）
 web/fonts.css             泰文字体的 @font-face
 web/fonts-cjk.css         中文字体子集的 @font-face（脚本生成）
 web/app.js                界面逻辑：词表、随机、声调、朗读、辞典面板
@@ -146,11 +171,12 @@ web/rules.js              拼写规则引擎（纯逻辑，无 DOM 依赖）
 web/dict.js               辞典数据加载与查询（纯逻辑 + 按需注入 script）
 web/dict/                 辞典构建脚本、人工补的基础词表、语料缓存（缓存不入库）
 web/data/dict.js          辞典数据产物（入库）
-web/rules.test.mjs        规则引擎自测（38 项）
+web/rules.test.mjs        规则引擎自测（44 项）
 web/combinations.test.mjs 选项全矩阵自测（6 项）
+web/tutorial.test.mjs     教学页自测（7 项：讲解有没有漏、声调表对不对）
 web/fonts/                打包的 woff2、授权说明、中文字体子集生成脚本
 web/build-standalone.mjs  打包成单文件 HTML 的脚本（产物在 dist/，不入库）
-docs/                     GitHub Pages 部署目录（index.html 是打包产物）
+docs/                     GitHub Pages 部署目录（index.html 练习页、tutorial.html 教学页，都是打包产物）
 dist/                     打包产物（在 .gitignore 里，不入库）
 src/thai_wordcards/       Python 脚手架，目前没有实际功能
 ```

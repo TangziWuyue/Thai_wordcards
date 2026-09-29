@@ -18,7 +18,11 @@ const WEB = path.resolve(import.meta.dirname, '..');
 const FONT_DIR = path.join(WEB, 'fonts');
 const OUT_CSS = path.join(WEB, 'fonts-cjk.css');
 // data/dict.js 是辞典数据，里面的中文释义也要有字型，否则会掉到系统字体上
-const SOURCE_FILES = ['index.html', 'app.js', 'rules.js', 'data/dict.js'];
+// tutorial.* 是教学页，它的讲解文字同样是界面文案
+const SOURCE_FILES = [
+  'index.html', 'app.js', 'rules.js', 'data/dict.js',
+  'tutorial.html', 'tutorial-data.js', 'tutorial.js',
+];
 const FAMILY = 'Noto Sans SC';
 
 /** 收集界面里出现的中文字符与中文标点 */
