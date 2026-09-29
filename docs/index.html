@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-29T05:00:28.850Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-29T05:12:57.045Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -3757,12 +3757,12 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
     {
       sel: '.card',
       title: '卡片',
-      text: '点「随机组合」生成音节。卡片会标出它是「真词」还是「无义」。',
+      text: '点「随机组合」生成音节。标「真词」的是真实存在的词。',
     },
     {
       sel: '.split',
       title: '随机 / 固定',
-      text: '左边随机换一个，右边切到固定模式；「组合范围」决定拼得多严。',
+      text: '左边换一个，右边切固定模式自己点字母拼；下面选组合范围。',
     },
     {
       sel: '.tones',
@@ -3772,37 +3772,21 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
     {
       sel: '#consonants',
       title: '词表',
-      text: '勾选要练的字母；悬停看例词和读音（手机长按）。',
+      text: '勾选要练的字母，悬停（手机长按）看读音和例词。',
     },
     {
       sel: '#dictPanel',
       title: '辞典',
-      text: '常用词一次看几个，点「换一批」继续；点某个词就把它放到主卡片上。',
+      text: '常用词一次看几个，点词就放到主卡片上。',
       before: () => { el.dictPanel.open = true; ensureDict(); },
-    },
-    {
-      sel: '#optionsPanel',
-      title: '选项',
-      text: '字体和外观在这里调；固定模式下用不到的会变灰。',
-      before: () => { el.optionsPanel.open = true; },
-    },
-    {
-      sel: '.split',
-      title: '固定模式',
-      text: '点字母就能拼，再点一下取消。',
-      before: () => setMode('fixed'),
-    },
-    {
-      sel: '.foot',
-      title: '反馈',
-      text: '有问题发邮件；安卓暂不支持发音，后续会加。',
-      before: () => setMode(tour.prevMode || 'random'),
     },
   ];
 
   const tour = {
     index: 0,
-    prevMode: 'random',   // 引导里会切到固定模式演示，结束时要切回去
+    // 记录进入引导前的模式：现在这几步都不切模式，但万一以后加了会切模式的演示步骤，
+    // endTour() 里那句恢复就是必需的，先留着
+    prevMode: 'random',
     hole: document.createElement('div'),
     mask: document.createElement('div'),
     tip: document.createElement('div'),
@@ -3964,9 +3948,8 @@ window.ThaiDictData={"source":"来源：thai-vocabulary-studio · Wiktionary · 
     // 这次是「之前学到的字形是错的」，属于必须让人看到的那类修复，所以加了 .1
     version: 'beta3.1',
     items: [
-      '修正 สระ อา 带声调时的写法：声调符号和 า 的顺序错了，以前拼出来是 มา้，现在是 ม้า。',
-      '之前练过「อา + 声调」的音节，请照现在的卡片再看一眼写法。',
-      '同时修掉几处：引导中途跳过会卡在固定模式、手机上长按字母后马上点下一个没反应、词表「全不选」刷新后丢失。',
+      '修正带声调的 อา 写法：以前是 มา้，现在是 ม้า。之前练过的请再看一眼。',
+      '另修：引导跳过会卡住、长按后马上点下一个字母没反应、全不选刷新后丢失。',
     ],
   };
 
