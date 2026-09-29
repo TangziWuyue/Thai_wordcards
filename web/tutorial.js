@@ -13,6 +13,7 @@
 
   const R = window.ThaiRules;
   const D = window.TutorialData;
+  const S = window.TutorialSearch;
   const $ = (id) => document.getElementById(id);
 
   // 搜索索引：每一行渲染时把自己登记进来，搜索框才有东西可查
@@ -34,37 +35,15 @@
   }
 
   /**
-   * 把一行登记进搜索索引。
-   * 分三档，搜索按档位依次退让：
-   *   core —— 这一行**本身**：字形、字母名（不含名称里的例词）、注音、标签、所属小节
-   *   p    —— 再加上完整名称（辅音的名称里带着例词，如 ฃอ ขวด）
-   *   a    —— 再加上例词和讲解正文
-   * 不这么分的话，搜 ด 会被其他字母名称里的例词（ขวด、มีด、ฤดู）和讲解里的「跟 ด 同音」带出一堆。
-   * 手写行（尾辅音那几行）也要走这里，不然搜索会取不到 p / a。
+   * 把一行登记进搜索索引。匹配规则本身在 tutorial-search.js 里（纯逻辑、可测）。
+   * 手写行（尾辅音那几行）也要走这里，不然搜索会取不到这些字段。
    */
   function register(box, say, info) {
     box.id = `r${INDEX.length + 1}`;
-    const tags = info.tags || [];
-    const glyph = info.glyph || '';
-    // core 里的名字默认用整条名称；辅音那几行会单独传「不含例词」的那一截
-    const coreName = info.core === undefined ? (info.name || '') : info.core;
-    const core = [glyph, coreName, info.roman || '', tags.join(' '), currentSection]
-      .join(' ').toLowerCase();
-    const p = `${core} ${info.name || ''}`.toLowerCase();
-    INDEX.push({
-      id: box.id,
-      section: currentSection,
-      glyph,
-      name: info.name || '',
-      roman: info.roman || '',
-      tags,
-      extra: info.extra || '',
-      text: say || '',
-      el: box,
-      core,
-      p,
-      a: `${p} ${info.extra || ''} ${say || ''}`.toLowerCase(),
-    });
+    const entry = S.makeEntry({ ...info, text: say || '' }, currentSection);
+    entry.id = box.id;
+    entry.el = box;
+    INDEX.push(entry);
   }
 
   /**
@@ -152,9 +131,7 @@
         rows.append(row([thai('span', '', c.ch)], meta, D.SAY_CONS[c.ch], null, {
           glyph: c.ch,
           name: `${c.ch}อ ${c.example}`,
-          // 名称里带着例词（ฃอ ขวด），搜索时只把「ฃอ」这一半当成本身
-          core: `${c.ch} ${c.ch}อ`,
-          roman: c.roman || '',
+            roman: c.roman || '',
           tags: [R.CLASS_LABEL[c.cls], c.rare ? '借词用字' : '', c.obsolete ? '已废弃' : ''].filter(Boolean),
           extra: `${c.example} ${c.gloss || ''}`,
         }));
@@ -379,32 +356,7 @@
   // ── 搜索：输入字母 / 注音 / 中文都能查，选中就跳过去并高亮 ──────────
   const search = { input: null, list: null, clear: null, matches: [], nodes: [], active: -1 };
 
-  /**
-   * 严格搜索，三档依次退让：
-   *   1. core —— 字形 / 字母名 / 注音 / 标签 / 所在小节
-   *   2. p    —— 再加上完整名称（辅音的名称里带例词）
-   *   3. a    —— 再加上例词和讲解正文（会带一句说明）
-   * 前两档能命中就绝不显示第三档，所以搜 ด 不会再被 ขวด、มีด、ฤดู 带出一堆别的字母。
-   */
-  function findMatches(query) {
-    // 空格分开的几个词要同时命中（搜「辅音 送气」只出辅音里提到送气的）
-    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return { list: [], tier: 'core' };
-    const core = [];
-    const named = [];
-    const loose = [];
-    for (const item of INDEX) {
-      if (terms.every((t) => item.core.includes(t))) core.push(item);
-      else if (terms.every((t) => item.p.includes(t))) named.push(item);
-      else if (terms.every((t) => item.a.includes(t))) loose.push(item);
-    }
-    const q = query.trim().toLowerCase();
-    // 字形跟查询一模一样（搜 ด 出 ด）的排最前面
-    core.sort((x, y) => (x.glyph.toLowerCase() === q ? 0 : 1) - (y.glyph.toLowerCase() === q ? 0 : 1));
-    if (core.length) return { list: core.slice(0, 12), tier: 'core' };
-    if (named.length) return { list: named.slice(0, 12), tier: 'name' };
-    return { list: loose.slice(0, 12), tier: 'loose' };
-  }
+  const findMatches = (query) => S.findMatches(INDEX, query);
 
   function closeResults() {
     search.list.hidden = true;
@@ -529,6 +481,7 @@
       search.input.value = seed;
       renderResults();
     }
+
   }
 
   function main() {

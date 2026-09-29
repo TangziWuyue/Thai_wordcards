@@ -13,6 +13,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const R = require('./rules.js');
 const D = require('./tutorial-data.js');
+const S = require('./tutorial-search.js');
 
 /** 拼一个用于测试的 parts */
 const parts = (vowelId, onset, extra = {}) => ({
@@ -147,4 +148,113 @@ test('教学页：发音讲解按《基础泰语（1）》的口径，别改回�
   // 尾辅音改用课本术语：清尾 / 浊尾
   assert.match(D.SAY_FINAL.k, /喉咙/);
   assert.match(D.SAY_FINAL.ng, /鼻/);
+});
+
+// ── 搜索：这一块返工过三次，规则写死在这里，改坏了直接红 ──────────────────
+/** 用真实数据建一份索引，跟页面上渲染出来的那一份同构 */
+function buildIndex() {
+  const idx = [];
+  const push = (info, section) => idx.push(S.makeEntry(info, section));
+  for (const c of R.CONSONANTS) {
+    push({
+      glyph: c.ch,
+      name: `${c.ch}อ ${c.example}`,
+      roman: c.roman,
+      tags: [R.CLASS_LABEL[c.cls], c.rare ? '借词用字' : '', c.obsolete ? '已废弃' : ''].filter(Boolean),
+      extra: `${c.example} ${c.gloss || ''}`,
+      text: D.SAY_CONS[c.ch],
+    }, '辅音');
+  }
+  for (const v of R.VOWELS.filter((x) => !x.internal)) {
+    const form = `${v.lead || ''}${v.follow || ''}${v.tail || ''}`;
+    push({
+      glyph: form || '无',
+      name: v.name,
+      roman: v.roman,
+      tags: [v.short ? '短音' : '长音', v.noTone ? '不写声调' : '', v.requiresFinal ? '必须有尾音' : ''].filter(Boolean),
+      extra: v.example || '',
+      text: D.SAY_VOWEL[v.id] || '',
+    }, '元音');
+  }
+  for (const sound of ['k', 't', 'p', 'n', 'ng', 'm', 'y', 'w']) {
+    push({
+      glyph: `-${sound}`,
+      name: `尾音 -${sound}`,
+      roman: `-${sound}`,
+      tags: [R.FINALS[R.FINAL_GROUPS[sound][0]].sonorant ? '清尾辅音 · 活音节' : '浊尾辅音 · 死音节'],
+      extra: `${R.FINAL_GROUPS[sound].join(' ')} ${D.FINAL_EXAMPLES[sound].word}`,
+      text: D.SAY_FINAL[sound],
+    }, '尾辅音');
+  }
+  for (const n of [1, 2, 3, 4, 5]) {
+    push({
+      glyph: n === 1 ? '—' : `อ${D.TONE_SIGN[n]}`,
+      name: `第 ${n} 调 · ${R.SPOKEN_TONES[n].zh}`,
+      roman: R.SPOKEN_TONES[n].thai,
+      tags: [`第 ${n} 调`],
+      extra: `${D.TONE_EXAMPLE[n].word} ${D.TONE_EXAMPLE[n].roman}`,
+      text: D.TONE_HOW[n],
+    }, '声调');
+  }
+  return idx;
+}
+
+const glyphsOf = (res) => res.list.map((i) => i.glyph);
+
+test('搜索：泰文只认「字形里有这个字」或「整词相等」，不按词里包含算', () => {
+  const idx = buildIndex();
+  // 判据：出来的每一行，**字形里都真的写着这个字**，而不是「某个词里凑巧有它」
+  const onlyIfGlyphHas = (q, extra) => {
+    const res = S.findMatches(idx, q);
+    const bad = res.list.filter((i) => !i.glyph.includes(q));
+    assert.deepEqual(bad.map((i) => `${i.glyph}(${i.name})`), [], `搜 ${q} 不该出这些行`);
+    if (extra) assert.deepEqual(glyphsOf(res), extra, `搜 ${q} 的结果`);
+  };
+  // 用户报的三个：ไ 被 ไม้… 带出来、ต 被 ไต่/ตรี/จัตวา 带出来、ม 被 ไม้/สามัญ 带出来
+  onlyIfGlyphHas('ไ', ['ไ']);
+  onlyIfGlyphHas('ต', ['ต']);
+  onlyIfGlyphHas('ม', ['ม']);
+  onlyIfGlyphHas('ฎ', ['ฎ']);
+  onlyIfGlyphHas('ฏ', ['ฏ']);
+  // ั 除了 ไม้หันอากาศ，还会带出 อัว / อัวะ —— 因为它们的字形（ัว）里真的写着 ั，这个算合理
+  const a = S.findMatches(idx, 'ั');
+  assert.equal(a.list[0].glyph, 'ั', '字形完全相同的排第一');
+});
+
+test('搜索：字母名整词相等仍然能查到', () => {
+  const idx = buildIndex();
+  assert.deepEqual(glyphsOf(S.findMatches(idx, 'กอ')), ['ก'], '搜 กอ 出 ก');
+  assert.deepEqual(glyphsOf(S.findMatches(idx, 'ไม้หันอากาศ')), ['ั'], '搜全名出 ไม้หันอากาศ');
+  // 辅音的名称里带着例词（ฃอ ขวด），所以例词也算「名称的一部分」，进第一档
+  assert.deepEqual(glyphsOf(S.findMatches(idx, 'ขวด')), ['ฃ'], '搜例词 ขวด 出 ฃ');
+  // 元音表的例词只写在「例词」那一栏，所以要退一档才找得到
+  const byExample = S.findMatches(idx, 'มา');
+  assert.equal(byExample.tier, 'name');
+  // มา 既是 สระ อา 的例词，也是第 1 调的例词，两个都该出
+  assert.deepEqual(glyphsOf(byExample), ['า', '—'], '搜例词 มา 出 สระ อา 与第 1 调');
+});
+
+test('搜索：拉丁注音要整词相等，k 不该带出 kh', () => {
+  const idx = buildIndex();
+  const k = S.findMatches(idx, 'k');
+  assert.ok(k.list.every((i) => i.roman === 'k'), `搜 k 只能出注音正好是 k 的行，实际：${k.list.map((i) => i.roman)}`);
+  const kh = S.findMatches(idx, 'kh');
+  assert.ok(kh.list.length >= 4 && kh.list.every((i) => i.roman === 'kh'), '搜 kh 出注音为 kh 的那几个');
+  // 数字：第 1 调
+  assert.deepEqual(glyphsOf(S.findMatches(idx, '1')), ['—'], '搜 1 出第 1 调');
+});
+
+test('搜索：中文按包含匹配，找不到才退到「讲解里提到」并标出来', () => {
+  const idx = buildIndex();
+  const short = S.findMatches(idx, '短音');
+  assert.equal(short.tier, 'strict');
+  assert.ok(short.list.length >= 8, '短音这一档应该有不少行');
+  // 「送气」不在任何行的名称/标签里，只在讲解正文里 → 退到最后一档
+  const asp = S.findMatches(idx, '送气');
+  assert.equal(asp.tier, 'loose');
+  assert.ok(asp.list.length >= 5);
+  // 空格分开的词要全部命中
+  const both = S.findMatches(idx, '辅音 送气');
+  assert.equal(both.tier, 'loose');
+  assert.ok(both.list.every((i) => i.section === '辅音'), '「辅音 送气」只应出辅音那一节');
 });

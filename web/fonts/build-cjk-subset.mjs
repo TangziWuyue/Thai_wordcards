@@ -21,7 +21,7 @@ const OUT_CSS = path.join(WEB, 'fonts-cjk.css');
 // tutorial.* 是教学页，它的讲解文字同样是界面文案
 const SOURCE_FILES = [
   'index.html', 'app.js', 'rules.js', 'data/dict.js',
-  'tutorial.html', 'tutorial-data.js', 'tutorial.js',
+  'tutorial.html', 'tutorial-data.js', 'tutorial-search.js', 'tutorial.js',
 ];
 const FAMILY = 'Noto Sans SC';
 

@@ -53,7 +53,7 @@ const PAGES = [
     src: 'tutorial.html',
     out: '泰语教学.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css', 'tutorial.css'],
-    scripts: ['rules.js', 'tutorial-data.js', 'tutorial.js'],
+    scripts: ['rules.js', 'tutorial-data.js', 'tutorial-search.js', 'tutorial.js'],
   },
 ];
 
