@@ -336,12 +336,59 @@
   }
 
   // ── 目录锚点：滚动时高亮当前这一节 ─────────────────────────────────
+  /**
+   * 平滑滚动停下之后再跑 fn。
+   * 优先用 scrollend（Chrome / 新版 Safari），不支持的就自己盯着滚动位置，
+   * 连续两次没动就算停了——固定 700ms 的兜底太短，从概览跳到「声调」要滚好几千像素。
+   */
+  function afterScroll(fn) {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('scrollend', finish);
+      fn();
+    };
+    if ('onscrollend' in window) window.addEventListener('scrollend', finish, { once: true });
+    let last = window.scrollY;
+    let still = 0;
+    let ticks = 0;
+    const tick = () => {
+      if (done) return;
+      const y = window.scrollY;
+      still = Math.abs(y - last) < 1 ? still + 1 : 0;
+      last = y;
+      ticks += 1;
+      if (still >= 2 || ticks >= 30) {
+        finish();
+        return;
+      }
+      setTimeout(tick, 100);
+    };
+    setTimeout(tick, 120);
+  }
+
+  /** 跳到某一节：靠 html { scroll-behavior: smooth } 平滑滚过去，到了再把标题点亮一下 */
+  function arriveAt(sec) {
+    const heading = sec.querySelector('h2');
+    if (!heading || !window.matchMedia
+        || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    afterScroll(() => {
+      heading.classList.remove('arrive');
+      void heading.offsetWidth;
+      heading.classList.add('arrive');
+      setTimeout(() => heading.classList.remove('arrive'), 900);
+    });
+  }
+
   function buildToc() {
     const host = $('toc');
     const secs = [...document.querySelectorAll('.tut-sec')];
     for (const sec of secs) {
       const link = el('a', 'toc-link', sec.dataset.title);
       link.href = `#${sec.id}`;
+      // 不拦默认行为：让浏览器带着 scroll-margin-top 平滑滚过去（CSS 里开了 smooth）
+      link.addEventListener('click', () => arriveAt(sec));
       host.append(link);
     }
     if (!('IntersectionObserver' in window)) return;
@@ -393,7 +440,10 @@
 
   /** 点辞典里的词：带着它跳到练习页，卡片上就是这个词（带注音和释义） */
   function openWord(word) {
-    location.href = `${PRACTICE_PAGE}?word=${encodeURIComponent(word)}`;
+    const url = `${PRACTICE_PAGE}?word=${encodeURIComponent(word)}`;
+    // 走 pagefx：先把这一页淡出再跳，跟页脚那些链接一个处理
+    if (window.PageFX) window.PageFX.goTo(url);
+    else location.href = url;
   }
 
   function closeResults() {
@@ -568,6 +618,8 @@
     renderSettings();
     buildSearch();
     buildToc();
+    // 跳到练习页时先淡出一下，别硬切（pagefx.js，两边共用）
+    if (window.PageFX) window.PageFX.setup();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', main);

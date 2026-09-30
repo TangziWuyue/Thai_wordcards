@@ -463,21 +463,44 @@
     setTimeout(() => btn.classList.remove('pulse'), 400);
   }
 
+  /** 分段控件里刚选中的那一个也收一下（档位、字体、外观都走它） */
+  function pulseSeg(container, id) {
+    if (!container || prefersReducedMotion()) return;
+    const btn = [...container.children].find((b) => b.dataset.id === id);
+    if (!btn) return;
+    btn.classList.add('pulse');
+    setTimeout(() => btn.classList.remove('pulse'), 400);
+  }
+
+  /** 提示文案换了内容：淡入一下，别硬切 */
+  function flashHint(node) {
+    if (!node || prefersReducedMotion()) return;
+    node.classList.remove('in');
+    void node.offsetWidth;
+    node.classList.add('in');
+    setTimeout(() => node.classList.remove('in'), 300);
+  }
+
+  /** 把还没落定的那次卡片过渡立刻做完（连点模式 / 档位时用，免得停在半路） */
+  function settleSwap() {
+    if (!pendingSwap) return;
+    clearTimeout(pendingSwap.timer);
+    pendingSwap.apply();
+    pendingSwap = null;
+  }
+
   // 动画期间用户又点了：把上一次先落定再开始新的，否则连点会「丢一次」
   // （state.mode 要等动画结束才更新，第二次点会算出同一个目标）
   let pendingSwap = null;
 
   /** 现在「算哪个模式」——动画没结束时算目标模式，这样连点能正确来回切 */
   function currentMode() {
-    return pendingSwap ? pendingSwap.mode : state.mode;
+    // pendingSwap 里带 mode 的才是「模式过渡」；换档位那一种没有这个字段
+    return pendingSwap && pendingSwap.mode ? pendingSwap.mode : state.mode;
   }
 
   function setMode(mode) {
-    if (pendingSwap) {
-      clearTimeout(pendingSwap.timer);
-      pendingSwap.apply();
-      pendingSwap = null;
-    }
+    settleSwap();
     if (mode === state.mode) {
       // 上一次刚被「落定」，这一次等于没动。卡片可能还停在滑出那一帧
       // （半透明 + 位移），这里把样式收干净，别让它卡在看不见的状态
@@ -623,20 +646,29 @@
       save();
     });
     buildSeg(el.rangeSeg, RANGES, state.range, (id) => {
+      // 状态和按钮立刻更新：过渡那 150ms 里按空格随机、或者刷新，都得按新档位来
       state.range = id;
       syncRange();
-      // 选到「常用词」就顺手把词表取回来，不然第一次点随机组合还得现等
       // 选到「常用词」就顺手把词表取回来，不然第一次点随机组合还得现等；
       // 取完（或失败）都要重画一次提示，因为提示文案跟「词库好没好」有关
       if (id === 'common') {
         D.loadWords().catch(() => { /* 取不到就退回普通随机，提示里会说明 */ })
           .then(() => applyRangeHint());
       }
-      // 固定模式下这一档决定要不要用 อ 补位，得重新拼一遍
-      if (state.mode === 'fixed') applyFixed();
-      else renderCard();
       renderSettings();
+      // buildSeg 刚把按钮整排重建了，脉冲要加在新建出来的那个上
+      pulseSeg(el.rangeSeg, id);
+      flashHint(el.rangeHint);
       save();
+      // 卡片也跟着变（声调按钮哪些能用、固定模式要不要用 อ 补位），走一遍卡片过渡：
+      // dir = 0 → 只淡出淡入，不左右滑（左右滑是「换模式」的语汇）
+      settleSwap();
+      const apply = () => {
+        if (state.mode === 'fixed') applyFixed();
+        else renderCard();
+      };
+      const timer = swapCard(0, apply, () => { pendingSwap = null; });
+      pendingSwap = timer === null ? null : { apply, timer };
     });
     // 放在最后统一调：buildSeg 会重建按钮、把 disabled 清零，
     // 字体/主题那两个 onPick 也会走到这里，不补这一下「常用词」在固定模式下的禁用态就丢了
@@ -781,7 +813,14 @@
     // 注音只用罗马注音（国际音标已经从界面上去掉了，引擎里还留着数据与函数）
     const info = R.describe(state.parts, state.strict, 'latin');
     // 关闭规则检查时允许生成「规则上不合法」的组合，这种情况不算异常
-    if (info.issues.length && state.strict) console.warn('组合自检异常', info.issues, info.text);
+    // 固定模式选到「必须带尾辅音」的元音（ั เ-ิ เ-็）拼出来不完整是设计里的已知情况，
+    // 卡片上有提示说明，不用再往控制台打警告——打出来会淹没真正的问题
+    const knownIncomplete = state.mode === 'fixed'
+      && info.issues.length > 0
+      && info.issues.every((one) => one.indexOf('必须带尾辅音') !== -1);
+    if (info.issues.length && state.strict && !knownIncomplete) {
+      console.warn('组合自检异常', info.issues, info.text);
+    }
 
     // 固定模式下只选了元音时，卡片上的 อ 是自动补的载体，不是使用者选的，淡显出来
     // 不补位（关闭拼写规则）时，孤立的组合符号（ิ ี ึ ื ุ ู ั）默认浮在卡片上方，
@@ -1508,6 +1547,8 @@
       window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
       setTimeout(refreshVoices, 600);
     }
+    // 跳到教学页时先淡出一下，别硬切（pagefx.js，两边共用）
+    if (window.PageFX) window.PageFX.setup();
     maybeStartTour();
   } catch (err) {
     showFatal(`初始化失败：${(err && err.message) || err}`);

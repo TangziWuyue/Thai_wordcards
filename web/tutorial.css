@@ -1,5 +1,9 @@
 /* 教学页专用样式。基础变量、字体、暗色都由 style.css 提供，这里只管排版。 */
 
+/* 点目录跳章节时平滑滚过去（pagefx 那句「到了闪一下」靠它才连贯）。
+   想关掉动画的系统设置里关，别把这条删了。 */
+html { scroll-behavior: smooth; }
+
 /* 表格类内容比练习页宽一些好读，但也别拉得太开（style.css 的媒体查询会给到 1060px） */
 .app.tut { max-width: 940px; }
 
@@ -216,6 +220,14 @@
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* 从目录跳过来、滚动停下之后，标题淡着落进来，让人知道「到了」 */
+.tut-sec > h2.arrive { animation: tutArrive 0.5s ease; }
+
+@keyframes tutArrive {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
 }
 
 .tut-sec > p {
@@ -488,6 +500,11 @@
   .tip-box { padding: 16px; }
   .tut-sec > p.tut-cta { margin-top: 38px; }
   .foot { margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .tut-sec > h2.arrive { animation: none; }
 }
 
 /* ── 宽屏：名称与讲解并排，例词占满下面一行 ─────────────── */

@@ -62,13 +62,13 @@ const PAGES = [
     name: '泰语组合练习',
     src: 'index.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css'],
-    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'app.js'],
+    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'pagefx.js', 'app.js'],
   },
   {
     name: '泰语拼读入门',
     src: 'tutorial.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css', 'tutorial.css'],
-    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'tutorial-data.js', 'tutorial-search.js', 'tutorial.js'],
+    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'tutorial-data.js', 'tutorial-search.js', 'pagefx.js', 'tutorial.js'],
   },
 ];
 

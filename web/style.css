@@ -1002,3 +1002,42 @@ kbd {
   .actions kbd { display: none; }
   .btn { padding: 13px 12px; }
 }
+
+/* ── 换内容的通用过渡 ─────────────────────────────────────────
+   分段控件（任意 / 按规则 / 常用词、字体、外观）点下去收一下，
+   给个即时反馈——跟「随机 ↔ 固定」那个 ⇄ 按钮是同一套节拍。 */
+.seg button.pulse { animation: pulseTap 0.36s ease; }
+
+@keyframes pulseTap {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+/* 提示文案换了内容就淡入一下，别硬切 */
+.hint.in { animation: hintIn 0.24s ease; }
+
+@keyframes hintIn {
+  from { opacity: 0.15; transform: translateY(-3px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── 页面之间的衔接 ───────────────────────────────────────────
+   练习页 ↔ 教学页是整页重载，中间会闪一下白屏：
+   离开前整页淡出（pagefx.js 加 .page-leaving），进来时淡入。
+   只动 opacity、不动 transform——页面上有 position: fixed 的浮层（新手引导、
+   更新通知），祖先元素一带 transform 它们就会被重新定位。 */
+body { transition: opacity 0.18s ease; }
+html.page-leaving body { opacity: 0; }
+html.js body { animation: pageIn 0.22s ease; }
+
+@keyframes pageIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg button.pulse, .hint.in, html.js body { animation: none; }
+  body { transition: none; }
+  html.page-leaving body { opacity: 1; }
+}
