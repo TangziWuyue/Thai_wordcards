@@ -315,24 +315,31 @@
     return { font, theme };
   }
 
-  // 分段控件（含滑块与按压反馈）在 web/seg.js 里，练习页共用同一份
-  const buildSeg = (host, list, current, onPick) => {
-    Seg.build(host, list, current, (id) => {
-      onPick(id);
-      Seg.pulse(host, id);   // 选中的那个收一下，跟练习页同一套节拍
-    });
-  };
-
+  // 分段控件（含滑块与按压反馈）在 web/seg.js 里，练习页共用同一份。
+  // 选完之后**只改选中态、不重建按钮**：重建的话滑块只能瞬移，还会闪一下。
+  let segsBuilt = false;
   function renderSettings() {
     const prefs = applyPrefs(readPrefs());
-    buildSeg($('fontSeg'), FONTS, prefs.font, (id) => {
-      writePrefs({ font: id });
-      renderSettings();
-    });
-    buildSeg($('themeSeg'), THEMES, prefs.theme, (id) => {
-      writePrefs({ theme: id });
-      renderSettings();
-    });
+    const fontHost = $('fontSeg');
+    const themeHost = $('themeSeg');
+    if (!segsBuilt) {
+      segsBuilt = true;
+      Seg.build(fontHost, FONTS, prefs.font, (id) => {
+        writePrefs({ font: id });
+        applyPrefs(readPrefs());
+        Seg.select(fontHost, id);
+        Seg.pulse(fontHost, id);
+      });
+      Seg.build(themeHost, THEMES, prefs.theme, (id) => {
+        writePrefs({ theme: id });
+        applyPrefs(readPrefs());
+        Seg.select(themeHost, id);
+        Seg.pulse(themeHost, id);
+      });
+      return;
+    }
+    Seg.select(fontHost, prefs.font);
+    Seg.select(themeHost, prefs.theme);
   }
 
   // ── 目录锚点：滚动时高亮当前这一节 ─────────────────────────────────

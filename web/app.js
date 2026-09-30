@@ -626,13 +626,16 @@
     buildSeg(el.fontSeg, FONTS, state.font, (id) => {
       state.font = id;
       applyFont();
-      renderSettings();
+      // 只改选中态，不重建按钮：滑块才会「滑过去」，也不会有一次重绘闪烁
+      Seg.select(el.fontSeg, id);
+      Seg.pulse(el.fontSeg, id);
       save();
     });
     buildSeg(el.themeSeg, THEMES, state.theme, (id) => {
       state.theme = id;
       applyTheme();
-      renderSettings();
+      Seg.select(el.themeSeg, id);
+      Seg.pulse(el.themeSeg, id);
       save();
     });
     buildSeg(el.rangeSeg, RANGES, state.range, (id) => {
@@ -645,8 +648,8 @@
         D.loadWords().catch(() => { /* 取不到就退回普通随机，提示里会说明 */ })
           .then(() => applyRangeHint());
       }
-      renderSettings();
-      // buildSeg 刚把按钮整排重建了，脉冲要加在新建出来的那个上
+      // 只改选中态（不重建），滑块滑过去 + 选中的那个收一下
+      Seg.select(el.rangeSeg, id);
       Seg.pulse(el.rangeSeg, id);
       flashHint(el.rangeHint);
       save();
@@ -1096,6 +1099,7 @@
     if (!option || !option.allowed) return;
     state.parts.tone = id;
     renderCard();
+    Seg.pulse(el.tones, id);   // 选中的那个声调也收一下
   }
 
   // ── 动作 ────────────────────────────────────────────────────────────

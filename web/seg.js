@@ -53,9 +53,27 @@ const Seg = (() => {
     place(container, thumbOf(container), true);
   }
 
+  /**
+   * 只改选中态，不重建按钮：滑块会从旧位置滑过去（重建的话滑块只能瞬移，还闪一下）。
+   * 返回选中的按钮（可能被 disabled 挡掉）。
+   */
+  function select(container, id) {
+    if (!container) return null;
+    let hit = null;
+    for (const btn of container.querySelectorAll('button')) {
+      const on = btn.dataset.id === id;
+      btn.setAttribute('aria-pressed', String(on));
+      if (on) hit = btn;
+    }
+    sync(container);
+    return hit;
+  }
+
   function build(container, items, current, onPick) {
     // 滑块要沿用同一个元素：重建按钮时把它一起留下，切换时才有「滑过去」的效果
     const thumb = thumbOf(container);
+    // 已经有位置的老滑块（这次是重建）也该滑过去；只有第一次摆位才不要动画
+    const animate = !!thumb.style.transform;
     const buttons = items.map((item) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -72,13 +90,15 @@ const Seg = (() => {
       return btn;
     });
     container.replaceChildren(thumb, ...buttons);
-    place(container, thumb, false);
+    place(container, thumb, animate);
   }
 
   /** 选中的那一个收一下（跟「随机组合」按钮同一套节拍） */
   function pulse(container, id) {
     if (!container || prefersReduced()) return;
-    const btn = [...container.children].find((b) => b.dataset.id === id);
+    // 分段控件上是 data-id，声调那一排是 data-tone，两种都认
+    const btn = [...container.querySelectorAll('button')]
+      .find((b) => b.dataset.id === id || b.dataset.tone === id);
     if (!btn) return;
     btn.classList.add('pulse');
     setTimeout(() => btn.classList.remove('pulse'), 400);
@@ -93,7 +113,7 @@ const Seg = (() => {
     for (const box of document.querySelectorAll('.seg, .tones')) sync(box);
   });
 
-  return { build, sync, pulse };
+  return { build, sync, select, pulse };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Seg;
