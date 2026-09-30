@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T05:04:34.361Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T05:12:49.325Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1638,7 +1638,50 @@ kbd {
   .btn { padding: 13px 12px; }
 }
 
+/* ── 换内容的通用过渡 ─────────────────────────────────────────
+   分段控件（任意 / 按规则 / 常用词、字体、外观）点下去收一下，
+   给个即时反馈——跟「随机 ↔ 固定」那个 ⇄ 按钮是同一套节拍。 */
+.seg button.pulse { animation: pulseTap 0.36s ease; }
+
+@keyframes pulseTap {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+/* 提示文案换了内容就淡入一下，别硬切 */
+.hint.in { animation: hintIn 0.24s ease; }
+
+@keyframes hintIn {
+  from { opacity: 0.15; transform: translateY(-3px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── 页面之间的衔接 ───────────────────────────────────────────
+   练习页 ↔ 教学页是整页重载，中间会闪一下白屏：
+   离开前整页淡出（pagefx.js 加 .page-leaving），进来时淡入。
+   只动 opacity、不动 transform——页面上有 position: fixed 的浮层（新手引导、
+   更新通知），祖先元素一带 transform 它们就会被重新定位。 */
+body { transition: opacity 0.18s ease; }
+html.page-leaving body { opacity: 0; }
+html.js body { animation: pageIn 0.22s ease; }
+
+@keyframes pageIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg button.pulse, .hint.in, html.js body { animation: none; }
+  body { transition: none; }
+  html.page-leaving body { opacity: 1; }
+}
+
 /* 教学页专用样式。基础变量、字体、暗色都由 style.css 提供，这里只管排版。 */
+
+/* 点目录跳章节时平滑滚过去（pagefx 那句「到了闪一下」靠它才连贯）。
+   想关掉动画的系统设置里关，别把这条删了。 */
+html { scroll-behavior: smooth; }
 
 /* 表格类内容比练习页宽一些好读，但也别拉得太开（style.css 的媒体查询会给到 1060px） */
 .app.tut { max-width: 940px; }
@@ -1856,6 +1899,14 @@ kbd {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* 从目录跳过来、滚动停下之后，标题淡着落进来，让人知道「到了」 */
+.tut-sec > h2.arrive { animation: tutArrive 0.5s ease; }
+
+@keyframes tutArrive {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
 }
 
 .tut-sec > p {
@@ -2130,6 +2181,11 @@ kbd {
   .foot { margin-top: 0; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .tut-sec > h2.arrive { animation: none; }
+}
+
 /* ── 宽屏：名称与讲解并排，例词占满下面一行 ─────────────── */
 @media (min-width: 780px) {
   .trow {
@@ -2269,6 +2325,7 @@ kbd {
       </div>
     </footer>
   </main>
+
 
 
 
@@ -3758,6 +3815,73 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
 
 
 /**
+ * 页面之间的衔接（练习页、教学页共用，两边都引这一个文件）
+ *
+ * 两个页面都是静态页，互相跳转是整页重载，中间会闪一下白屏。
+ * 这里在跳走之前先把整页淡出（给 <html> 加 .page-leaving，样式在 style.css 里），
+ * 进来时由 style.css 的 pageIn 动画淡入——两头接上，就不像硬切了。
+ *
+ * 用法：
+ *   PageFX.setup()   —— 页面初始化时调一次，接管页内所有指向另一个页面的 .html 链接
+ *   PageFX.goTo(url) —— JS 自己发起的跳转（教学页把搜到的词带去练习页就是这条路）
+ *
+ * prefers-reduced-motion 时一律直接跳，不做任何动画。
+ */
+const PageFX = (() => {
+  'use strict';
+
+  /** 跟 style.css 里 body 的 transition 时长对齐：淡出完了再跳 */
+  const LEAVE_MS = 180;
+
+  function reduced() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  /** 换页：先淡出，再跳 */
+  function goTo(url) {
+    if (!url || reduced()) {
+      location.href = url;
+      return;
+    }
+    document.documentElement.classList.add('page-leaving');
+    setTimeout(() => { location.href = url; }, LEAVE_MS);
+  }
+
+  /** 只接管「另一个页面」的链接：外链、锚点、新窗口都交给浏览器 */
+  function isPageLink(link) {
+    const href = link.getAttribute('href') || '';
+    if (!/\.html(\?|#|$)/.test(href)) return false;
+    if (link.target && link.target !== '_self') return false;
+    return true;
+  }
+
+  function setup() {
+    for (const link of document.querySelectorAll('a[href]')) {
+      if (!isPageLink(link)) continue;
+      link.addEventListener('click', (event) => {
+        // 修饰键、中键、右键：浏览器自己处理（新标签页 / 新窗口 / 菜单）
+        if (event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        if (reduced()) return;
+        event.preventDefault();
+        goTo(link.href);
+      });
+    }
+    // 用「后退」从另一个页面回到这里时，浏览器可能直接复用（bfcache）这个页面：
+    // 上一次离开时加的 .page-leaving 还在，整页会是透明的，得清掉
+    window.addEventListener('pageshow', () => {
+      document.documentElement.classList.remove('page-leaving');
+    });
+  }
+
+  return { setup, goTo, reduced };
+})();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = PageFX;
+if (typeof window !== 'undefined') window.PageFX = PageFX;
+
+
+/**
  * 泰语拼读入门（教学页）
  *
  * 结构照搬 jyutping.io 的教学页：先讲「一个音节由哪几块组成」，
@@ -4095,12 +4219,59 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
   }
 
   // ── 目录锚点：滚动时高亮当前这一节 ─────────────────────────────────
+  /**
+   * 平滑滚动停下之后再跑 fn。
+   * 优先用 scrollend（Chrome / 新版 Safari），不支持的就自己盯着滚动位置，
+   * 连续两次没动就算停了——固定 700ms 的兜底太短，从概览跳到「声调」要滚好几千像素。
+   */
+  function afterScroll(fn) {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('scrollend', finish);
+      fn();
+    };
+    if ('onscrollend' in window) window.addEventListener('scrollend', finish, { once: true });
+    let last = window.scrollY;
+    let still = 0;
+    let ticks = 0;
+    const tick = () => {
+      if (done) return;
+      const y = window.scrollY;
+      still = Math.abs(y - last) < 1 ? still + 1 : 0;
+      last = y;
+      ticks += 1;
+      if (still >= 2 || ticks >= 30) {
+        finish();
+        return;
+      }
+      setTimeout(tick, 100);
+    };
+    setTimeout(tick, 120);
+  }
+
+  /** 跳到某一节：靠 html { scroll-behavior: smooth } 平滑滚过去，到了再把标题点亮一下 */
+  function arriveAt(sec) {
+    const heading = sec.querySelector('h2');
+    if (!heading || !window.matchMedia
+        || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    afterScroll(() => {
+      heading.classList.remove('arrive');
+      void heading.offsetWidth;
+      heading.classList.add('arrive');
+      setTimeout(() => heading.classList.remove('arrive'), 900);
+    });
+  }
+
   function buildToc() {
     const host = $('toc');
     const secs = [...document.querySelectorAll('.tut-sec')];
     for (const sec of secs) {
       const link = el('a', 'toc-link', sec.dataset.title);
       link.href = `#${sec.id}`;
+      // 不拦默认行为：让浏览器带着 scroll-margin-top 平滑滚过去（CSS 里开了 smooth）
+      link.addEventListener('click', () => arriveAt(sec));
       host.append(link);
     }
     if (!('IntersectionObserver' in window)) return;
@@ -4152,7 +4323,10 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
 
   /** 点辞典里的词：带着它跳到练习页，卡片上就是这个词（带注音和释义） */
   function openWord(word) {
-    location.href = `${PRACTICE_PAGE}?word=${encodeURIComponent(word)}`;
+    const url = `${PRACTICE_PAGE}?word=${encodeURIComponent(word)}`;
+    // 走 pagefx：先把这一页淡出再跳，跟页脚那些链接一个处理
+    if (window.PageFX) window.PageFX.goTo(url);
+    else location.href = url;
   }
 
   function closeResults() {
@@ -4327,6 +4501,8 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
     renderSettings();
     buildSearch();
     buildToc();
+    // 跳到练习页时先淡出一下，别硬切（pagefx.js，两边共用）
+    if (window.PageFX) window.PageFX.setup();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', main);

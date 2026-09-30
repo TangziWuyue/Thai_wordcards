@@ -33,6 +33,7 @@ web/tutorial.css      教学页样式
 web/tutorial.js       教学页渲染逻辑（表格内容从 rules.js 现取）
 web/tutorial-data.js  教学页的文字内容：发音讲解、声调规则表
 web/fonts.css         打包字体的 @font-face
+web/pagefx.js         练习页 ↔ 教学页 互跳时的淡出 / 淡入（两边共用）
 web/app.js            界面逻辑：词表、随机、声调切换、朗读、辞典面板
 web/rules.js          拼写规则引擎（纯逻辑，无 DOM 依赖）
 web/dict.js           辞典数据加载与查询（纯逻辑 + 按需注入 script）
@@ -139,6 +140,10 @@ uv run python
 - `setMode('fixed')` 把随机结果带进固定模式时，`fixedVowelId` 要过滤成**词表里真的能勾选**的元音（`SELECTABLE_VOWELS`，并排除 `o_long` 这个补位元音）。`o_implied` 在词表里没有字块，带进去会卡成「卡片只剩一个辅音、元音栏什么都没选中」，而且开关在固定模式是灰的、刷新也不恢复。
 - `renderSettings()` **末尾必须调 `applyRangeHint()`**：`buildSeg()` 每次都会重建按钮、把 `disabled` 清零，字体/主题的 `onPick` 也会走到重建，不补这一下「常用词」在固定模式下的禁用态就丢了。
 - 长按拦截 click 用的时间戳要**连按钮一起记**（`longPressBtn`），只跳过刚长按过的那个字块。只比较时间的话，长按 A 之后一秒内点 B 也会被吞掉，手机上「长按看注释 → 马上点下一个」这个最自然的操作会失灵。
+- **换内容的过渡都走 `swapCard(dir, apply)`**（`app.js`）：`dir = -1 / 1` 是左右滑（换模式，「翻到另一面」的语汇），`dir = 0` 是只有淡入淡出（换档位）。过渡期间**状态先改、重画后走**——`state.range`、`state.mode` 都在点击时立刻落定，这样动画那 150ms 里按空格随机、或者刷新页面，拿到的都是新设置。同时只允许有一个过渡在跑（`pendingSwap`，`settleSwap()` 负责把上一个立刻做完），连点模式 / 档位不会卡在半透明那一帧。
+- **两页之间的衔接走 `web/pagefx.js`**（练习页、教学页共用，**两个页面的 `<script>` 和 `build-standalone.mjs` 的 scripts 清单都要加**，清单里必须排在 `app.js` / `tutorial.js` 之前）：跳走之前给 `<html>` 加 `.page-leaving` 淡出，进来时由 `style.css` 的 `pageIn` 动画淡入；用「后退」回来（bfcache）时 `pageshow` 会把那个类清掉。JS 自己发起的跳转（教学页搜到的词）要调 `PageFX.goTo(url)`，别直接写 `location.href`。修饰键 / 中键点击放行（新标签页），`prefers-reduced-motion` 直接跳。**只动 opacity、不动 transform**：页面上有 `position: fixed` 的浮层，祖先一带 transform 它们就会被重新定位。
+- **教学页目录跳章节**：靠 `tutorial.css` 的 `html { scroll-behavior: smooth }` 平滑滚过去，到了再把标题闪一下（`tutorial.js` 的 `arriveAt` → `h2.arrive`）。等滚动停下用的是 `scrollend`，不支持的后备是「每 100ms 看一次滚动位置，连续两次没动就算停」——**别图省事用固定的 700ms 定时器**，从概览跳到「声调」要滚好几千像素，固定时长的定时器会在半路就触发。
+- **动画一律要能被系统关掉**：`@media (prefers-reduced-motion: reduce)` 里把新增的动画都关掉（`style.css` 末尾、`tutorial.css` 各有一处），JS 里用 `prefersReducedMotion()` 判断（`app.js`）/ `matchMedia` 判断（`tutorial.js`、`pagefx.js`）。
 - `load()` 的两条判据：**用 `Array.isArray(data.consonants)` 而不是 `cons.length`**（用户点过「全不选」存的就是空数组，用长度判断会把他的选择当成没存过、刷新后恢复默认全选）；`fixedOnset` / `fixedVowelId` 要过白名单（跟 `consonants` 一样 `known.has()`），否则改坏的 localStorage 会渲染成「XYZอ」这种乱码卡片。
 - 提示文案不能指向不存在的控件：声调被禁用的那句原来写「可在选项中关闭规则检查」，但规则检查早就搬到「组合范围」三档控件（在模式按钮下方，不在选项面板里），现在写的是「组合范围切到「任意」即不限」。**改这类提示前先在界面上找一遍那个控件到底在不在**。
 - 词库没加载出来时，「常用词」档会静默降级成普通随机——这时 `rangeHint` 必须改成「词库没加载出来：暂时按普通音节拼…」，不能继续承诺「拼出来的一定是真实存在的词」。`D.loadWords()` 的 then/catch 都要重画一次提示。
