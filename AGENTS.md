@@ -44,6 +44,7 @@ web/combinations.test.mjs  选项全矩阵自测（随机模式 48 种搭配 + �
 web/tutorial.test.mjs 教学页自测（讲解漏没漏、声调规则表对不对）
 web/fonts/            Sarabun / Noto Serif Thai 的 woff2 与 OFL 授权说明
 web/build-standalone.mjs  打包成单文件 HTML 的脚本（产物在 dist/，不入库）
+reports/              排查 / 测试记录（按发布版本号命名，见下）
 src/thai_wordcards/   Python 脚手架，暂无功能
 ```
 
@@ -206,3 +207,4 @@ uv run python
 - 涉及发音功能时，确认音频/语音方案的可用性，不要引入需要联网 API key 的硬依赖而不说明；如需密钥，走 `.env` 并在文档中写清用法。
 - 若新增了词库格式或运行方式，请同步更新 README 与本文档的命令部分。
 - 网页朗读依赖系统泰语语音（macOS 上为 Kanya，实测在应用内浏览器可用）；换机器或换浏览器时先确认 `speechSynthesis` 能拿到 `th-TH` 语音。
+- **测试记录放 `reports/`**，文件名用发布版本号（如 `bug排查报告-2.0.0.md`）。修完一轮就在报告末尾追加「修复结果」一节，写清每条缺陷怎么处置的、落在哪个文件、以及**有意没修的**是哪些——下一轮排查先读它，避免重复怀疑同一件事。报告来自外部模型（千问等）时，结论必须自己复核后再照做，判据要用项目外的语料（辞典 IPA / 真实词），别拿实现自己的输出当期望值。
