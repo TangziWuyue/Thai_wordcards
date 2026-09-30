@@ -227,13 +227,16 @@
 
 .tut-sec > p b { color: var(--fg); font-weight: 600; }
 
-.tut-note {
-  margin: 14px 0 0;
+/* 两条都要写得比 `.tut-sec > p`（`margin: 0 0 22px`）更具体，
+   否则那一长串的 margin-top 会被它按掉：小字说明和上面的表格贴在一起、
+   「去练习页」按钮直接压在贴士框上（这两个坑都踩过） */
+.tut-sec > p.tut-note {
+  margin: 16px 0 0;
   font-size: 12px;
   line-height: 1.7;
 }
 
-.tut-cta { margin: 28px 0 0; }
+.tut-sec > p.tut-cta { margin: 34px 0 0; }
 
 .tut-cta .btn { display: inline-block; text-decoration: none; }
 
@@ -483,7 +486,7 @@
   .t-say { margin-top: 7px; }
   .t-ex, .t-letters { margin-top: 8px; }
   .tip-box { padding: 16px; }
-  .tut-cta { margin-top: 32px; }
+  .tut-sec > p.tut-cta { margin-top: 38px; }
   .foot { margin-top: 0; }
 }
 
