@@ -16,6 +16,7 @@
   --dot: #d4d4d4;
   --inv-bg: #525252;  /* 主按钮：中深灰 */
   --inv-fg: #fafafa;  /* 按钮上的字用米白，不用纯白 */
+  --inv-muted: #a3a3a3; /* 主按钮上的「灰字」：按不了的那一档用它（深底上仍然看得清） */
   --radius: 14px;
 
   /* 泰文字体只用打包进来的两种，不依赖系统是否装了泰文字体 */
@@ -46,6 +47,7 @@ html[data-theme="dark"] {
   --dot: #525252;
   --inv-bg: #e5e5e5;  /* 深色模式下的「亮药丸」 */
   --inv-fg: #171717;
+  --inv-muted: #808080;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -59,6 +61,7 @@ html[data-theme="dark"] {
     --dot: #525252;
     --inv-bg: #e5e5e5;
     --inv-fg: #171717;
+    --inv-muted: #808080;
   }
 }
 
@@ -619,9 +622,13 @@ html.js .js-fallback { display: none; }
 
 .btn:disabled:active { transform: none; }
 
-/* 「随机组合 + ⇄」是拼接控件：灰掉那一半要用槽的底色（--soft），
-   不能留白——白块夹在灰槽和深色 ⇄ 中间，像贴了两块白药丸（用户说丑）。 */
-.split .btn:disabled { background: var(--soft); }
+/* 「随机组合 + ⇄」是拼接控件，固定模式下左边那一半按不了：
+   底色跟 ⇄ 保持一致（整个控件还是同一块色），只用灰字表示「这一半不行」。
+   留白会像贴了一块白药丸、换成槽的浅灰又会显得两块拼在一起（用户两个都嫌丑）。 */
+.split .btn:disabled {
+  background: var(--inv-bg);
+  color: var(--inv-muted);
+}
 
 kbd {
   margin-left: 8px;

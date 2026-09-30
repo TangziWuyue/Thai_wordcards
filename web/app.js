@@ -1317,6 +1317,9 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SUMMARY') return;
     if (event.code === 'Space') {
       event.preventDefault();
+      // 固定模式下「随机组合」是灰的：空格这一下不该有按压反馈，也不该换音节。
+      // 鼠标点它被 disabled 挡住了，但键盘这条是自己接的，得单独拦一次（用户报过）。
+      if (el.randomBtn.disabled) return;
       pulseButton(el.randomBtn);   // 空格也当按了一次「随机组合」
       randomize();
     } else if (event.key === 'Enter') {
@@ -1405,7 +1408,7 @@
     version: '2.1.3',
     items: [
       '手机上点过的控件不再留一层灰底；声调、词表字块、教学页目录按下去会往下沉一点。',
-      '固定模式下的按钮真的变灰了；词表、选项、辞典展开收起的结尾不再卡一下。',
+      '固定模式下按不动的那一半改成同色灰字；词表、选项、辞典展开收起的结尾不再卡一下。',
     ],
   };
 

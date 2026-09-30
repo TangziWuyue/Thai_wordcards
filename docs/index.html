@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T12:46:34.841Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T12:51:46.045Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -654,6 +654,7 @@
   --dot: #d4d4d4;
   --inv-bg: #525252;  /* 主按钮：中深灰 */
   --inv-fg: #fafafa;  /* 按钮上的字用米白，不用纯白 */
+  --inv-muted: #a3a3a3; /* 主按钮上的「灰字」：按不了的那一档用它（深底上仍然看得清） */
   --radius: 14px;
 
   /* 泰文字体只用打包进来的两种，不依赖系统是否装了泰文字体 */
@@ -684,6 +685,7 @@ html[data-theme="dark"] {
   --dot: #525252;
   --inv-bg: #e5e5e5;  /* 深色模式下的「亮药丸」 */
   --inv-fg: #171717;
+  --inv-muted: #808080;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -697,6 +699,7 @@ html[data-theme="dark"] {
     --dot: #525252;
     --inv-bg: #e5e5e5;
     --inv-fg: #171717;
+    --inv-muted: #808080;
   }
 }
 
@@ -1257,9 +1260,13 @@ html.js .js-fallback { display: none; }
 
 .btn:disabled:active { transform: none; }
 
-/* 「随机组合 + ⇄」是拼接控件：灰掉那一半要用槽的底色（--soft），
-   不能留白——白块夹在灰槽和深色 ⇄ 中间，像贴了两块白药丸（用户说丑）。 */
-.split .btn:disabled { background: var(--soft); }
+/* 「随机组合 + ⇄」是拼接控件，固定模式下左边那一半按不了：
+   底色跟 ⇄ 保持一致（整个控件还是同一块色），只用灰字表示「这一半不行」。
+   留白会像贴了一块白药丸、换成槽的浅灰又会显得两块拼在一起（用户两个都嫌丑）。 */
+.split .btn:disabled {
+  background: var(--inv-bg);
+  color: var(--inv-muted);
+}
 
 kbd {
   margin-left: 8px;
@@ -4905,6 +4912,9 @@ if (typeof window !== 'undefined') window.Seg = Seg;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SUMMARY') return;
     if (event.code === 'Space') {
       event.preventDefault();
+      // 固定模式下「随机组合」是灰的：空格这一下不该有按压反馈，也不该换音节。
+      // 鼠标点它被 disabled 挡住了，但键盘这条是自己接的，得单独拦一次（用户报过）。
+      if (el.randomBtn.disabled) return;
       pulseButton(el.randomBtn);   // 空格也当按了一次「随机组合」
       randomize();
     } else if (event.key === 'Enter') {
@@ -4993,7 +5003,7 @@ if (typeof window !== 'undefined') window.Seg = Seg;
     version: '2.1.3',
     items: [
       '手机上点过的控件不再留一层灰底；声调、词表字块、教学页目录按下去会往下沉一点。',
-      '固定模式下的按钮真的变灰了；词表、选项、辞典展开收起的结尾不再卡一下。',
+      '固定模式下按不动的那一半改成同色灰字；词表、选项、辞典展开收起的结尾不再卡一下。',
     ],
   };
 
