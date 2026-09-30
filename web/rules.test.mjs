@@ -636,6 +636,25 @@ test('假簇路径也要做尾辅音去重（不能因为提前 return 绕过去
     ['am', 'ท', { cluster: 'ร', final: 'ก' }, 'samk'],
     ['i', 'จ', { cluster: 'ร', final: 'ง' }, 'jing'],
   ];
+    for (const [vowelId, onset, extra, expected] of cases) {
+    const p = parts(vowelId, onset, extra);
+    assert.equal(ThaiRules.romanize(p, 'latin'), expected, ThaiRules.assemble(p));
+  }
+});
+
+test('尾辅音去重：ออ / อิ 这类「IPA 不像半元音」的元音也要去重', () => {
+  // IPA 字面判断（vowel.ipa.endsWith(final.ipa)）够不着这几种：
+  // ออ 的 ipa 是 ɔː、อิ 是 i，都不会以 w / j 结尾，但 ว / ย 尾在泰文里不单独发音
+  const cases = [
+    ['o_long', 'ฬ', { final: 'ว' }, 'lo'],    // 不是 loo
+    ['o', 'ห', { final: 'ว' }, 'ho'],         // 不是 hoo
+    ['i', 'ก', { final: 'ย' }, 'ki'],         // 不是 kii
+    ['ii', 'ก', { final: 'ย' }, 'ki'],        // 不是 kii
+    // 对照：真的要把尾音读出来的组合不受影响
+    ['aa', 'ก', { final: 'ว' }, 'kao'],       // กาว
+    ['ae', 'ม', { final: 'ว' }, 'maeo'],      // แมว
+    ['ua', 'ส', { final: 'ย' }, 'suai'],      // สวย
+  ];
   for (const [vowelId, onset, extra, expected] of cases) {
     const p = parts(vowelId, onset, extra);
     assert.equal(ThaiRules.romanize(p, 'latin'), expected, ThaiRules.assemble(p));

@@ -311,6 +311,12 @@ const ThaiRules = (() => {
   // 国际音标写法：辅音（按课本注音推导）、尾辅音、元音
   // 尾辅音在拉丁转写里的写法：แม่เกย 写 i（ไทย = thai）、แม่เกอว 写 o（แมว = maeo）
   const FINAL_ROMAN = { k: 'k', t: 't', p: 'p', n: 'n', ng: 'ng', m: 'm', y: 'i', w: 'o' };
+  // 以半元音收尾的元音后面再跟同一个半元音尾，尾辅音不单独发音，注音要去重：
+  // ออ + ว 写 lo（不是 loo）、เอา + ย 写 lao（不是 laoy）
+  const GLIDE_OFF = {
+    ว: ['o', 'o_long', 'o_short', 'o_short_open', 'ao', 'ua', 'ua_short'],
+    ย: ['i', 'ii', 'ia', 'ia_short', 'ai', 'ai_mai'],
+  };
 
   const CONSONANT_IPA = {
     k: 'k', kh: 'kʰ', ch: 'tɕʰ', th: 'tʰ', ph: 'pʰ', f: 'f', s: 's', h: 'h',
@@ -557,7 +563,12 @@ const ThaiRules = (() => {
     let final = '';
     if (parts.final) {
       const entry = FINALS[parts.final] || {};
-      const sameSound = vowel && entry.ipa && vowel.ipa.endsWith(entry.ipa);
+      // 尾音跟元音末尾是同一个音就只写一次：ไทย = thai（不是 thaiy）、
+      // สาย = sai。只看 IPA 够不够——ออ / เอา 这类本来就以半元音收尾的元音
+      // （lo、lao）后面再跟 ว / ย，那个尾辅音并不单独发音，所以要在表里点名
+      const glideOff = GLIDE_OFF[parts.final] || [];
+      const sameSound = vowel && entry.ipa
+        && (vowel.ipa.endsWith(entry.ipa) || glideOff.indexOf(vowel.id) !== -1);
       final = sameSound ? '' : (useIPA ? (entry.ipa || '') : (entry.roman || ''));
     }
 
