@@ -1437,7 +1437,7 @@
   const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
   const WHATS_NEW = {
     // 版本号同时是 localStorage 的 key：改它老用户才会再看到一次通知。
-    version: 'beta4',
+    version: '2.0.0',
     items: [
       '新增「拼读教学」：44 个辅音、32 个元音、尾辅音、声调规则逐条讲，入口在页面右上角。',
       '修正两处读音：เ-ิ 是长音（此前标成短音）；วัว ตัว รั้ว 这类词不再偶发注音成 wao / tao / rao。',

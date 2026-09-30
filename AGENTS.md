@@ -21,7 +21,7 @@
 - 已经做完：随机 / 固定两种模式、组合范围三档、词表勾选、声调自选、辞典（5000 余条中泰对照词 + 27522 条真词索引）、两种打包字体、暗色模式、卡片定高不跳动、系统语音朗读、**拼读教学页**（`tutorial.html`，练习页右上角进入）。
 - 还没有：自己的发音方案（现在用系统 TTS，安卓大多没声音）、录音打分、练习记录与间隔重复。
 - `src/thai_wordcards/__init__.py` 还是 `uv init` 的脚手架（只有打印 `Hello from thai-wordcards!` 的 `main()`），暂无 CLI 与后端功能。
-- 线上地址 <https://tangziwuyue.github.io/Thai_wordcards/>（GitHub Pages，从 `main` 的 `/docs` 目录部署），版本标签 `beta4`。
+- 线上地址 <https://tangziwuyue.github.io/Thai_wordcards/>（GitHub Pages，从 `main` 的 `/docs` 目录部署），版本标签 `2.0.0`（正式版；之前是 `beta1` ~ `beta3`）。
 
 ## 目录结构
 
