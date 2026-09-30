@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T06:22:24.366Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T06:29:17.472Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1628,10 +1628,13 @@ kbd {
 
 /* ── 宽屏：左右两栏，卡片在左、词表在右 ──────────────── */
 @media (min-width: 820px) {
-  .app { max-width: 1060px; padding: 48px 32px 80px; }
+  /* 整块放宽一点，好给中间那条通道留位置 */
+  .app { max-width: 1160px; padding: 48px 32px 80px; }
   .layout {
     grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-    column-gap: 48px;
+    /* 左边卡片和右边词表之间的通道：窄窗口 56px 起步，宽屏最多 104px。
+       用户提过「右边那一大块跟卡片挤一起了」——别改回固定的 48px */
+    column-gap: clamp(56px, 7vw, 104px);
   }
   .head { margin-bottom: 32px; }
   .card { min-height: clamp(240px, 40vh, 340px); padding: 48px 32px 40px; }
