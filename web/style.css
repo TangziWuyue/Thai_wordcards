@@ -2,20 +2,20 @@
    暗色由 <html data-theme="dark|light|auto"> 控制，auto 跟随系统。 */
 :root {
   color-scheme: light;
-  /* 色板取 Tailwind 的 stone（暖灰中性色，Notion 那种气质）：
-     白底不用纯黑、深色不用纯白，正文对比度落在 10:1 上下、次要文字 4.8:1，
-     既不像纯黑白那么硬，也不会灰得看不清。角色对应：
-     stone-50 页底 / white 卡片 / stone-700 正文 / stone-500 次要 / stone-200 线
-     stone-100 浅底 / stone-300 占位点 / stone-600 主按钮 */
-  --bg: #fafaf9;      /* stone-50  */
+  /* 色板取 Tailwind 的 neutral（纯中性灰，不带任何色相）：
+     之前那套 stone 偏暖，手机上看发褐，用户说「太褐了」，所以回到无色相的灰。
+     要求：不用纯黑 / 纯白，正文 10:1 上下、次要文字 ≥4.5:1（旧版只有 3.3:1）。
+     角色：neutral-100 页底 / white 卡片 / neutral-700 正文 / 灰 500 一带的次要 /
+     neutral-200 线 / 更浅一档的浅底 / neutral-300 占位点 / neutral-600 主按钮 */
+  --bg: #f5f5f5;      /* 页底比卡片灰一档，白卡片才立得起来 */
   --card: #fff;
-  --fg: #44403c;      /* stone-700 正文用暖深灰，不用纯黑 */
-  --muted: #78716c;   /* stone-500 次要文字（白底 4.8:1，比原来那个 3.3:1 清楚多了） */
-  --line: #e7e5e4;    /* stone-200 */
-  --soft: #f5f5f4;    /* stone-100 */
-  --dot: #d6d3d1;     /* stone-300 */
-  --inv-bg: #57534e;  /* stone-600 主按钮的「黑」改成暖深灰 */
-  --inv-fg: #fafaf9;  /* 深色按钮上的字用米白，不用纯白 */
+  --fg: #404040;      /* 正文：深灰，不用纯黑 */
+  --muted: #6b6b6b;   /* 次要文字：白底 5.3:1、灰底 4.9:1，都过 AA */
+  --line: #e5e5e5;
+  --soft: #ececec;    /* 浅底（分段控件槽、贴士框），比页底再深一点 */
+  --dot: #d4d4d4;
+  --inv-bg: #525252;  /* 主按钮：中深灰 */
+  --inv-fg: #fafafa;  /* 按钮上的字用米白，不用纯白 */
   --radius: 14px;
 
   /* 泰文字体只用打包进来的两种，不依赖系统是否装了泰文字体 */
@@ -35,30 +35,30 @@ html[data-theme="auto"] { color-scheme: light dark; }
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  /* 同一条 stone 轴线的深端：stone-900 页底 / stone-800 卡片 /
-     stone-200 正文（米白）/ stone-400 次要 / stone-700 线 / stone-600 占位 */
-  --bg: #1c1917;      /* stone-900 */
-  --card: #292524;    /* stone-800 */
-  --fg: #e7e5e4;      /* stone-200 米白，不用纯白 */
-  --muted: #a8a29e;   /* stone-400 */
-  --line: #44403c;    /* stone-700 */
-  --soft: #33302d;    /* stone-800 与 700 之间，浅底（贴士框 / 分段控件） */
-  --dot: #57534e;     /* stone-600 */
-  --inv-bg: #e7e5e4;  /* 深色模式下的「亮药丸」也是米白 */
-  --inv-fg: #1c1917;
+  /* 深端同样是无色相灰：neutral-900 页底 / neutral-800 卡片 /
+     neutral-200 正文（比纯白柔一点）/ neutral-400 次要 / neutral-700 线 */
+  --bg: #171717;
+  --card: #262626;
+  --fg: #e5e5e5;
+  --muted: #a3a3a3;
+  --line: #404040;
+  --soft: #333333;
+  --dot: #525252;
+  --inv-bg: #e5e5e5;  /* 深色模式下的「亮药丸」 */
+  --inv-fg: #171717;
 }
 
 @media (prefers-color-scheme: dark) {
   html[data-theme="auto"] {
-    --bg: #1c1917;
-    --card: #292524;
-    --fg: #e7e5e4;
-    --muted: #a8a29e;
-    --line: #44403c;
-    --soft: #33302d;
-    --dot: #57534e;
-    --inv-bg: #e7e5e4;
-    --inv-fg: #1c1917;
+    --bg: #171717;
+    --card: #262626;
+    --fg: #e5e5e5;
+    --muted: #a3a3a3;
+    --line: #404040;
+    --soft: #333333;
+    --dot: #525252;
+    --inv-bg: #e5e5e5;
+    --inv-fg: #171717;
   }
 }
 
