@@ -343,6 +343,11 @@
   }
 
   // ── 目录锚点：滚动时高亮当前这一节 ─────────────────────────────────
+  let tocLinks = [];
+  let tocThumb = null;
+  // 点目录跳章节期间先锁住高亮，滚动停下再解开（否则会一节一节扫过去）
+  let tocLocked = false;
+
   /**
    * 平滑滚动停下之后再跑 fn。
    * 优先用 scrollend（Chrome / 新版 Safari），不支持的就自己盯着滚动位置，
@@ -382,6 +387,9 @@
    */
   function arriveAt(sec) {
     const heading = sec.querySelector('h2');
+    // 高亮立刻跟到目标那一节，并锁住观察器到滚动停下——中间那几节不再依次亮一遍
+    tocLocked = true;
+    setTocCurrent(sec.id);
     if (!heading || !window.matchMedia
         || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     // 上一次点的那一节要是还没露出来，先放出来，别留下一个永远隐身的标题
@@ -390,6 +398,7 @@
     }
     heading.classList.add('arrive-hidden');
     afterScroll(() => {
+      tocLocked = false;
       heading.classList.remove('arrive');
       void heading.offsetWidth;   // 连点同一节时让动画能从头跑
       heading.classList.add('arrive');
@@ -401,6 +410,10 @@
   function buildToc() {
     const host = $('toc');
     const secs = [...document.querySelectorAll('.tut-sec')];
+    // 高亮滑块：跟分段控件一个思路，只动 transform，不碰布局
+    tocThumb = el('span', 'toc-thumb');
+    tocThumb.setAttribute('aria-hidden', 'true');
+    host.append(tocThumb);
     for (const sec of secs) {
       const link = el('a', 'toc-link', sec.dataset.title);
       link.href = `#${sec.id}`;
@@ -408,18 +421,49 @@
       link.addEventListener('click', () => arriveAt(sec));
       host.append(link);
     }
+    tocLinks = [...host.querySelectorAll('.toc-link')];
+    setTocCurrent(secs[0].id, false);
+    window.addEventListener('resize', () => paintToc(false));
     if (!('IntersectionObserver' in window)) return;
-    const links = new Map([...host.children].map((a) => [a.getAttribute('href').slice(1), a]));
     const io = new IntersectionObserver((entries) => {
+      // 点目录跳章节时先锁住：从概览跳到声调要滚过四节，
+      // 不锁的话高亮会「元音 → 尾辅音 → 声调」一路扫过去
+      if (tocLocked) return;
       for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        for (const [id, link] of links) {
-          if (id === entry.target.id) link.setAttribute('aria-current', 'true');
-          else link.removeAttribute('aria-current');
-        }
+        if (entry.isIntersecting) setTocCurrent(entry.target.id);
       }
     }, { rootMargin: '-72px 0px -60% 0px' });
     for (const sec of secs) io.observe(sec);
+  }
+
+  /** 把高亮挪到某一节；animate=false 用于首次渲染（别让它从左上角飞过来） */
+  function setTocCurrent(id, animate = true) {
+    for (const link of tocLinks) {
+      if (link.getAttribute('href') === `#${id}`) link.setAttribute('aria-current', 'true');
+      else link.removeAttribute('aria-current');
+    }
+    paintToc(animate);
+  }
+
+  function paintToc(animate) {
+    const host = $('toc');
+    if (!host || !tocThumb) return;
+    const link = tocLinks.find((a) => a.getAttribute('aria-current') === 'true');
+    if (!link) {
+      tocThumb.style.opacity = '0';
+      return;
+    }
+    const c = host.getBoundingClientRect();
+    const b = link.getBoundingClientRect();
+    if (!animate) tocThumb.style.transition = 'none';
+    tocThumb.style.width = `${b.width}px`;
+    tocThumb.style.height = `${b.height}px`;
+    tocThumb.style.transform = `translate(${b.left - c.left}px, ${b.top - c.top}px)`;
+    tocThumb.style.opacity = '1';
+    if (!animate) {
+      void tocThumb.offsetWidth;
+      tocThumb.style.transition = '';
+    }
   }
 
   // ── 搜索：输入字母 / 注音 / 中文都能查，选中就跳过去并高亮 ──────────

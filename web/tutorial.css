@@ -175,7 +175,24 @@ html { scroll-behavior: smooth; }
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
+  position: relative;
 }
+
+/* 目录的高亮也用一个滑块：滚动或跳章节时从旧的那一节滑过去。
+   直接给链接铺背景的话，跳远端章节时中间经过的那几节会一个个闪过来（用户报过）。 */
+.toc-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  background: var(--inv-bg);
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.18s ease, width 0.18s ease, height 0.18s ease, opacity 0.12s ease;
+}
+
+.toc-link { position: relative; z-index: 1; }
 
 /* 搜索命中的那一行闪一下，让人看清落在哪 */
 .trow.hit { animation: tutHit 2.4s ease; }
@@ -201,10 +218,14 @@ html { scroll-behavior: smooth; }
   white-space: nowrap;
 }
 
-.toc-link:hover { background: var(--soft); color: var(--fg); }
+/* 悬停不铺底色：选中背景已经交给 .toc-thumb 了，再叠一层灰底就是「药丸 + 方块」两块
+   （跟声调那排同一个毛病）。悬停只把字提亮，且不能盖掉当前这一节的反白字。 */
+.toc-link:hover { background: transparent; }
+
+.toc-link:hover:not([aria-current="true"]) { color: var(--fg); }
 
 .toc-link[aria-current="true"] {
-  background: var(--inv-bg);
+  /* 背景交给 .toc-thumb，这里只改字色 */
   color: var(--inv-fg);
 }
 

@@ -480,7 +480,15 @@ html.js .js-fallback { display: none; }
   cursor: pointer;
 }
 
-.tone:hover { background: var(--soft); }
+/* 悬停不再铺底色：选中的背景已经交给滑块了，
+   再叠一层灰底就是「白药丸 + 灰方块」两块，看着像叠影（用户报过） */
+.tone:hover { background: transparent; }
+
+.tone:hover:not([aria-pressed="true"]):not(:disabled) {
+  color: var(--fg);
+}
+
+.tone:hover:not([aria-pressed="true"]):not(:disabled) .name { color: var(--fg); }
 
 .tone[aria-pressed="true"] {
   /* 背景交给滑块（.seg-thumb），这里只改字色 */
@@ -649,7 +657,8 @@ kbd {
   -webkit-touch-callout: none;
 }
 
-.chip:hover { background: var(--soft); }
+/* 同样不在「选中的药丸」上再铺一层灰底：选中态的深色块由 aria-pressed 那条规则画 */
+.chip:hover:not([aria-pressed="true"]) { background: var(--soft); }
 
 .chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
 
