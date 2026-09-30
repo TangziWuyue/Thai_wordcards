@@ -391,20 +391,20 @@
 
 /* ── 小贴士 ───────────────────────────────────────────── */
 .tip-box {
-  margin: 28px 0 0;
-  padding: 16px 18px;
+  margin: 32px 0 0;
+  padding: 18px 20px;
   background: var(--soft);
   border-radius: var(--radius);
   font-size: 12.5px;
-  line-height: 1.9;
+  line-height: 2;
 }
 
 .tip-box p { margin: 0; }
 
-.tip-box p + p { margin-top: 10px; }
+.tip-box p + p { margin-top: 12px; }
 
 .tip-box .tip-title {
-  margin-top: 14px;
+  margin-top: 18px;
   font-weight: 600;
 }
 
@@ -452,6 +452,39 @@
   color: var(--muted);
   font-size: 10.5px;
   font-style: normal;
+}
+
+/* ── 页脚 ─────────────────────────────────────────────── */
+/* 教学页的页脚只有「字体 / 外观」和联系方式两行。
+   上面一节自己带了 52px 的下边距，这里就别再加一大截；
+   标签和它那排按钮绑成一组，窄屏换行时不会被拆开 */
+.foot {
+  gap: 16px;
+  margin-top: 4px;
+  line-height: 1.9;
+}
+
+.foot-row { gap: 10px 20px; align-items: center; }
+
+.foot-row:first-child { justify-content: flex-start; }
+
+.foot-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 手机：留白比宽屏再松一点 ─────────────────────────── */
+@media (max-width: 640px) {
+  .tut-sec { margin-bottom: 52px; }
+  .tut-sec h2 { font-size: 17px; }
+  .trow { padding: 17px 0; row-gap: 3px; }
+  .tut-rows.plain .trow { padding: 16px 0; }
+  .t-say { margin-top: 7px; }
+  .t-ex, .t-letters { margin-top: 8px; }
+  .tip-box { padding: 16px; }
+  .tut-cta { margin-top: 32px; }
+  .foot { margin-top: 0; }
 }
 
 /* ── 宽屏：名称与讲解并排，例词占满下面一行 ─────────────── */

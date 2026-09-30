@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const R = require('./rules.js');
@@ -124,10 +125,26 @@ test('教学页：页面上的说明不会指向不存在的控件或数据', ()
     assert.ok(D.TONE_HOW[n] && D.TONE_EXAMPLE[n], `第 ${n} 调缺说明或例词`);
   }
   assert.equal(D.TONE_COLS.length, 6, '声调规则表应该是 6 列：不写符号 ×2 + 四个符号');
+  // 表头只留符号，别写 เอก / โท / ตรี / จัตวา —— 零基础的人看不懂这几个泰文名
+  assert.deepEqual(D.TONE_COLS, ['不写符号 · 活音节', '不写符号 · 死音节', '写 อ่', '写 อ้', '写 อ๊', '写 อ๋']);
   // 每个辅音的「名称」是靠「字母 + อ + 例词」拼出来的，例词缺了就会渲染成「กอ 」
   for (const c of R.CONSONANTS) {
     assert.ok(c.example, `${c.ch} 没有传统例词，教学页的名称会空一截`);
   }
+});
+
+test('教学页：页面标签与搜索索引说同一套话，搜索框维护 aria-expanded', () => {
+  const js = readFileSync(new URL('./tutorial.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('./tutorial.html', import.meta.url), 'utf8');
+  // 尾辅音标签：页面显示的那一套跟登记进搜索索引的那一套必须同源。
+  // 以前页面写「响音尾 · 活音节」、索引写「清尾辅音 · 活音节」，
+  // 结果搜页面上看得见的词 0 命中（课本用的是清尾 / 浊尾）
+  assert.ok(!/响音尾|塞音尾/.test(js), 'tutorial.js 里不该再出现「响音尾 / 塞音尾」');
+  assert.match(js, /FINAL_TAG/, '页面标签与搜索索引要共用 FINAL_TAG');
+  assert.match(js, /清尾辅音/, '标签要用课本术语「清尾辅音」');
+  // 搜索框是 combobox，下拉展开/收起时 aria-expanded 要跟着变，否则读屏一直播报「已折叠」
+  assert.match(html, /role="combobox"[\s\S]{0,220}?aria-expanded="false"/, '搜索框要有 combobox + aria-expanded');
+  assert.match(js, /aria-expanded/, 'tutorial.js 要维护 aria-expanded');
 });
 
 test('教学页：发音讲解按《基础泰语（1）》的口径，别改回英语类比', () => {

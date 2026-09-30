@@ -20,6 +20,11 @@
   const INDEX = [];
   let currentSection = '';
 
+  // 尾辅音的标签：页面上显示的、登记进搜索索引的必须是同一套说法
+  // （课本叫「清尾辅音 / 浊尾辅音」，跟正文一致。以前页面和索引各写各的，
+  // 结果搜页面上看得见的词 0 命中）
+  const FINAL_TAG = (sonorant) => (sonorant ? '清尾辅音 · 活音节' : '浊尾辅音 · 死音节');
+
   // ── DOM 小工具 ────────────────────────────────────────────────────
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -182,7 +187,7 @@
     for (const sound of ['k', 't', 'p', 'n', 'ng', 'm', 'y', 'w']) {
       const chars = R.FINAL_GROUPS[sound];
       const meta = [el('span', 't-gloss', `${chars.length} 个字母`),
-        tag(R.FINALS[chars[0]].sonorant ? '响音尾 · 活音节' : '塞音尾 · 死音节')];
+        tag(FINAL_TAG(R.FINALS[chars[0]].sonorant))];
       const box = el('div', 'trow');
       const g = el('div', 't-glyph');
       g.append(roman(`-${sound}`, 't-final-roman'));
@@ -196,7 +201,7 @@
         glyph: `-${sound}`,
         name: `尾音 -${sound}`,
         roman: `-${sound}`,
-        tags: [R.FINALS[chars[0]].sonorant ? '清尾辅音 · 活音节' : '浊尾辅音 · 死音节'],
+        tags: [FINAL_TAG(R.FINALS[chars[0]].sonorant)],
         extra: `${chars.join(' ')} ${D.FINAL_EXAMPLES[sound].word} ${D.FINAL_EXAMPLES[sound].gloss}`,
       });
       rows.append(box);
@@ -394,6 +399,7 @@
   function closeResults() {
     search.list.hidden = true;
     search.active = -1;
+    search.input.setAttribute('aria-expanded', 'false');
   }
 
   function paintActive() {
@@ -435,6 +441,7 @@
       closeResults();
       return;
     }
+    search.input.setAttribute('aria-expanded', 'true');
     if (!found.list.length && !words.length) {
       // 词库还在下载时别说「没找到」，免得刚好卡在这个瞬间的人以为查不到
       const loading = wantDict && !dictState.ready && !dictState.failed;
