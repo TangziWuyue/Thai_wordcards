@@ -222,7 +222,10 @@ html { scroll-behavior: smooth; }
   letter-spacing: 0.02em;
 }
 
-/* 从目录跳过来、滚动停下之后，标题淡着落进来，让人知道「到了」 */
+/* 从目录跳过来：点击时先把标题原地藏起来（.arrive-hidden），滚动停下之后再让它
+   淡着落进来。不先藏的话，标题会先按正常样子露一帧、再跳回透明，看着像闪了一下 */
+.tut-sec > h2.arrive-hidden { opacity: 0; }
+
 .tut-sec > h2.arrive { animation: tutArrive 0.5s ease; }
 
 @keyframes tutArrive {
@@ -505,6 +508,8 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .tut-sec > h2.arrive { animation: none; }
+  /* JS 在减少动效时不会再藏标题，这条是兜底：万一被藏住了也要能看见 */
+  .tut-sec > h2.arrive-hidden { opacity: 1; }
 }
 
 /* ── 宽屏：名称与讲解并排，例词占满下面一行 ─────────────── */

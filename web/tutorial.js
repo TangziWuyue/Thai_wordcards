@@ -368,15 +368,25 @@
     setTimeout(tick, 120);
   }
 
-  /** 跳到某一节：靠 html { scroll-behavior: smooth } 平滑滚过去，到了再把标题点亮一下 */
+  /**
+   * 跳到某一节：靠 html { scroll-behavior: smooth } 平滑滚过去，到了再把标题点亮一下。
+   * 关键是**点击时先在原位置把标题藏起来**——只加「落进来」的动画的话，
+   * 标题会先按正常样子露一帧、再跳回透明从头淡入，看着像闪了一下。
+   */
   function arriveAt(sec) {
     const heading = sec.querySelector('h2');
     if (!heading || !window.matchMedia
         || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // 上一次点的那一节要是还没露出来，先放出来，别留下一个永远隐身的标题
+    for (const other of document.querySelectorAll('.tut-sec > h2.arrive-hidden')) {
+      other.classList.remove('arrive-hidden');
+    }
+    heading.classList.add('arrive-hidden');
     afterScroll(() => {
       heading.classList.remove('arrive');
-      void heading.offsetWidth;
+      void heading.offsetWidth;   // 连点同一节时让动画能从头跑
       heading.classList.add('arrive');
+      heading.classList.remove('arrive-hidden');   // 交给动画接管
       setTimeout(() => heading.classList.remove('arrive'), 900);
     });
   }

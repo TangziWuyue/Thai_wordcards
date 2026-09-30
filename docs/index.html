@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T05:12:49.305Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T05:18:21.586Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1058,6 +1058,14 @@ html.js .js-fallback { display: none; }
 }
 
 .mini:hover { background: var(--soft); color: var(--fg); }
+
+/* 固定模式下「全选 / 全不选」要藏起来，但**不能连高度一起收掉**：
+   这两个按钮撑起「辅音 / 元音」两行的行高（22px），一收就掉到 19px，
+   一切换模式整页下面所有内容都跟着上下跳。所以只是看不见，占位还在。 */
+.label-row .mini[hidden] {
+  display: inline-block;
+  visibility: hidden;
+}
 
 .hint {
   color: var(--muted);

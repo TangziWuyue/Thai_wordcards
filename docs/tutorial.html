@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T05:12:49.325Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T05:18:21.607Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1056,6 +1056,14 @@ html.js .js-fallback { display: none; }
 
 .mini:hover { background: var(--soft); color: var(--fg); }
 
+/* 固定模式下「全选 / 全不选」要藏起来，但**不能连高度一起收掉**：
+   这两个按钮撑起「辅音 / 元音」两行的行高（22px），一收就掉到 19px，
+   一切换模式整页下面所有内容都跟着上下跳。所以只是看不见，占位还在。 */
+.label-row .mini[hidden] {
+  display: inline-block;
+  visibility: hidden;
+}
+
 .hint {
   color: var(--muted);
   font-size: 12px;
@@ -1901,7 +1909,10 @@ html { scroll-behavior: smooth; }
   letter-spacing: 0.02em;
 }
 
-/* 从目录跳过来、滚动停下之后，标题淡着落进来，让人知道「到了」 */
+/* 从目录跳过来：点击时先把标题原地藏起来（.arrive-hidden），滚动停下之后再让它
+   淡着落进来。不先藏的话，标题会先按正常样子露一帧、再跳回透明，看着像闪了一下 */
+.tut-sec > h2.arrive-hidden { opacity: 0; }
+
 .tut-sec > h2.arrive { animation: tutArrive 0.5s ease; }
 
 @keyframes tutArrive {
@@ -2184,6 +2195,8 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .tut-sec > h2.arrive { animation: none; }
+  /* JS 在减少动效时不会再藏标题，这条是兜底：万一被藏住了也要能看见 */
+  .tut-sec > h2.arrive-hidden { opacity: 1; }
 }
 
 /* ── 宽屏：名称与讲解并排，例词占满下面一行 ─────────────── */
@@ -4251,15 +4264,25 @@ if (typeof window !== 'undefined') window.PageFX = PageFX;
     setTimeout(tick, 120);
   }
 
-  /** 跳到某一节：靠 html { scroll-behavior: smooth } 平滑滚过去，到了再把标题点亮一下 */
+  /**
+   * 跳到某一节：靠 html { scroll-behavior: smooth } 平滑滚过去，到了再把标题点亮一下。
+   * 关键是**点击时先在原位置把标题藏起来**——只加「落进来」的动画的话，
+   * 标题会先按正常样子露一帧、再跳回透明从头淡入，看着像闪了一下。
+   */
   function arriveAt(sec) {
     const heading = sec.querySelector('h2');
     if (!heading || !window.matchMedia
         || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // 上一次点的那一节要是还没露出来，先放出来，别留下一个永远隐身的标题
+    for (const other of document.querySelectorAll('.tut-sec > h2.arrive-hidden')) {
+      other.classList.remove('arrive-hidden');
+    }
+    heading.classList.add('arrive-hidden');
     afterScroll(() => {
       heading.classList.remove('arrive');
-      void heading.offsetWidth;
+      void heading.offsetWidth;   // 连点同一节时让动画能从头跑
       heading.classList.add('arrive');
+      heading.classList.remove('arrive-hidden');   // 交给动画接管
       setTimeout(() => heading.classList.remove('arrive'), 900);
     });
   }
