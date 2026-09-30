@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T05:21:22.635Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T05:49:36.451Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -81,7 +81,7 @@
 }
 
 /* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
-   界面中文用到的 2098 个字，按需切成 61 个子集。
+   界面中文用到的 2099 个字，按需切成 61 个子集。
    授权：SIL OFL 1.1，见 fonts/NOTICE.md。 */
 
 @font-face {
@@ -639,12 +639,14 @@
   color-scheme: light;
   --bg: #fbfbfa;
   --card: #fff;
-  --fg: #1b1b1b;
+  /* 正文和主按钮不用纯黑：白底上的纯黑对比度太高、看久了发涩，
+     换成暖调的深灰（正文 ≈ 10:1，仍然远超无障碍要求） */
+  --fg: #3a3a37;
   --muted: #8d8d88;
   --line: #e8e8e4;
   --soft: #f1f1ee;
   --dot: #d2d2cc;
-  --inv-bg: #1b1b1b;
+  --inv-bg: #454541;
   --inv-fg: #fff;
   --radius: 14px;
 
@@ -667,12 +669,13 @@ html[data-theme="dark"] {
   color-scheme: dark;
   --bg: #131312;
   --card: #1a1a19;
-  --fg: #f0f0ec;
+  /* 深色模式下也不用纯白，换稍微偏暖的米白，长时间看不刺眼 */
+  --fg: #e4dfd3;
   --muted: #8d8d88;
   --line: #2b2b29;
   --soft: #232322;
   --dot: #3d3d39;
-  --inv-bg: #f0f0ec;
+  --inv-bg: #e4dfd3;
   --inv-fg: #131312;
 }
 
@@ -680,12 +683,12 @@ html[data-theme="dark"] {
   html[data-theme="auto"] {
     --bg: #131312;
     --card: #1a1a19;
-    --fg: #f0f0ec;
+    --fg: #e4dfd3;
     --muted: #8d8d88;
     --line: #2b2b29;
     --soft: #232322;
     --dot: #3d3d39;
-    --inv-bg: #f0f0ec;
+    --inv-bg: #e4dfd3;
     --inv-fg: #131312;
   }
 }
@@ -828,18 +831,23 @@ html.js .js-fallback { display: none; }
 /* 摆入场起点的那一瞬间不能有过渡，否则会被当成「滑过场」而不是「重新进来」 */
 .card.no-swap-anim > * { transition: none; }
 
-/* 模式按钮按下去时收一下，跟卡片换内容的节拍对上 */
-.split-toggle.pulse { animation: modePulse 0.36s ease; }
+/* ⇄ 按下去时收一下，跟卡片换内容的节拍对上。
+   这里缩的是**整条控件**（不是 ⇄ 那一半）：⇄ 只缩自己的话，它外侧会缩进容器里，
+   把容器的底色露出来，看着像多了一条直角灰边（用户报过）。 */
+.split.pulse { animation: splitPulse 0.36s ease; }
 
-@keyframes modePulse {
+@keyframes splitPulse {
   0% { transform: scale(1); }
-  45% { transform: scale(0.86); }
+  45% { transform: scale(0.965); }
   100% { transform: scale(1); }
 }
 
+.split { transition: transform 0.09s ease; }
+
 @media (prefers-reduced-motion: reduce) {
   .card > * { transition: none; }
-  .split-toggle.pulse { animation: none; }
+  .split.pulse { animation: none; }
+  .split { transition: none; }
 }
 
 .roman {
@@ -1142,17 +1150,20 @@ html.js .js-fallback { display: none; }
   overflow: hidden;
 }
 
-.split .btn {
-  border: 0;
-  border-radius: 0;
-}
+.split .btn { border: 0; }
 
-.split .split-main { flex: 1; }
+/* 两半各带外侧的圆角：按下时的缩放动画只缩自己，
+   要是留着直角，容器（14px 圆角 + overflow: hidden）里就会顶出一个方角 */
+.split .split-main {
+  flex: 1;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
 
 .split .split-toggle {
   padding: 13px 15px;
   font-size: 15px;
   line-height: 1;
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 
 .split .split-toggle[aria-pressed="true"] {
@@ -1167,9 +1178,14 @@ html.js .js-fallback { display: none; }
   border-radius: var(--radius);
   cursor: pointer;
   white-space: nowrap;
+  /* 按下 / 松开的那一下，跟 pulseTap 的节拍接得上 */
+  transition: transform 0.09s ease;
 }
 
 .btn:hover { background: var(--soft); }
+
+/* 按住的期间先收一点，点完再走 pulseTap */
+.btn:active { transform: scale(0.98); }
 
 .btn:disabled {
   background: var(--card);
@@ -1651,6 +1667,8 @@ kbd {
    给个即时反馈——跟「随机 ↔ 固定」那个 ⇄ 按钮是同一套节拍。 */
 .seg button.pulse { animation: pulseTap 0.36s ease; }
 
+.btn.pulse { animation: pulseTap 0.36s ease; }
+
 @keyframes pulseTap {
   0% { transform: scale(1); }
   45% { transform: scale(0.9); }
@@ -1680,8 +1698,9 @@ html.js body { animation: pageIn 0.22s ease; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .seg button.pulse, .hint.in, html.js body { animation: none; }
-  body { transition: none; }
+  .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
+  .btn:active { transform: none; }
+  .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
 }
 

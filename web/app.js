@@ -455,12 +455,9 @@
 
   /** 模式按钮按一下收一下，给个即时反馈（卡片内容要等一个节拍才换） */
   function pulseModeButton() {
-    const btn = el.modeBtn;
-    if (!btn || prefersReducedMotion()) return;
-    btn.classList.remove('pulse');
-    void btn.offsetWidth;
-    btn.classList.add('pulse');
-    setTimeout(() => btn.classList.remove('pulse'), 400);
+    // 缩的是整条「随机组合 + ⇄」（.split），只缩 ⇄ 那一半会从容器缝里露出直角灰边
+    const group = el.modeBtn && el.modeBtn.closest('.split');
+    pulseButton(group || el.modeBtn);
   }
 
   /** 分段控件里刚选中的那一个也收一下（档位、字体、外观都走它） */
@@ -470,6 +467,15 @@
     if (!btn) return;
     btn.classList.add('pulse');
     setTimeout(() => btn.classList.remove('pulse'), 400);
+  }
+
+  /** 单颗按钮点一下收一下（随机组合 / 播放发音 / 模式切换都用它） */
+  function pulseButton(node) {
+    if (!node || prefersReducedMotion()) return;
+    node.classList.remove('pulse');
+    void node.offsetWidth;          // 连点也要能重头跑一次
+    node.classList.add('pulse');
+    setTimeout(() => node.classList.remove('pulse'), 400);
   }
 
   /** 提示文案换了内容：淡入一下，别硬切 */
@@ -1197,8 +1203,8 @@
   }
 
   // ── 绑定 ────────────────────────────────────────────────────────────
-  el.randomBtn.addEventListener('click', randomize);
-  el.speakBtn.addEventListener('click', speak);
+  el.randomBtn.addEventListener('click', () => { pulseButton(el.randomBtn); randomize(); });
+  el.speakBtn.addEventListener('click', () => { pulseButton(el.speakBtn); speak(); });
   el.consAll.addEventListener('click', () => setAllConsonants(true));
   el.consNone.addEventListener('click', () => setAllConsonants(false));
   el.vowelAll.addEventListener('click', () => setAllVowels(true));
@@ -1229,9 +1235,11 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SUMMARY') return;
     if (event.code === 'Space') {
       event.preventDefault();
+      pulseButton(el.randomBtn);   // 空格也当按了一次「随机组合」
       randomize();
     } else if (event.key === 'Enter') {
       event.preventDefault();
+      pulseButton(el.speakBtn);
       speak();
     }
   });
