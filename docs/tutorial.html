@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T06:57:04.385Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T07:32:08.070Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1118,7 +1118,7 @@ html.js .js-fallback { display: none; }
 .tone:hover { background: var(--soft); }
 
 .tone[aria-pressed="true"] {
-  background: var(--inv-bg);
+  /* 背景交给滑块（.seg-thumb），这里只改字色 */
   color: var(--inv-fg);
 }
 
@@ -1246,6 +1246,11 @@ kbd {
 
 .panel-body { padding: 4px 2px 20px; }
 
+/* 词库是「展开之后才联网取」的（2.3MB），取回来那一下会把面板顶高一大截。
+   加载期间先按 5 条常用词的量占好位置（实测 6 行 ≈ 297px），展开动画和内容到货就不会打架。 */
+.dict-list.loading { min-height: 300px; }
+
+
 .panel-body .label-row { margin-top: 18px; }
 .panel-body .label-row:first-child { margin-top: 0; }
 
@@ -1362,7 +1367,7 @@ kbd {
 }
 
 .seg button[aria-pressed="true"] {
-  background: var(--card);
+  /* 背景交给滑块（.seg-thumb），这里只改字色 —— 滑块滑过去才有「切换」的感觉 */
   color: var(--fg);
 }
 
@@ -1377,6 +1382,33 @@ kbd {
   background: transparent;
   color: var(--dot);
 }
+
+/* ── 分段控件 / 声调的滑块 ─────────────────────────────
+   选中的背景由这个绝对定位的元素滑过去：只动 transform 与宽高，不碰布局，
+   所以切换时页面高度不变（用户要求「保持页面固定」）。 */
+.seg,
+.tones { position: relative; }
+
+.seg-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  background: var(--card);
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.18s ease, width 0.18s ease, height 0.18s ease, opacity 0.12s ease;
+}
+
+/* 声调那一排的滑块是深色药丸，圆角跟 .tone 一致 */
+#tones .seg-thumb {
+  background: var(--inv-bg);
+  border-radius: 12px;
+}
+
+.seg > button,
+.tones > button { position: relative; z-index: 1; }
 
 /* 组合范围：跟「随机组合 / 固定模式」是同一类选择，摆在它正下方，
    两种模式下都露在外面，不用展开「选项」去找 */
@@ -1684,6 +1716,7 @@ html.js body { animation: pageIn 0.22s ease; }
 
 @media (prefers-reduced-motion: reduce) {
   .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
+  .seg-thumb { transition: none; }
   .btn:active { transform: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
@@ -2073,6 +2106,10 @@ html { scroll-behavior: smooth; }
   gap: 4px 8px;
 }
 
+/* 带标签的行（借词用字 / 已废弃）预留两行：衬线体比标准体宽一点，
+   这类行正好卡在换行边缘，不预留的话换字体会把整页顶下去（见 tutorial.js 的 row()） */
+.t-meta.has-tag { min-height: 45px; }
+
 /* 「名称」这一列混着泰文和中文（如「1 · 中平」「กอ ไก่」），走 --ui 的字体栈：
    --ui 里已经挂着打包的泰文字体，混排时两边都不会掉到系统字体上 */
 .t-name {
@@ -2405,6 +2442,7 @@ html { scroll-behavior: smooth; }
       </div>
     </footer>
   </main>
+
 
 
 
@@ -4151,6 +4189,108 @@ if (typeof window !== 'undefined') window.Tour = Tour;
 
 
 /**
+ * 分段控件的「滑块」与按压反馈（练习页、教学页共用）
+ *
+ * 一组按钮（字体 / 外观 / 组合范围 / 声调）选中时，背景不是画在按钮上，
+ * 而是由一个绝对定位的 `.seg-thumb` 滑过去——切换时只动 transform / width / height，
+ * **不碰布局**，所以页面高度不会变（用户要求「保持页面固定」）。
+ *
+ * 用法：
+ *   Seg.build(container, items, current, onPick)   // 建按钮（含滑块）
+ *   Seg.sync(container)                            // 把滑块挪到当前选中项下面
+ *   Seg.pulse(container, id)                       // 点下去时收一下
+ *
+ * 手写按钮的容器（声调那一排）只要在自己的按钮上更新 `aria-pressed`，
+ * 然后调 `Seg.sync(container)` 就行。
+ */
+const Seg = (() => {
+  'use strict';
+
+  function thumbOf(container) {
+    let thumb = container.querySelector('.seg-thumb');
+    if (!thumb) {
+      thumb = document.createElement('span');
+      thumb.className = 'seg-thumb';
+      thumb.setAttribute('aria-hidden', 'true');
+      container.prepend(thumb);
+    }
+    return thumb;
+  }
+
+  /** 把滑块摆到选中的按钮上；animate=false 用于刚重建完的第一次定位（别让它从左上角飞过来） */
+  function place(container, thumb, animate) {
+    const btn = container.querySelector('button[aria-pressed="true"]');
+    if (!btn || btn.disabled) {
+      thumb.style.opacity = '0';
+      return;
+    }
+    if (!animate) thumb.style.transition = 'none';
+    const c = container.getBoundingClientRect();
+    const b = btn.getBoundingClientRect();
+    thumb.style.width = `${b.width}px`;
+    thumb.style.height = `${b.height}px`;
+    thumb.style.transform = `translate(${b.left - c.left}px, ${b.top - c.top}px)`;
+    thumb.style.opacity = '1';
+    if (!animate) {
+      void thumb.offsetWidth;   // 让上面的定位先生效，再恢复过渡
+      thumb.style.transition = '';
+    }
+  }
+
+  /** 把滑块挪到当前选中的那个按钮上；选中项被灰掉时藏起来（跟以前的样式一致） */
+  function sync(container) {
+    if (!container) return;
+    place(container, thumbOf(container), true);
+  }
+
+  function build(container, items, current, onPick) {
+    // 滑块要沿用同一个元素：重建按钮时把它一起留下，切换时才有「滑过去」的效果
+    const thumb = thumbOf(container);
+    const buttons = items.map((item) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = item.label;
+      if (item.sample) {
+        const span = document.createElement('span');
+        span.className = 'sample';
+        span.textContent = item.sample;
+        btn.append(span);
+      }
+      btn.setAttribute('aria-pressed', String(item.id === current));
+      btn.dataset.id = item.id;
+      btn.addEventListener('click', () => onPick(item.id));
+      return btn;
+    });
+    container.replaceChildren(thumb, ...buttons);
+    place(container, thumb, false);
+  }
+
+  /** 选中的那一个收一下（跟「随机组合」按钮同一套节拍） */
+  function pulse(container, id) {
+    if (!container || prefersReduced()) return;
+    const btn = [...container.children].find((b) => b.dataset.id === id);
+    if (!btn) return;
+    btn.classList.add('pulse');
+    setTimeout(() => btn.classList.remove('pulse'), 400);
+  }
+
+  function prefersReduced() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  // 窗口尺寸变了，按钮宽度也跟着变（组合范围那一排是等分整行），滑块要重新摆
+  window.addEventListener('resize', () => {
+    for (const box of document.querySelectorAll('.seg, .tones')) sync(box);
+  });
+
+  return { build, sync, pulse };
+})();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = Seg;
+if (typeof window !== 'undefined') window.Seg = Seg;
+
+
+/**
  * 泰语拼读入门（教学页）
  *
  * 结构照搬 jyutping.io 的教学页：先讲「一个音节由哪几块组成」，
@@ -4215,6 +4355,10 @@ if (typeof window !== 'undefined') window.Tour = Tour;
     for (const node of glyphNodes) g.append(node);
     const meta = el('div', 't-meta');
     for (const node of nameNodes) meta.append(node);
+    // 带标签的行（借词用字 / 已废弃）本来就挤在换行边缘：衬线体比标准体宽一点，
+    // 「ณ เณร 小沙弥 n 借词用字」这一行就会从 1 行变成 2 行，整页跟着往下挪 12px。
+    // 给它预留两行高度，两种字体下都一样高（用户报过「改字体导致页面位移」）
+    if (meta.querySelector('.t-tag')) meta.classList.add('has-tag');
     box.append(g, meta, el('p', 't-say', say));
     if (extra) box.append(extra);
     if (info) register(box, say, info);
@@ -4463,16 +4607,13 @@ if (typeof window !== 'undefined') window.Tour = Tour;
     return { font, theme };
   }
 
-  function buildSeg(host, list, current, onPick) {
-    while (host.firstChild) host.firstChild.remove();
-    for (const item of list) {
-      const btn = el('button', '', item.label);
-      btn.type = 'button';
-      btn.setAttribute('aria-pressed', String(item.id === current));
-      btn.addEventListener('click', () => onPick(item.id));
-      host.append(btn);
-    }
-  }
+  // 分段控件（含滑块与按压反馈）在 web/seg.js 里，练习页共用同一份
+  const buildSeg = (host, list, current, onPick) => {
+    Seg.build(host, list, current, (id) => {
+      onPick(id);
+      Seg.pulse(host, id);   // 选中的那个收一下，跟练习页同一套节拍
+    });
+  };
 
   function renderSettings() {
     const prefs = applyPrefs(readPrefs());

@@ -34,6 +34,8 @@ web/tutorial.js       教学页渲染逻辑（表格内容从 rules.js 现取）
 web/tutorial-data.js  教学页的文字内容：发音讲解、声调规则表
 web/fonts.css         打包字体的 @font-face
 web/pagefx.js         练习页 ↔ 教学页 互跳时的淡出 / 淡入（两边共用）
+web/tour.js           新手引导（两边共用，各写各的步骤表）
+web/seg.js            分段控件 / 声调的滑块与按压反馈（两边共用）
 web/app.js            界面逻辑：词表、随机、声调切换、朗读、辞典面板
 web/rules.js          拼写规则引擎（纯逻辑，无 DOM 依赖）
 web/dict.js           辞典数据加载与查询（纯逻辑 + 按需注入 script）
@@ -107,6 +109,7 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 - 排版：单列是默认，`@media (min-width: 820px)` 变两栏，`@media (max-height: 560px)` 收紧留白；字号用 `clamp(52px, min(17vw, 19vh), 104px)` 同时看宽度和高度。改布局要在这三档尺寸下各看一眼。
 - **两栏之间的通道要够宽**（`@media (min-width: 820px)` 里）：`.app` 最宽 1160px、`.layout` 的 `column-gap: clamp(56px, 7vw, 104px)`。原来是固定 48px，用户说「右边那一大块跟卡片挤一起了」。窄窗口下卡片会跟着变窄（820px 视口时卡片约 319px），改这两个数要在 820 / 1000 / 1280 / 1512 各量一遍卡片宽度和通道宽度。
 - **首屏要装得下「任意 / 按规则 / 常用词」那一栏**（用户提过两次）。`style.css` 末尾按视窗高度分了四档收留白：`max-height: 940 / 800 / 700 / 640`（940 起收 padding 与字号上限，800 再收一轮、标题副标题在 700 以下隐藏，640 是最扁的窗口）。这几档**只改 padding / margin / `--syl-base`（字号上限）**，卡片里那些按最高情况定高的行（`.dict-hit` / `.parts` / `#toneHint`）一个都不碰——所以换音节、切模式时页面照样不会上下跳，这条底线不能破。改完至少量一遍 `1440×900 / 1280×800 / 1280×700 / 390×844 / 375×667`，确认 `#rangeSeg` 的底边 ≤ 视口高度。
+- **教学页换字体不能让版面变高**（用户报过「改字体导致页面位移」）：衬线体比标准体宽一点，带标签的行（借词用字 / 已废弃）正好卡在换行边缘，`ณ เณร 小沙弥 n 借词用字` 会从 1 行变 2 行、整页往下挪 12px。`tutorial.js` 的 `row()` 给这类行加 `.has-tag`，`tutorial.css` 里 `min-height: 45px` 预留两行，两种字体下高度一致。
 - 主题：`<html data-theme="auto|light|dark">` + `data-font`，全部走 CSS 变量（`--bg / --card / --fg / --muted / --line / --soft / --inv-bg / --inv-fg`）。加新颜色时同时补 light、dark 两组值，不要在组件里写死颜色。
 - 规则引擎同时兼容浏览器与 Node：文件末尾分别导出 `window.ThaiRules` 与 `module.exports`。
 - Python 3.12（见 `.python-version`），构建后端 `uv_build`；Python 侧目前只用于脚手架。
@@ -151,6 +154,9 @@ uv run python
 - **固定模式下「全选 / 全不选」是用 `hidden` 藏起来的，`style.css` 里给 `.label-row .mini[hidden]` 单独写了 `display: inline-block; visibility: hidden`**：这两个按钮撑着「辅音 / 元音」两行的行高（22px），一收高度就掉到 19px，切模式时整页下面所有内容都会跟着上下跳（用户报过）。加新的「按模式隐藏」控件时，同样要保证**藏起来但占位还在**。
 - **动画一律要能被系统关掉**：`@media (prefers-reduced-motion: reduce)` 里把新增的动画都关掉（`style.css` 末尾、`tutorial.css` 各有一处），JS 里用 `prefersReducedMotion()` 判断（`app.js`）/ `matchMedia` 判断（`tutorial.js`、`pagefx.js`）。
 - **按钮的按压反馈**：`.btn:active` 先收一点（`scale(0.98)`），点完由 `pulseButton()`（`app.js`）加 `.pulse` 走一次 `pulseTap`（跟分段控件同一套节拍）。「随机组合 / 播放发音」是点击和空格、回车两条路都会 pulse。**「随机组合 + ⇄」是拼接控件**（`.split`）：两半各带外侧圆角（`--radius 0 0 --radius` / `0 --radius --radius 0`），⇄ 的 pulse 加在**整条 `.split`** 上——只缩 ⇄ 那一半的话，它外侧会缩进容器里把底色露出来，看着像多了一条直角灰边（用户报过）。
+- **分段控件（字体 / 外观 / 组合范围 / 声调）用 `web/seg.js` 的滑块**：选中的背景是一个绝对定位的 `.seg-thumb`，切换时只动 `transform` / 宽高（不碰布局，页面高度不变）。`Seg.build()` 重建按钮时**必须留住同一个滑块元素**（`container.replaceChildren(thumb, ...buttons)`），否则就没有「滑过去」的动画；重建后的第一次定位要关掉过渡，免得滑块从左上角飞过来。容器要有 `position: relative`、按钮 `z-index: 1`。**遍历这种容器的子元素时只能用 `querySelectorAll('button')`**——滑块也是子元素，用 `children` 会把滑块当成按钮（踩过：声调全被标成 disabled）。选中项被灰掉时滑块隐藏，跟以前「只有灰字、没有药丸」一致。
+- **面板（词表 / 辞典 / 选项）展开收起有动画**（`app.js` 的 `setupPanels` / `togglePanel`）：`<details>` 默认瞬间展开，这里 `preventDefault` 后自己来——内容用 `max-height` + 透明度过渡，收起时等动画走完再 `open = false`，连点先把上一次收尾。**别改成给 `<details>` 做 `height` 动画**：辞典内容是展开后才联网取的，那时量到的是空面板高度，会先滑一半再跳到底。
+- **辞典面板加载期间要占位**：词库 2.3MB 是展开后才取的，取回来会把面板顶高一大截。`.dict-list.loading { min-height: 300px }`（实测 6 行 ≈ 297px）在加载期间占好位置；`ensureDict()` 里加/撤这个类，而且单击展开时 `setupPanels` 会**先同步调 `ensureDict()`** 再开始动画——`<details>` 的 `toggle` 事件是异步派发的，等它跑完就来不及给动画量高度了。
 - **色板取 [Tailwind 的 `neutral`](https://tailwindcss.com/docs/colors)（纯中性灰，不带色相）**。走过的弯路记一下：先是纯黑白（用户说「对比度太高」），换成暖灰 `stone` 之后用户又说「太褐了」——**泰语界面尽量用无色相的灰**，别用 stone / sand 这类偏黄偏褐的暖灰。角色对应：浅色 = `neutral-100` 页底 `#f5f5f5`（比卡片灰一档，白卡片才立得起来）/ `#fff` 卡片 / `#404040` 正文 / `#6b6b6b` 次要 / `#e5e5e5` 线 / `#ececec` 浅底 / `#d4d4d4` 占位 / `#525252` 主按钮（`--inv-bg`）+ `#fafafa` 字；深色 = `#171717` 页底 / `#262626` 卡片 / `#e5e5e5` 正文 / `#a3a3a3` 次要 / `#404040` 线 / `#333333` 浅底 / `#525252` 占位 / `#e5e5e5` 亮药丸。改完用 WCAG 对比度核一遍：正文 10:1 上下、次要文字 ≥4.5:1（白底 5.3:1 / 灰底 4.9:1；更早那版 `--muted` 只有 3.3:1，是「颜色差点」的真正原因之一）。加新颜色时 light / dark（含 `prefers-color-scheme` 那一段）三处一起改，颜色只写在 `:root` 与主题块里，组件里一律用变量——两个页面共用同一份 `style.css`，改一处两边都跟着变，**不存在「只改了一个界面」的情况**（若用户这么说，先怀疑浏览器缓存没换 `?v=`）。
 - `load()` 的两条判据：**用 `Array.isArray(data.consonants)` 而不是 `cons.length`**（用户点过「全不选」存的就是空数组，用长度判断会把他的选择当成没存过、刷新后恢复默认全选）；`fixedOnset` / `fixedVowelId` 要过白名单（跟 `consonants` 一样 `known.has()`），否则改坏的 localStorage 会渲染成「XYZอ」这种乱码卡片。
 - 提示文案不能指向不存在的控件：声调被禁用的那句原来写「可在选项中关闭规则检查」，但规则检查早就搬到「组合范围」三档控件（在模式按钮下方，不在选项面板里），现在写的是「组合范围切到「任意」即不限」。**改这类提示前先在界面上找一遍那个控件到底在不在**。

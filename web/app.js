@@ -468,15 +468,6 @@
     pulseButton(group || el.modeBtn);
   }
 
-  /** 分段控件里刚选中的那一个也收一下（档位、字体、外观都走它） */
-  function pulseSeg(container, id) {
-    if (!container || prefersReducedMotion()) return;
-    const btn = [...container.children].find((b) => b.dataset.id === id);
-    if (!btn) return;
-    btn.classList.add('pulse');
-    setTimeout(() => btn.classList.remove('pulse'), 400);
-  }
-
   /** 单颗按钮点一下收一下（随机组合 / 播放发音 / 模式切换都用它） */
   function pulseButton(node) {
     if (!node || prefersReducedMotion()) return;
@@ -620,23 +611,8 @@
   }
 
   // ── 字体与外观 ──────────────────────────────────────────────────────
-  function buildSeg(container, items, current, onPick) {
-    setChildren(container, ...items.map((item) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = item.label;
-      if (item.sample) {
-        const span = document.createElement('span');
-        span.className = 'sample';
-        span.textContent = item.sample;
-        btn.append(span);
-      }
-      btn.setAttribute('aria-pressed', String(item.id === current));
-      btn.dataset.id = item.id;
-      btn.addEventListener('click', () => onPick(item.id));
-      return btn;
-    }));
-  }
+  // 分段控件（含滑块）在 web/seg.js 里，教学页共用同一份
+  const buildSeg = Seg.build;
 
   function applyFont() {
     document.documentElement.dataset.font = state.font;
@@ -671,7 +647,7 @@
       }
       renderSettings();
       // buildSeg 刚把按钮整排重建了，脉冲要加在新建出来的那个上
-      pulseSeg(el.rangeSeg, id);
+      Seg.pulse(el.rangeSeg, id);
       flashHint(el.rangeHint);
       save();
       // 卡片也跟着变（声调按钮哪些能用、固定模式要不要用 อ 补位），走一遍卡片过渡：
@@ -753,6 +729,7 @@
       btn.addEventListener('click', () => selectTone(t.id));
       return btn;
     }));
+    Seg.sync(el.tones);
   }
 
   /** 当前声调若在新设置下不可用，退回「无音调」 */
@@ -816,11 +793,12 @@
       }
       el.toneHint.textContent = '';
       updateDictHit();
-      for (const btn of el.tones.children) {
+      for (const btn of el.tones.querySelectorAll('button')) {
         btn.disabled = true;
         btn.setAttribute('aria-pressed', 'false');
         btn.title = '';
       }
+      Seg.sync(el.tones);
       return;
     }
 
@@ -910,13 +888,15 @@
     setChildren(el.parts, ...breakdown);
 
     const disabledReasons = [];
-    for (const btn of el.tones.children) {
+    for (const btn of el.tones.querySelectorAll('button')) {
       const opt = info.tones.find((t) => t.id === btn.dataset.tone);
       btn.disabled = !opt.allowed;
       btn.setAttribute('aria-pressed', String(state.parts.tone === opt.id));
       btn.title = opt.allowed ? `${opt.name}${opt.mark ? ` ${opt.mark}` : ''}` : opt.reason;
       if (!opt.allowed && !disabledReasons.includes(opt.reason)) disabledReasons.push(opt.reason);
     }
+    // 声调那一排的滑块跟着走（切换声调时它会滑过去）
+    Seg.sync(el.tones);
     // 提示行：规则问题 > 声调原因 > 常用词兜底
     const hints = [];
     if (state.strict && info.issues.length) {
@@ -1083,15 +1063,19 @@
 
   function ensureDict() {
     if (dictLoaded) return;
+    // 取词库期间先占好位置，免得内容到货时把面板顶高、跟展开动画打架
+    el.dictList.classList.add('loading');
     D.loadWords()
       .then(() => {
         dictLoaded = true;
         renderDictBatch();
+        el.dictList.classList.remove('loading');
         el.dictNote.textContent = D.note();
         el.dictSource.textContent = D.source();
         applyRangeHint(); // 词库好了，「常用词」档的提示要从降级文案切回来
       })
       .catch(() => {
+        el.dictList.classList.remove('loading');
         el.dictList.textContent = '';
         el.dictNote.textContent = '词库没加载出来：这部分数据要联网取，检查网络后重新打开本页。';
         el.dictSource.textContent = '';
@@ -1208,6 +1192,84 @@
 
   function speak() {
     speakText(currentText());
+  }
+
+  // ── 面板展开 / 收起的衔接 ───────────────────────────────────────────
+  // <details> 是瞬间展开的，这里手动接管：内容用 max-height + 透明度过渡一下，
+  // 收起时等动画走完再真正 open=false。
+  // 之所以不用 <details> 自己的 height 动画：辞典内容是「展开之后才联网取、再填进去」的，
+  // 那一刻量到的目标高度是空的，动画结束就会「先滑到一半再跳到底」。
+  const PANEL_MS = 190;
+  const panelTimers = new WeakMap();
+
+  function togglePanel(panel) {
+    const body = panel.querySelector('.panel-body');
+    if (!body || prefersReducedMotion()) {
+      panel.open = !panel.open;
+      return;
+    }
+    // 连点时先把上一次没走完的收尾做掉，别让两个动画叠在一起
+    const pending = panelTimers.get(panel);
+    if (pending) {
+      clearTimeout(pending.timer);
+      pending.finish();
+    }
+
+    const finish = () => {
+      body.style.maxHeight = '';
+      body.style.opacity = '';
+      body.style.transition = '';
+      body.style.overflow = '';
+      panelTimers.delete(panel);
+    };
+
+    if (panel.open) {
+      // 收起：先把当前高度钉住，再过渡到 0，动画结束才真正关掉
+      const from = body.scrollHeight;
+      body.style.overflow = 'hidden';
+      body.style.maxHeight = `${from}px`;
+      const timer = setTimeout(() => {
+        panel.open = false;
+        finish();
+      }, PANEL_MS + 20);
+      panelTimers.set(panel, { timer, finish });
+      requestAnimationFrame(() => {
+        body.style.transition = `max-height ${PANEL_MS}ms ease, opacity ${PANEL_MS}ms ease`;
+        body.style.maxHeight = '0px';
+        body.style.opacity = '0.2';
+      });
+      return;
+    }
+
+    // 展开：先摆到 0，下一帧再量目标高度并过渡过去。
+    // 「下一帧」不是多余的：<details> 的 toggle 事件是异步派发的，辞典面板要等它跑完
+    // 才会去取词库、加上占位高度，同步量出来的高度是空的（会先滑一半再跳一下）。
+    panel.open = true;
+    body.style.overflow = 'hidden';
+    body.style.maxHeight = '0px';
+    body.style.opacity = '0.2';
+    const timer = setTimeout(finish, PANEL_MS + 20);
+    panelTimers.set(panel, { timer, finish });
+    requestAnimationFrame(() => {
+      const to = body.scrollHeight;
+      body.style.transition = `max-height ${PANEL_MS}ms ease, opacity ${PANEL_MS}ms ease`;
+      body.style.maxHeight = `${to}px`;
+      body.style.opacity = '1';
+    });
+  }
+
+  function setupPanels() {
+    for (const panel of document.querySelectorAll('details.panel')) {
+      const summary = panel.querySelector('summary');
+      if (!summary) continue;
+      summary.addEventListener('click', (event) => {
+        event.preventDefault();   // 默认行为是瞬间展开，这里自己来
+        // 辞典面板要先把词库的占位高度加上再展开：<details> 的 toggle 事件是异步派发的，
+        // 等它去触发 ensureDict() 就晚了，动画量到的会是「空面板」的高度（会先滑一半再跳一下）
+        if (panel.id === 'dictPanel' && !panel.open) ensureDict();
+        togglePanel(panel);
+      });
+    }
   }
 
   // ── 绑定 ────────────────────────────────────────────────────────────
@@ -1328,10 +1390,10 @@
   const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
   const WHATS_NEW = {
     // 版本号同时是 localStorage 的 key：改它老用户才会再看到一次通知。
-    version: '2.0.2',
+    version: '2.1.0',
     items: [
-      '新手引导多了一步：右上角那个「拼读教学」是字母、元音、声调怎么读的说明书。',
-      '拼读教学页也有引导了（搜索、目录、字母表怎么看），以后在页脚点「新手引导」可以重看。',
+      '选项改成滑块了：组合范围、字体、外观、声调选中时背景会滑过去，切换更顺手。',
+      '词表、辞典、选项三个面板展开收起有动画；教学页换字体也不再让整页上下跳。',
     ],
   };
 
@@ -1440,6 +1502,8 @@
     }
     // 跳到教学页时先淡出一下，别硬切（pagefx.js，两边共用）
     if (window.PageFX) window.PageFX.setup();
+    // 词表 / 辞典 / 选项三个面板的展开收起动画
+    setupPanels();
     maybeStartTour();
   } catch (err) {
     showFatal(`初始化失败：${(err && err.message) || err}`);

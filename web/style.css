@@ -483,7 +483,7 @@ html.js .js-fallback { display: none; }
 .tone:hover { background: var(--soft); }
 
 .tone[aria-pressed="true"] {
-  background: var(--inv-bg);
+  /* 背景交给滑块（.seg-thumb），这里只改字色 */
   color: var(--inv-fg);
 }
 
@@ -611,6 +611,11 @@ kbd {
 
 .panel-body { padding: 4px 2px 20px; }
 
+/* 词库是「展开之后才联网取」的（2.3MB），取回来那一下会把面板顶高一大截。
+   加载期间先按 5 条常用词的量占好位置（实测 6 行 ≈ 297px），展开动画和内容到货就不会打架。 */
+.dict-list.loading { min-height: 300px; }
+
+
 .panel-body .label-row { margin-top: 18px; }
 .panel-body .label-row:first-child { margin-top: 0; }
 
@@ -727,7 +732,7 @@ kbd {
 }
 
 .seg button[aria-pressed="true"] {
-  background: var(--card);
+  /* 背景交给滑块（.seg-thumb），这里只改字色 —— 滑块滑过去才有「切换」的感觉 */
   color: var(--fg);
 }
 
@@ -742,6 +747,33 @@ kbd {
   background: transparent;
   color: var(--dot);
 }
+
+/* ── 分段控件 / 声调的滑块 ─────────────────────────────
+   选中的背景由这个绝对定位的元素滑过去：只动 transform 与宽高，不碰布局，
+   所以切换时页面高度不变（用户要求「保持页面固定」）。 */
+.seg,
+.tones { position: relative; }
+
+.seg-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  background: var(--card);
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.18s ease, width 0.18s ease, height 0.18s ease, opacity 0.12s ease;
+}
+
+/* 声调那一排的滑块是深色药丸，圆角跟 .tone 一致 */
+#tones .seg-thumb {
+  background: var(--inv-bg);
+  border-radius: 12px;
+}
+
+.seg > button,
+.tones > button { position: relative; z-index: 1; }
 
 /* 组合范围：跟「随机组合 / 固定模式」是同一类选择，摆在它正下方，
    两种模式下都露在外面，不用展开「选项」去找 */
@@ -1049,6 +1081,7 @@ html.js body { animation: pageIn 0.22s ease; }
 
 @media (prefers-reduced-motion: reduce) {
   .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
+  .seg-thumb { transition: none; }
   .btn:active { transform: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }

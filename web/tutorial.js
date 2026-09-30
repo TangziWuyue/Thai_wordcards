@@ -63,6 +63,10 @@
     for (const node of glyphNodes) g.append(node);
     const meta = el('div', 't-meta');
     for (const node of nameNodes) meta.append(node);
+    // 带标签的行（借词用字 / 已废弃）本来就挤在换行边缘：衬线体比标准体宽一点，
+    // 「ณ เณร 小沙弥 n 借词用字」这一行就会从 1 行变成 2 行，整页跟着往下挪 12px。
+    // 给它预留两行高度，两种字体下都一样高（用户报过「改字体导致页面位移」）
+    if (meta.querySelector('.t-tag')) meta.classList.add('has-tag');
     box.append(g, meta, el('p', 't-say', say));
     if (extra) box.append(extra);
     if (info) register(box, say, info);
@@ -311,16 +315,13 @@
     return { font, theme };
   }
 
-  function buildSeg(host, list, current, onPick) {
-    while (host.firstChild) host.firstChild.remove();
-    for (const item of list) {
-      const btn = el('button', '', item.label);
-      btn.type = 'button';
-      btn.setAttribute('aria-pressed', String(item.id === current));
-      btn.addEventListener('click', () => onPick(item.id));
-      host.append(btn);
-    }
-  }
+  // 分段控件（含滑块与按压反馈）在 web/seg.js 里，练习页共用同一份
+  const buildSeg = (host, list, current, onPick) => {
+    Seg.build(host, list, current, (id) => {
+      onPick(id);
+      Seg.pulse(host, id);   // 选中的那个收一下，跟练习页同一套节拍
+    });
+  };
 
   function renderSettings() {
     const prefs = applyPrefs(readPrefs());

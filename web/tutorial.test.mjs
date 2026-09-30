@@ -282,11 +282,12 @@ test('两页共用脚本（pagefx / tour）：两个页面都引了，顺序排�
   const build = readFileSync(new URL('./build-standalone.mjs', import.meta.url), 'utf8');
   const fx = readFileSync(new URL('./pagefx.js', import.meta.url), 'utf8');
   const tourSrc = readFileSync(new URL('./tour.js', import.meta.url), 'utf8');
+  const segSrc = readFileSync(new URL('./seg.js', import.meta.url), 'utf8');
   const appSrc = readFileSync(new URL('./app.js', import.meta.url), 'utf8');
   const tutSrc = readFileSync(new URL('./tutorial.js', import.meta.url), 'utf8');
   // 两个页面都要引，而且版本号跟页面上的其它资源一致（漏引就是整页硬切 / 引导起不来）
   for (const [name, html] of [['index.html', index], ['tutorial.html', tutorial]]) {
-    for (const file of ['pagefx.js', 'tour.js']) {
+    for (const file of ['pagefx.js', 'tour.js', 'seg.js']) {
       assert.ok(html.match(new RegExp(`${file.replace('.', '\\.')}\\?v=(\\d+)`)), `${name} 没有引 ${file}`);
     }
     const versions = new Set([...html.matchAll(/\?v=(\d+)/g)].map((x) => x[1]));
@@ -298,7 +299,7 @@ test('两页共用脚本（pagefx / tour）：两个页面都引了，顺序排�
   const tutLine = build.split('\n').find((l) => l.includes("'tutorial.js'"));
   for (const line of [appLine, tutLine]) {
     assert.ok(line, '打包清单里应该有 app.js / tutorial.js');
-    for (const file of ['pagefx.js', 'tour.js']) {
+    for (const file of ['pagefx.js', 'tour.js', 'seg.js']) {
       const at = line.indexOf(`'${file}'`);
       assert.ok(at !== -1, `打包清单漏了 ${file}：${line.trim()}`);
       assert.ok(at < line.indexOf("'app.js'") || at < line.indexOf("'tutorial.js'"),
@@ -322,4 +323,9 @@ test('两页共用脚本（pagefx / tour）：两个页面都引了，顺序排�
   // Tour 自己：localStorage 不可用时按「看过」处理，别每次都弹
   assert.match(tourSrc, /maybeAutoStart/);
   assert.match(tourSrc, /return true; {3}\/\/ 存不了就别自动弹/);
+  // Seg 滑块：练习页与教学页共用；重建按钮时要留住同一个滑块元素，才有「滑过去」的效果
+  assert.match(appSrc, /Seg\.(build|sync|pulse)/, '练习页要用共用的 Seg');
+  assert.match(tutSrc, /Seg\.(build|sync|pulse)/, '教学页也要用共用的 Seg');
+  assert.match(segSrc, /container\.replaceChildren\(thumb/, '重建按钮时要保留同一个滑块元素');
+  assert.match(segSrc, /prefers-reduced-motion/);
 });
