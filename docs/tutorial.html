@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T06:29:17.472Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T06:49:53.478Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1268,6 +1268,9 @@ kbd {
   flex: none;
 }
 
+/* 字块自己一列：换行时才会整列对齐（不然第二行会缩到左边类别名下面） */
+.row .chips { flex: 1 1 0; min-width: 0; }
+
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .chips .tag {
@@ -1661,6 +1664,16 @@ kbd {
   .row, .chips { gap: 5px; }
   .vowel-chip { font-size: 14px; }
   .chip { font-size: 17px; padding: 3px 6px; }
+}
+
+/* 手机上：类别名（中类 / 高类 / 低类）自己占一行，字块在下一行整行排。
+   原来是左边 34px 的竖排标签，字块一换行就缩到标签底下，看着乱（用户说「简直是灾难」） */
+@media (max-width: 640px) {
+  .row .tag {
+    flex-basis: 100%;
+    width: auto;
+    margin-bottom: 2px;
+  }
 }
 
 /* 手机上按钮里的键盘提示没用，还会把按钮撑成两行，直接隐藏 */

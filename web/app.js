@@ -299,6 +299,10 @@
       tag.className = 'tag';
       tag.textContent = R.CLASS_LABEL[cls];
       row.append(tag);
+      // 字块单独放一层：换行时它们对齐在第一块下面，而不是缩到左边类别名底下
+      // （窄屏是整行一条，见 style.css 里 .row .tag / .row .chips 的规则）
+      const chips = document.createElement('div');
+      chips.className = 'chips';
       const fixed = state.mode === 'fixed';
       for (const c of R.CONSONANTS.filter((x) => x.cls === cls)) {
         const flags = [c.rare && '罕用', c.obsolete && '已废弃'].filter(Boolean);
@@ -308,7 +312,7 @@
           ['例词', c.example ? `${c.ch} ${c.example}${c.gloss ? `（${c.gloss}）` : ''}` : ''],
         ].filter(([, v]) => v);
         const on = fixed ? state.fixedOnset === c.ch : state.consonants.has(c.ch);
-        row.append(chip(c.ch, on, { glyph: c.ch, rows }, '', () => {
+        chips.append(chip(c.ch, on, { glyph: c.ch, rows }, '', () => {
           if (fixed) {
             // 固定模式：点一下选它，再点一下取消（可以只留元音，或者什么都不留）
             state.fixedOnset = state.fixedOnset === c.ch ? null : c.ch;
@@ -323,6 +327,7 @@
           save();
         }));
       }
+      row.append(chips);
       el.consonants.append(row);
     }
   }
