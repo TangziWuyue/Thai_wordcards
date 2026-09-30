@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T04:09:07.289Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T04:23:25.079Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -81,7 +81,7 @@
 }
 
 /* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
-   界面中文用到的 2095 个字，按需切成 61 个子集。
+   界面中文用到的 2096 个字，按需切成 61 个子集。
    授权：SIL OFL 1.1，见 fonts/NOTICE.md。 */
 
 @font-face {
@@ -2031,20 +2031,20 @@ kbd {
 
 /* ── 小贴士 ───────────────────────────────────────────── */
 .tip-box {
-  margin: 28px 0 0;
-  padding: 16px 18px;
+  margin: 32px 0 0;
+  padding: 18px 20px;
   background: var(--soft);
   border-radius: var(--radius);
   font-size: 12.5px;
-  line-height: 1.9;
+  line-height: 2;
 }
 
 .tip-box p { margin: 0; }
 
-.tip-box p + p { margin-top: 10px; }
+.tip-box p + p { margin-top: 12px; }
 
 .tip-box .tip-title {
-  margin-top: 14px;
+  margin-top: 18px;
   font-weight: 600;
 }
 
@@ -2092,6 +2092,39 @@ kbd {
   color: var(--muted);
   font-size: 10.5px;
   font-style: normal;
+}
+
+/* ── 页脚 ─────────────────────────────────────────────── */
+/* 教学页的页脚只有「字体 / 外观」和联系方式两行。
+   上面一节自己带了 52px 的下边距，这里就别再加一大截；
+   标签和它那排按钮绑成一组，窄屏换行时不会被拆开 */
+.foot {
+  gap: 16px;
+  margin-top: 4px;
+  line-height: 1.9;
+}
+
+.foot-row { gap: 10px 20px; align-items: center; }
+
+.foot-row:first-child { justify-content: flex-start; }
+
+.foot-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 手机：留白比宽屏再松一点 ─────────────────────────── */
+@media (max-width: 640px) {
+  .tut-sec { margin-bottom: 52px; }
+  .tut-sec h2 { font-size: 17px; }
+  .trow { padding: 17px 0; row-gap: 3px; }
+  .tut-rows.plain .trow { padding: 16px 0; }
+  .t-say { margin-top: 7px; }
+  .t-ex, .t-letters { margin-top: 8px; }
+  .tip-box { padding: 16px; }
+  .tut-cta { margin-top: 32px; }
+  .foot { margin-top: 0; }
 }
 
 /* ── 宽屏：名称与讲解并排，例词占满下面一行 ─────────────── */
@@ -2209,8 +2242,8 @@ kbd {
       <div class="tone-rules" id="toneRules"></div>
       <div class="tip-box">
         <p class="tip-title">写得一样，读得可能不一样</p>
-        <p>低类辅音 + 长元音 + ไม้โท：写的是 โท，实际读第 4 调，比如 รู้、ม้า、ค้า。所以不能只看符号。</p>
-        <p class="tip-title">ไม้ตรี · ไม้จัตวา 只有中类能用</p>
+        <p>低类辅音 + 长元音 + 写 อ้：写的是 อ้，实际读第 4 调，比如 รู้、ม้า、ค้า。所以不能只看符号。</p>
+        <p class="tip-title">อ๊ 和 อ๋ 只有中类能用</p>
         <p>这两个符号只跟中类辅音搭配，高类和低类用不上。</p>
       </div>
       <p class="tut-cta"><a class="btn primary" href="index.html">去练习页拼一个试试</a></p>
@@ -2218,10 +2251,11 @@ kbd {
 
     <footer class="foot">
       <div class="foot-row">
-        <span>字母表、元音表与发音方法对齐中国教材《基础泰语（1）》</span>
-        <span class="row-end">
+        <span class="foot-group">
           <span class="label">字体</span>
           <span class="seg" id="fontSeg" role="group" aria-label="泰文字体"></span>
+        </span>
+        <span class="foot-group">
           <span class="label">外观</span>
           <span class="seg" id="themeSeg" role="group" aria-label="外观"></span>
         </span>
@@ -2433,10 +2467,16 @@ const ThaiRules = (() => {
     { id: 'a_short', group: 'variant', name: 'ไม้หันอากาศ', en: 'mai han akat', roman: 'a',
       example: 'กัน = kan', lead: '', follow: 'ั', tail: '',
       short: true, allowsFinal: true, requiresFinal: true,
+      // ว 不能当它的尾辅音：泰文里凡写成 X + ั + ว 的都读 สระ อัว（วัว = wua），
+      // ไม้หันอากาศ 接 ว 尾这个拼法根本不存在。不禁掉的话两种拆法会撞成同一个字符串，
+      // 卡片一半概率把 วัว 注成 wao。
+      bannedFinals: ['ว'],
       note: '闭音节里的 สระ อะ' },
     { id: 'e_closed', group: 'variant', name: 'สระ เออ (เ-ิ)', en: 'sara oe (closed)', roman: 'oe',
       example: 'เกิด = koet', lead: 'เ', follow: 'ิ', tail: '',
-      short: true, allowsFinal: true, requiresFinal: true,
+      // 跟开音节的 เธอ（oe，长音）是同一个元音，只是闭音节里换个写法，长短音必须一致。
+      // 标成短音会让低辅音的死音节算错声调（เลิก 该读第 3 调、被算成第 4 调）。
+      short: false, allowsFinal: true, requiresFinal: true,
       note: '闭音节里的 สระ เออ' },
     { id: 'e_taikhu', group: 'variant', name: 'ไม้ไต่คู้', en: 'mai taikhu', roman: 'e',
       example: 'เก็ง = keng', lead: 'เ', follow: '็', tail: '',
@@ -2445,6 +2485,9 @@ const ThaiRules = (() => {
     { id: 'o_implied', group: 'variant', name: 'สระ โอะ (ไม่มีรูป)', en: 'sara oh (implied)', roman: 'o',
       example: 'กบ = kop', lead: '', follow: '', tail: '',
       short: true, allowsFinal: true, requiresFinal: true,
+      // 同理：不写元音符号时，X + ว + 尾辅音 一律读 สระ อัว（ควร = khuan），
+      // 把 ว 当成辅音簇会拼出 ควบ 这种串，注音成 khwop（实际读 khuap）
+      bannedClusters: ['ว'],
       // optionOnly：不在词表里显示，由「允许无元音符号的闭音节（กบ）」这个开关控制
       optionOnly: true,
       note: '没有元音符号的闭音节（如 กบ = kop）' },
@@ -2491,6 +2534,7 @@ const ThaiRules = (() => {
   };
 
   const CLUSTERS = [...TRUE_CLUSTERS, ...LEADING_H_CLUSTERS, ...SILENT_SECOND_CLUSTERS, ...Object.keys(REPLACED_CLUSTERS).map((pair) => [...pair])];
+  const CLUSTER_SET = new Set(CLUSTERS.map((pair) => pair.join('')));
 
   const SILENT_H_PAIRS = new Set(LEADING_H_CLUSTERS.map((pair) => pair.join('')));
   const SILENT_SECOND_PAIRS = new Set(SILENT_SECOND_CLUSTERS.map((pair) => pair.join('')));
@@ -2526,7 +2570,7 @@ const ThaiRules = (() => {
   //   แม่กบ(p)  บ ป พ ฟ ภ      แม่กน(n)  ญ ณ น ร ล ฬ
   //   แม่กง(ng) ง               แม่กม(m)  ม
   //   แม่เกย(y) ย               แม่เกอว(w) ว
-  // sonorant = 响音尾（读长音、活音节），其余为塞音尾
+  // sonorant = 课本说的「清尾辅音」（能一直发下去，算活音节）；其余是「浊尾辅音」（塞音，死音节）
   const FINAL_GROUPS = {
     k: ['ก', 'ข', 'ค', 'ฆ'],
     t: ['จ', 'ฉ', 'ช', 'ซ', 'ฌ', 'ฎ', 'ฏ', 'ฐ', 'ฑ', 'ฒ', 'ด', 'ต', 'ถ', 'ท', 'ธ', 'ศ', 'ษ', 'ส'],
@@ -2556,7 +2600,7 @@ const ThaiRules = (() => {
     ua_short: 'ua', ua: 'ua', ia_short: 'ia', ia: 'ia', uea_short: 'ɯa', uea: 'ɯa',
     rue: 'rɯ', ruee: 'rɯː', lue: 'lɯ', luee: 'lɯː',
     am: 'am', ai_mai: 'aj', ai: 'aj', ao: 'aw',
-    a_short: 'a', e_closed: 'ɤ', e_taikhu: 'e', o_implied: 'o',
+    a_short: 'a', e_closed: 'ɤː', e_taikhu: 'e', o_implied: 'o',
   };
 
   const FINALS = (() => {
@@ -2711,15 +2755,19 @@ const ThaiRules = (() => {
    */
   function layout(parts) {
     const vowel = VOWEL_MAP.get(parts.vowelId) || {};
-    const follow = vowel.dropFollowWithFinal && parts.final ? '' : (vowel.follow || '');
+    // 字段可能是 -1 / {} / true 这类畸形输入（以后搬后端、或加「手动填尾辅音」时会有），
+    // 一律按字符串处理，否则 check() 里的 for...of 会抛 TypeError
+    const str = (x) => (typeof x === 'string' ? x : '');
+    const final = str(parts.final);
+    const follow = vowel.dropFollowWithFinal && final ? '' : (vowel.follow || '');
     return {
       lead: vowel.lead || '',
-      onset: parts.onset || '',
-      cluster: parts.cluster || '',
+      onset: str(parts.onset),
+      cluster: str(parts.cluster),
       follow,
       tone: toneMark(parts.tone),
       tail: vowel.tail || '',
-      final: parts.final || '',
+      final,
     };
   }
 
@@ -2912,18 +2960,31 @@ const ThaiRules = (() => {
     if (parts.final) {
       if (!FINALS[parts.final]) issues.push(`辅音 ${parts.final} 不能作尾辅音`);
       if (vowel && !vowel.allowsFinal) issues.push('该元音不能带尾辅音');
+      if (vowel && (vowel.bannedFinals || []).includes(l.final)) {
+        issues.push(`${vowel.name} 不能接尾辅音 ${l.final}（这个写法是 สระ อัว）`);
+      }
       if (roles[chars.length - 1] !== 'final') issues.push('尾辅音不在末尾');
     }
     if (vowel && vowel.requiresFinal && !parts.final) issues.push('该元音必须带尾辅音');
     if (parts.cluster) {
       if (at('cluster') !== at('onset') + 1) issues.push('辅音簇不相邻');
+      if (!CLUSTER_SET.has(`${l.onset}${l.cluster}`)) {
+        issues.push(`${l.onset}${l.cluster} 不是合法的辅音簇`);
+      }
+      if (vowel && (vowel.bannedClusters || []).includes(l.cluster)) {
+        issues.push(`${vowel.name} 里的 ${l.cluster} 是元音的一部分，不能算辅音簇`);
+      }
     }
 
     return issues;
   }
 
   function pick(list, rng) {
-    return list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
+    // rng 可能是测试传进来的假随机源，返回值不一定是 [0,1] 里的数（NaN / 负数 /
+    // 字符串都会让下标变成 NaN，然后 list[NaN] 是 undefined，后面就崩了）
+    const n = Number(rng());
+    const i = Number.isFinite(n) ? Math.floor(Math.max(0, Math.min(1, n)) * list.length) : 0;
+    return list[Math.min(list.length - 1, i)] || list[0];
   }
 
   /** 某个辅音声调类别可用的所有声调（供随机用） */
@@ -2965,10 +3026,12 @@ const ThaiRules = (() => {
     if (!onsets.length && !vowelOnsetVowels.length) return null;
 
     const finalCandidates = allowFinal ? onsets.filter((ch) => FINALS[ch]) : [];
+    // 每个元音能用的尾辅音：要排掉它自己禁掉的（ไม้หันอากาศ 不能接 ว）
+    const finalsFor = (v) => finalCandidates.filter((ch) => !(v.bannedFinals || []).includes(ch));
 
     // 元音要挑「约束能满足」的
     const usableVowels = vowelList.filter(
-      (v) => !(v.requiresFinal && !finalCandidates.length),
+      (v) => !(v.requiresFinal && !finalsFor(v).length),
     );
     if (!usableVowels.length && !vowelOnsetVowels.length) return null;
 
@@ -2995,10 +3058,13 @@ const ThaiRules = (() => {
     }
 
     const vowel = pick(usableVowels, rng);
+    // 少数元音不认某些辅音簇（不写元音符号时 ว 属于元音，不是簇）
+    if (cluster && (vowel.bannedClusters || []).includes(cluster)) cluster = null;
 
     let final = null;
-    if (vowel.allowsFinal && finalCandidates.length) {
-      if (vowel.requiresFinal || rng() < 0.5) final = pick(finalCandidates, rng);
+    if (vowel.allowsFinal) {
+      const usable = finalsFor(vowel);
+      if (usable.length && (vowel.requiresFinal || rng() < 0.5)) final = pick(usable, rng);
     }
 
     // parts 只记「选了什么」，各段位置由元音表在 layout() 里决定
@@ -3441,7 +3507,7 @@ const TutorialData = (() => {
     oe_short: '双唇扁平、略向两旁伸展，舌身自然平放、舌中部稍抬高，读得短促。像汉语拼音 e，但开口比 e 大。',
     oe: '口形和发音跟 เออะ 一样，只是口腔肌肉放松、拖长。',
     ua_short: '口形由 อุ 向 อะ 滑动，中间没有停顿。像汉语拼音 ua，但读得短促。',
-    ua: '口形由 อุ 向 อะ 滑动，中间没有停顿。像汉语拼音 ua，但比 อัวะ 长。带尾辅音时 ไม้หันอากาศ（อั）会省掉（สวย、ช่วง）。',
+    ua: '口形由 อุ 向 อะ 滑动，中间没有停顿。像汉语拼音 ua，但比 อัวะ 长。带尾辅音时 อั 会省掉（สวย、ช่วง）。',
     ia_short: '口形由 อี 向 อะ 滑动，中间没有停顿。像汉语拼音 ia，但读得短促。',
     ia: '口形由 อี 向 อะ 滑动，中间没有停顿。像汉语拼音 ia，但比 เอียะ 长。',
     uea_short: '口形由 อึ 向 อะ 滑动，中间没有停顿。汉语里没有对应的音。',
@@ -3454,8 +3520,8 @@ const TutorialData = (() => {
     ai_mai: '口形由开到合、从大到扁平，发音时舌身平放、舌尖抵下齿背。相当于汉语拼音 ai。',
     ai: '口形由开到合、从大到扁平，发音时舌身平放、舌尖抵下齿背。相当于汉语拼音 ai。',
     ao: '口形由开到合、从不圆到逐渐收圆收小，舌后缩、舌后部稍抬起。相当于汉语拼音 ao。',
-    a_short: '闭音节里的 อะ。后面跟尾辅音时，อะ 要写成 ไม้หันอากาศ（อั）（如 กัน = k + a + n）。',
-    e_closed: '闭音节里的 เออ。后面跟尾辅音时写成 เ-ิ（如 เกิด）。',
+    a_short: '闭音节里的 อะ。后面跟尾辅音时，อะ 要写成 อั（如 กัน = k + a + n）。',
+    e_closed: '闭音节里的 เออ，跟开音节的 เธอ 是同一个音，也要拖长，只是后面跟尾辅音时写成 เ-ิ（如 เกิด）。',
     e_taikhu: '闭音节里的 เอ（แอ 相应用 แ-็），写成 เ-็。这类元音不写声调符号。',
     o_implied: '不写元音符号的闭音节，读 โอะ（如 กบ = kop）。必须有尾辅音才成立。',
     none: '不选元音时用的内部项，不出现在词表里。',
@@ -3534,8 +3600,9 @@ const TutorialData = (() => {
       ],
     },
   ];
-  // 表头里的声调符号一律垫一个 อ：光写 ่ ้ ๊ ๋ 会飘到格子上方被切掉
-  const TONE_COLS = ['不写符号 · 活音节', '不写符号 · 死音节', 'อ่ เอก', 'อ้ โท', 'อ๊ ตรี', 'อ๋ จัตวา'];
+  // 表头里的声调符号一律垫一个 อ：光写 ่ ้ ๊ ๋ 会飘到格子上方被切掉。
+  // 不再写 เอก / โท / ตรี / จัตวา 这些泰文名——零基础的人看不懂，只需要认符号
+  const TONE_COLS = ['不写符号 · 活音节', '不写符号 · 死音节', '写 อ่', '写 อ้', '写 อ๊', '写 อ๋'];
   /** 每一类辅音派一个代表，测试用它拼出样本音节 */
   const CLS_PROBE = { mid: 'ก', high: 'ข', low: 'ค' };
 
@@ -3558,7 +3625,7 @@ const TutorialData = (() => {
     },
     {
       onset: 'ม', vowelId: 'aa', patch: { tone: 'tho' },
-      pieces: ['声母 ม（低类）', '元音 า（长音）', '符号写 ไม้โท → 实际读第 4 调 máa'],
+      pieces: ['声母 ม（低类）', '元音 า（长音）', '符号写 อ้ → 实际读第 4 调 máa'],
     },
     {
       onset: 'น', vowelId: 'o_implied', patch: { final: 'ก' },
@@ -3697,6 +3764,11 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
   // 搜索索引：每一行渲染时把自己登记进来，搜索框才有东西可查
   const INDEX = [];
   let currentSection = '';
+
+  // 尾辅音的标签：页面上显示的、登记进搜索索引的必须是同一套说法
+  // （课本叫「清尾辅音 / 浊尾辅音」，跟正文一致。以前页面和索引各写各的，
+  // 结果搜页面上看得见的词 0 命中）
+  const FINAL_TAG = (sonorant) => (sonorant ? '清尾辅音 · 活音节' : '浊尾辅音 · 死音节');
 
   // ── DOM 小工具 ────────────────────────────────────────────────────
   function el(tag, className, text) {
@@ -3860,7 +3932,7 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
     for (const sound of ['k', 't', 'p', 'n', 'ng', 'm', 'y', 'w']) {
       const chars = R.FINAL_GROUPS[sound];
       const meta = [el('span', 't-gloss', `${chars.length} 个字母`),
-        tag(R.FINALS[chars[0]].sonorant ? '响音尾 · 活音节' : '塞音尾 · 死音节')];
+        tag(FINAL_TAG(R.FINALS[chars[0]].sonorant))];
       const box = el('div', 'trow');
       const g = el('div', 't-glyph');
       g.append(roman(`-${sound}`, 't-final-roman'));
@@ -3874,7 +3946,7 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
         glyph: `-${sound}`,
         name: `尾音 -${sound}`,
         roman: `-${sound}`,
-        tags: [R.FINALS[chars[0]].sonorant ? '清尾辅音 · 活音节' : '浊尾辅音 · 死音节'],
+        tags: [FINAL_TAG(R.FINALS[chars[0]].sonorant)],
         extra: `${chars.join(' ')} ${D.FINAL_EXAMPLES[sound].word} ${D.FINAL_EXAMPLES[sound].gloss}`,
       });
       rows.append(box);
@@ -4072,6 +4144,7 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
   function closeResults() {
     search.list.hidden = true;
     search.active = -1;
+    search.input.setAttribute('aria-expanded', 'false');
   }
 
   function paintActive() {
@@ -4113,6 +4186,7 @@ if (typeof window !== 'undefined') window.TutorialSearch = TutorialSearch;
       closeResults();
       return;
     }
+    search.input.setAttribute('aria-expanded', 'true');
     if (!found.list.length && !words.length) {
       // 词库还在下载时别说「没找到」，免得刚好卡在这个瞬间的人以为查不到
       const loading = wantDict && !dictState.ready && !dictState.failed;
