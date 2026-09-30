@@ -237,6 +237,9 @@
   let pressTimer = null;
   let longPressAt = 0; // 用时间戳而不是布尔：长按后万一没派发 click，也不会把下一次点击吃掉
   let longPressBtn = null; // 同时记下是哪个字块长按的——只跳过那一个字块紧跟的 click
+  // 上一次按下用的是什么指针。触屏轻点会顺带触发 focus / 合成的 mouseenter，
+  // 放大卡片就自己挂住了；鼠标悬停本来就是要看的，所以这里要分得开。
+  let lastPointerType = 'mouse';
 
   function startPress(btn, pointerType) {
     if (pointerType === 'mouse') return; // 鼠标走 mouseenter
@@ -272,7 +275,10 @@
     btn.addEventListener('mouseleave', hideTip);
     btn.addEventListener('focus', () => showTip(btn));
     btn.addEventListener('blur', hideTip);
-    btn.addEventListener('pointerdown', (e) => startPress(btn, e.pointerType));
+    btn.addEventListener('pointerdown', (e) => {
+      lastPointerType = e.pointerType || 'mouse';
+      startPress(btn, e.pointerType);
+    });
     for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
       btn.addEventListener(type, cancelPress);
     }
@@ -290,6 +296,10 @@
         e.preventDefault();
         return;
       }
+      // 触屏轻点一下会顺带触发 focus（有的浏览器还有合成的 mouseenter），
+      // 放大卡片本来会自己挂在那儿。以前是随后的 buildConsonants()/buildVowels()
+      // 顺手收掉的，现在点击不再重建字块了，得在这里自己收（长按那次上面已经 return）。
+      if (lastPointerType !== 'mouse') hideTip();
       onClick(e);
     });
     return btn;
