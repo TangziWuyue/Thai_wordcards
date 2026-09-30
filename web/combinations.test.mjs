@@ -361,3 +361,60 @@ test('实际声调：拿辞典 IPA 交叉验证所有「写的符号 ≠ 读的�
   assert.deepEqual(bad.slice(0, 5), []);
   console.log(`    · 标≠读：${checked} 个真实单音节词，全部与辞典 IPA 一致`);
 });
+
+test('实际声调：低辅音 + เ-ิ + 塞音尾 + 不写符号 = 第 3 调（辞典 IPA 判据）', () => {
+  // เ-ิ 是长元音（跟开音节的 เธอ 同一个音）。标成短音的话，低辅音死音节会算成第 4 调，
+  // 而这些词在维基词典里全是第 3 调。判据用辞典的 IPA，不用 spokenTone 自己的输出。
+  const byWord = new Map(DICT.words.map((e) => [e[0], e[7]]));
+  const lows = R.CONSONANTS.filter((c) => c.cls === 'low').map((c) => c.ch);
+  const stops = Object.keys(R.FINALS).filter((f) => !R.FINALS[f].sonorant);
+  let checked = 0;
+  for (const onset of lows) {
+    for (const final of stops) {
+      const parsed = { onset, vowelId: 'e_closed', tone: 'none', final, cluster: null };
+      if (R.check(parsed).length) continue;
+      const ipa = byWord.get(R.assemble(parsed));
+      if (!ipa) continue;
+      const want = R.toneFromIPA(ipa);
+      if (want === null) continue;
+      checked += 1;
+      assert.equal(R.spokenTone(parsed), want, `${R.assemble(parsed)}（辞典 IPA ${ipa}）`);
+    }
+  }
+  assert.ok(checked >= 6, `可比对的 เ-ิ 真词太少（${checked}），判据可能失效`);
+  console.log(`    · เ-ิ 死音节：${checked} 个真词全部读第 3 调`);
+});
+
+/** 反查「引擎认为合法」的所有拆法（用来断言某个字形的注音只能是哪一种） */
+function parsesOf(word) {
+  const chars = [...word];
+  const toneChar = chars.find((c) => R.TONE_CHARS.includes(c));
+  const tone = toneChar ? (R.TONES.find((t) => t.mark === toneChar) || {}).id : 'none';
+  const out = [];
+  for (const onset of [chars[0], null]) {
+    for (const cluster of [null, chars[1]]) {
+      for (const final of [null, chars[chars.length - 1]]) {
+        for (const vowelId of [...R.SELECTABLE_VOWEL_IDS, 'o_implied']) {
+          const parsed = { onset, vowelId, tone: tone || 'none', final, cluster };
+          if (R.assemble(parsed) === word && R.check(parsed).length === 0) out.push(parsed);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+test('常用词：วัว ตัว ตั๋ว รั้ว ถั่ว กลัว 的注音不能是 wao / tao / rao / thao / klao', () => {
+  // 以前 a_short 允许 ว 作尾辅音，跟 สระ อัว 撞成同一个字符串，约 1/3 概率注错音
+  const words = ['วัว', 'ตัว', 'ตั๋ว', 'รั้ว', 'ถั่ว', 'กลัว'];
+  for (const word of words) {
+    assert.ok(ALL_WORDS.has(word), `辞典里应该有 ${word}`);
+    const parses = parsesOf(word);
+    assert.ok(parses.length, `${word} 应该至少有一种合法拆法`);
+    for (const parsed of parses) {
+      const roman = R.romanize(parsed, 'latin');
+      assert.ok(!/^(w|t|r|th|kl)ao$/.test(roman),
+        `${word} 被注音成 ${roman}（vowel=${parsed.vowelId} final=${parsed.final}）`);
+    }
+  }
+});

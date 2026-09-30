@@ -193,10 +193,16 @@ const ThaiRules = (() => {
     { id: 'a_short', group: 'variant', name: 'ไม้หันอากาศ', en: 'mai han akat', roman: 'a',
       example: 'กัน = kan', lead: '', follow: 'ั', tail: '',
       short: true, allowsFinal: true, requiresFinal: true,
+      // ว 不能当它的尾辅音：泰文里凡写成 X + ั + ว 的都读 สระ อัว（วัว = wua），
+      // ไม้หันอากาศ 接 ว 尾这个拼法根本不存在。不禁掉的话两种拆法会撞成同一个字符串，
+      // 卡片一半概率把 วัว 注成 wao。
+      bannedFinals: ['ว'],
       note: '闭音节里的 สระ อะ' },
     { id: 'e_closed', group: 'variant', name: 'สระ เออ (เ-ิ)', en: 'sara oe (closed)', roman: 'oe',
       example: 'เกิด = koet', lead: 'เ', follow: 'ิ', tail: '',
-      short: true, allowsFinal: true, requiresFinal: true,
+      // 跟开音节的 เธอ（oe，长音）是同一个元音，只是闭音节里换个写法，长短音必须一致。
+      // 标成短音会让低辅音的死音节算错声调（เลิก 该读第 3 调、被算成第 4 调）。
+      short: false, allowsFinal: true, requiresFinal: true,
       note: '闭音节里的 สระ เออ' },
     { id: 'e_taikhu', group: 'variant', name: 'ไม้ไต่คู้', en: 'mai taikhu', roman: 'e',
       example: 'เก็ง = keng', lead: 'เ', follow: '็', tail: '',
@@ -205,6 +211,9 @@ const ThaiRules = (() => {
     { id: 'o_implied', group: 'variant', name: 'สระ โอะ (ไม่มีรูป)', en: 'sara oh (implied)', roman: 'o',
       example: 'กบ = kop', lead: '', follow: '', tail: '',
       short: true, allowsFinal: true, requiresFinal: true,
+      // 同理：不写元音符号时，X + ว + 尾辅音 一律读 สระ อัว（ควร = khuan），
+      // 把 ว 当成辅音簇会拼出 ควบ 这种串，注音成 khwop（实际读 khuap）
+      bannedClusters: ['ว'],
       // optionOnly：不在词表里显示，由「允许无元音符号的闭音节（กบ）」这个开关控制
       optionOnly: true,
       note: '没有元音符号的闭音节（如 กบ = kop）' },
@@ -251,6 +260,7 @@ const ThaiRules = (() => {
   };
 
   const CLUSTERS = [...TRUE_CLUSTERS, ...LEADING_H_CLUSTERS, ...SILENT_SECOND_CLUSTERS, ...Object.keys(REPLACED_CLUSTERS).map((pair) => [...pair])];
+  const CLUSTER_SET = new Set(CLUSTERS.map((pair) => pair.join('')));
 
   const SILENT_H_PAIRS = new Set(LEADING_H_CLUSTERS.map((pair) => pair.join('')));
   const SILENT_SECOND_PAIRS = new Set(SILENT_SECOND_CLUSTERS.map((pair) => pair.join('')));
@@ -316,7 +326,7 @@ const ThaiRules = (() => {
     ua_short: 'ua', ua: 'ua', ia_short: 'ia', ia: 'ia', uea_short: 'ɯa', uea: 'ɯa',
     rue: 'rɯ', ruee: 'rɯː', lue: 'lɯ', luee: 'lɯː',
     am: 'am', ai_mai: 'aj', ai: 'aj', ao: 'aw',
-    a_short: 'a', e_closed: 'ɤ', e_taikhu: 'e', o_implied: 'o',
+    a_short: 'a', e_closed: 'ɤː', e_taikhu: 'e', o_implied: 'o',
   };
 
   const FINALS = (() => {
@@ -471,15 +481,19 @@ const ThaiRules = (() => {
    */
   function layout(parts) {
     const vowel = VOWEL_MAP.get(parts.vowelId) || {};
-    const follow = vowel.dropFollowWithFinal && parts.final ? '' : (vowel.follow || '');
+    // 字段可能是 -1 / {} / true 这类畸形输入（以后搬后端、或加「手动填尾辅音」时会有），
+    // 一律按字符串处理，否则 check() 里的 for...of 会抛 TypeError
+    const str = (x) => (typeof x === 'string' ? x : '');
+    const final = str(parts.final);
+    const follow = vowel.dropFollowWithFinal && final ? '' : (vowel.follow || '');
     return {
       lead: vowel.lead || '',
-      onset: parts.onset || '',
-      cluster: parts.cluster || '',
+      onset: str(parts.onset),
+      cluster: str(parts.cluster),
       follow,
       tone: toneMark(parts.tone),
       tail: vowel.tail || '',
-      final: parts.final || '',
+      final,
     };
   }
 
@@ -672,18 +686,31 @@ const ThaiRules = (() => {
     if (parts.final) {
       if (!FINALS[parts.final]) issues.push(`辅音 ${parts.final} 不能作尾辅音`);
       if (vowel && !vowel.allowsFinal) issues.push('该元音不能带尾辅音');
+      if (vowel && (vowel.bannedFinals || []).includes(l.final)) {
+        issues.push(`${vowel.name} 不能接尾辅音 ${l.final}（这个写法是 สระ อัว）`);
+      }
       if (roles[chars.length - 1] !== 'final') issues.push('尾辅音不在末尾');
     }
     if (vowel && vowel.requiresFinal && !parts.final) issues.push('该元音必须带尾辅音');
     if (parts.cluster) {
       if (at('cluster') !== at('onset') + 1) issues.push('辅音簇不相邻');
+      if (!CLUSTER_SET.has(`${l.onset}${l.cluster}`)) {
+        issues.push(`${l.onset}${l.cluster} 不是合法的辅音簇`);
+      }
+      if (vowel && (vowel.bannedClusters || []).includes(l.cluster)) {
+        issues.push(`${vowel.name} 里的 ${l.cluster} 是元音的一部分，不能算辅音簇`);
+      }
     }
 
     return issues;
   }
 
   function pick(list, rng) {
-    return list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
+    // rng 可能是测试传进来的假随机源，返回值不一定是 [0,1] 里的数（NaN / 负数 /
+    // 字符串都会让下标变成 NaN，然后 list[NaN] 是 undefined，后面就崩了）
+    const n = Number(rng());
+    const i = Number.isFinite(n) ? Math.floor(Math.max(0, Math.min(1, n)) * list.length) : 0;
+    return list[Math.min(list.length - 1, i)] || list[0];
   }
 
   /** 某个辅音声调类别可用的所有声调（供随机用） */
@@ -725,10 +752,12 @@ const ThaiRules = (() => {
     if (!onsets.length && !vowelOnsetVowels.length) return null;
 
     const finalCandidates = allowFinal ? onsets.filter((ch) => FINALS[ch]) : [];
+    // 每个元音能用的尾辅音：要排掉它自己禁掉的（ไม้หันอากาศ 不能接 ว）
+    const finalsFor = (v) => finalCandidates.filter((ch) => !(v.bannedFinals || []).includes(ch));
 
     // 元音要挑「约束能满足」的
     const usableVowels = vowelList.filter(
-      (v) => !(v.requiresFinal && !finalCandidates.length),
+      (v) => !(v.requiresFinal && !finalsFor(v).length),
     );
     if (!usableVowels.length && !vowelOnsetVowels.length) return null;
 
@@ -755,10 +784,13 @@ const ThaiRules = (() => {
     }
 
     const vowel = pick(usableVowels, rng);
+    // 少数元音不认某些辅音簇（不写元音符号时 ว 属于元音，不是簇）
+    if (cluster && (vowel.bannedClusters || []).includes(cluster)) cluster = null;
 
     let final = null;
-    if (vowel.allowsFinal && finalCandidates.length) {
-      if (vowel.requiresFinal || rng() < 0.5) final = pick(finalCandidates, rng);
+    if (vowel.allowsFinal) {
+      const usable = finalsFor(vowel);
+      if (usable.length && (vowel.requiresFinal || rng() < 0.5)) final = pick(usable, rng);
     }
 
     // parts 只记「选了什么」，各段位置由元音表在 layout() 里决定

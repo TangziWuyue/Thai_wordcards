@@ -309,6 +309,99 @@ test('元音 ั 必须带尾辅音，เ-็ 不写声调符号', () => {
   assert.equal(ThaiRules.assemble(parts('am', 'น')), String.fromCodePoint(0x0e19, 0x0e33));
 });
 
+test('拼写变体 4 个的字段：长短音与课本一致', () => {
+  const byId = new Map(ThaiRules.VOWELS.map((v) => [v.id, v]));
+  const variants = ThaiRules.VOWELS.filter((v) => v.group === 'variant');
+  assert.deepEqual(variants.map((v) => v.id), ['a_short', 'e_closed', 'e_taikhu', 'o_implied']);
+  // ั = 闭音节里的 อะ（短）、เ-ิ = 闭音节里的 เออ（长）、เ-็ = 闭音节里的 เอ（短）
+  assert.equal(byId.get('a_short').short, true);
+  assert.equal(byId.get('e_closed').short, false);
+  assert.equal(byId.get('e_taikhu').short, true);
+  assert.equal(byId.get('o_implied').short, true);
+  // 同一个元音 เออ 的两种写法（เธอ / เกิด），长短音和音标必须一样
+  assert.equal(byId.get('e_closed').short, byId.get('oe').short, 'เ-ิ 跟 เออ 是同一个元音');
+  assert.equal(byId.get('e_closed').ipa, byId.get('oe').ipa);
+  assert.equal(byId.get('e_closed').ipa, 'ɤː');
+});
+
+test('拼法去歧义：ั 不能接 ว 尾，无元音符号时 ว 不属于辅音簇', () => {
+  // 泰文里 X + ั + ว 一律读 สระ อัว（วัว = wua），没有「ไม้หันอากาศ + ว 尾」这种拼法
+  const bad = { onset: 'ก', vowelId: 'a_short', tone: 'none', final: 'ว', cluster: null };
+  assert.equal(ThaiRules.assemble(bad), 'กัว');
+  assert.ok(ThaiRules.check(bad).some((s) => s.includes('尾辅音')), '要拦下 ั + ว');
+  // 无元音符号时 ว 是元音的一部分（ควร = khuan），不是辅音簇
+  const implied = { onset: 'ค', vowelId: 'o_implied', tone: 'none', final: 'บ', cluster: 'ว' };
+  assert.equal(ThaiRules.assemble(implied), 'ควบ');
+  assert.ok(ThaiRules.check(implied).some((s) => s.includes('辅音簇')));
+  // 同一个写法走 สระ อัว 才是对的
+  const right = { onset: 'ค', vowelId: 'ua', tone: 'none', final: 'บ', cluster: null };
+  assert.equal(ThaiRules.assemble(right), 'ควบ');
+  assert.deepEqual(ThaiRules.check(right), []);
+  assert.equal(ThaiRules.romanize(right, 'latin'), 'khuap');
+  // 随机生成也不能再产出这两种非法组合（ว 只是 37 个尾辅音里的一个，不会把词表抽空）
+  for (let i = 0; i < 3000; i += 1) {
+    const p = ThaiRules.generate({ consonants: ['ก', 'ว'], vowels: ['a_short'], allowFinal: true, strict: true });
+    assert.ok(p, 'a_short 在只有 ก / ว 的词表下也要能生成音节');
+    assert.notEqual(p.final, 'ว');
+  }
+});
+
+test('拼装单射：同一个泰文字符串只有一种注音', () => {
+  // 两种不同的 parts 拼出同一个字符串、注音还不一样，卡片上就会出现
+  // 「字形是一个词、注音却是另一种读法」的自相矛盾。这里穷举 UI 能勾到的范围。
+  const byText = new Map();
+  const vowelIds = [...ThaiRules.SELECTABLE_VOWEL_IDS, 'o_implied'];
+  for (const onset of ThaiRules.CONSONANTS.map((c) => c.ch)) {
+    for (const vowelId of vowelIds) {
+      for (const tone of ThaiRules.TONES.map((t) => t.id)) {
+        for (const final of [null, ...Object.keys(ThaiRules.FINALS)]) {
+          const parsed = { onset, vowelId, tone, final, cluster: null };
+          const text = ThaiRules.assemble(parsed);
+          if (!byText.has(text)) byText.set(text, []);
+          byText.get(text).push(parsed);
+        }
+      }
+    }
+  }
+  assert.ok(byText.size > 100000, `样本太小（${byText.size}），判据可能失效`);
+  const conflicts = [];
+  for (const [text, list] of byText) {
+    const romans = new Set(list.map((p) => ThaiRules.romanize(p, 'latin')));
+    if (romans.size < 2) continue;
+    // 两种注音各自都有「引擎认为合法」的拆法，才算真冲突
+    const legal = [...romans].filter((r) => list.some(
+      (p) => ThaiRules.romanize(p, 'latin') === r && ThaiRules.check(p).length === 0,
+    ));
+    if (legal.length > 1) conflicts.push(`${text}：${legal.join(' / ')}`);
+  }
+  assert.deepEqual(conflicts.slice(0, 5), []);
+});
+
+test('check() 会拦下不合法的辅音簇，畸形字段只报错不抛异常', () => {
+  // กจ 不是泰语里存在的辅音簇
+  const badCluster = { onset: 'ก', vowelId: 'aa', tone: 'none', final: null, cluster: 'จ' };
+  assert.ok(ThaiRules.check(badCluster).some((s) => s.includes('辅音簇')));
+  // 合法簇不能误伤
+  assert.deepEqual(ThaiRules.check({ onset: 'ก', vowelId: 'aa', tone: 'none', final: null, cluster: 'ร' }), []);
+  // 非字符串字段（后端复用或以后加「手动填尾辅音」时会遇到）
+  for (const junk of [-1, {}, true, [], null, undefined]) {
+    for (const key of ['onset', 'cluster', 'final']) {
+      const parsed = { onset: 'ก', vowelId: 'aa', tone: 'none', final: null, cluster: null, [key]: junk };
+      assert.doesNotThrow(() => ThaiRules.check(parsed), `${key} = ${String(junk)} 时 check() 抛异常`);
+      assert.doesNotThrow(() => ThaiRules.describe(parsed), `${key} = ${String(junk)} 时 describe() 抛异常`);
+    }
+  }
+});
+
+test('generate() 的 rng 返回 NaN / 负数 / 非数值时也不抛异常', () => {
+  const rngs = [() => NaN, () => -0.5, () => -3, () => undefined, () => 'x', () => 0, () => 1, () => 1.5];
+  for (const rng of rngs) {
+    assert.doesNotThrow(() => ThaiRules.generate({
+      consonants: ['ก', 'น', 'ว'], vowels: ['aa', 'a_short', 'ua'], allowFinal: true, strict: true, rng,
+    }));
+  }
+});
+
 test('常见词抽查：辅音簇 / 前引元音 / 尾辅音组合拼出来是对的', () => {
   const cases = [
     // ครับ = ค + ร + ั + บ
