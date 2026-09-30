@@ -1249,11 +1249,13 @@
   // 目标值一旦量得比真实高度大（词库是展开后才联网取的、泰文字体也可能晚到），
   // 动画会在「空气」里白滑一段，结尾再「啪」地跳到真实高度——就是用户说的「结尾卡顿」。
   // 现在直接量真实高度，动画结束后再核对一次：这 190ms 里长高的那截单独补一段滑完。
-  const PANEL_MS = 190;
+  const PANEL_MS = 190;   // 最短时长（小面板）；长面板按高度往上加，见下面的 dur
   const panelState = new WeakMap();
 
   function panelFinish(body) {
     body.style.height = '';
+    body.style.paddingTop = '';
+    body.style.paddingBottom = '';
     body.style.overflow = '';
     body.style.willChange = '';
   }
@@ -1268,6 +1270,14 @@
     const pending = panelState.get(panel);
     if (pending) pending();
 
+    // .panel-body 上下有 padding（4px / 20px）。全站 box-sizing 是 border-box，
+    // 而 border-box 的高度**压不过 padding**——只把 height 动到 0，盒子会停在 24px
+    // 高下不去，动画尾巴空转两帧、收尾再「啪」地消失。逐帧量过：高度序列 87 → 77 → 77 → 53，
+    // 那两帧停住 + 最后 24px 的跳变就是用户说的「卡一下」。所以 padding 要跟着一起动。
+    const cs = getComputedStyle(body);
+    const padTop = parseFloat(cs.paddingTop) || 0;
+    const padBottom = parseFloat(cs.paddingBottom) || 0;
+
     const opening = !panel.open;
     const from = opening ? 0 : body.getBoundingClientRect().height;
     if (opening) panel.open = true;   // 先让它显示出来，才量得到目标高度
@@ -1276,10 +1286,17 @@
     // 目标高度必须在不被约束的状态下量（scrollHeight 含 padding，跟 height 的取值口径一致）
     const to = opening ? body.scrollHeight : 0;
     body.style.height = `${from}px`;
+    body.style.paddingTop = `${opening ? 0 : padTop}px`;
+    body.style.paddingBottom = `${opening ? 0 : padBottom}px`;
 
+    const shrunk = { height: '0px', paddingTop: '0px', paddingBottom: '0px' };
+    const full = { height: `${to}px`, paddingTop: `${padTop}px`, paddingBottom: `${padBottom}px` };
+    // 缓动别用「起步就冲」的那种：词表展开一次要动 670px，前 10ms 就吃掉四分之一，
+    // 看着像直接跳过去。改成两头慢、中间快；长面板再按高度多给一点时间。
+    const dur = Math.round(Math.min(300, Math.max(PANEL_MS, 150 + to / 5)));
     const anim = body.animate(
-      [{ height: `${from}px` }, { height: `${to}px` }],
-      { duration: PANEL_MS, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' }
+      opening ? [shrunk, full] : [full, shrunk],
+      { duration: dur, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }
     );
 
     const settle = () => {
@@ -1294,11 +1311,12 @@
       settle();
       // 动画期间内容又长高了（词库到货 / 字体晚到）：补一小段，别硬跳
       if (opening && grown - to > 1) {
+        body.style.overflow = 'hidden';
         const extra = body.animate(
           [{ height: `${to}px` }, { height: `${grown}px` }],
           { duration: 130, easing: 'ease-out' }
         );
-        extra.onfinish = () => extra.cancel();
+        extra.onfinish = () => { extra.cancel(); body.style.overflow = ''; };
       }
     };
     panelState.set(panel, settle);
