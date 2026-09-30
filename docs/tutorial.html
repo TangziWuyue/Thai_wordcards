@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T07:55:26.986Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T12:46:34.867Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -81,7 +81,7 @@
 }
 
 /* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
-   界面中文用到的 2101 个字，按需切成 61 个子集。
+   界面中文用到的 2102 个字，按需切成 61 个子集。
    授权：SIL OFL 1.1，见 fonts/NOTICE.md。 */
 
 @font-face {
@@ -699,6 +699,13 @@ html[data-theme="dark"] {
 
 * { box-sizing: border-box; }
 
+/* 手机上点一下，浏览器会自己铺一层灰高亮（浅色模式下特别明显，还会跟滑块、
+   选中底色叠成「两层底」）。整页关掉，按压反馈一律交给下面自己写的动画。
+   iOS 还认 -webkit-touch-callout：长按字块时别弹系统菜单（字块上已单独关过一次）。 */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -766,7 +773,12 @@ html.js .js-fallback { display: none; }
   white-space: nowrap;
 }
 
-.head-link:hover { color: var(--fg); }
+/* 触屏上没有「悬停」，而手机点完会把 :hover 粘在元素上。浅色模式下一块灰底
+   留在那儿，看着就像控件自己多了一层底色（用户报过：滑块 / 面板 / 字块都有）。
+   所以所有 hover 效果只写给真的带指针的设备。 */
+@media (hover: hover) {
+  .head-link:hover { color: var(--fg); }
+}
 
 .head .sub {
   margin: 6px 0 0;
@@ -958,7 +970,9 @@ html.js .js-fallback { display: none; }
   cursor: pointer;
 }
 
-.dict-word:hover { background: var(--soft); }
+@media (hover: hover) {
+  .dict-word:hover { background: var(--soft); }
+}
 
 .dw-thai {
   flex: none;
@@ -1066,7 +1080,9 @@ html.js .js-fallback { display: none; }
   cursor: pointer;
 }
 
-.mini:hover { background: var(--soft); color: var(--fg); }
+@media (hover: hover) {
+  .mini:hover { background: var(--soft); color: var(--fg); }
+}
 
 /* 固定模式下「全选 / 全不选」要藏起来，但**不能连高度一起收掉**：
    这两个按钮撑起「辅音 / 元音」两行的行高（22px），一收就掉到 19px，
@@ -1119,8 +1135,10 @@ html.js .js-fallback { display: none; }
    再叠一层灰底就是「白药丸 + 灰方块」两块，看着像叠影（用户报过） */
 .tone:hover { background: transparent; }
 
-.tone:hover:not([aria-pressed="true"]):not(:disabled) {
-  color: var(--fg);
+@media (hover: hover) {
+  .tone:hover:not([aria-pressed="true"]):not(:disabled) {
+    color: var(--fg);
+  }
 }
 
 .tone:hover:not([aria-pressed="true"]):not(:disabled) .name { color: var(--fg); }
@@ -1144,6 +1162,14 @@ html.js .js-fallback { display: none; }
 
 .tone .name { font-size: 11px; color: var(--muted); }
 .tone[aria-pressed="true"] .name { color: var(--inv-fg); opacity: 0.7; }
+
+/* 按下去的那一下，字往下沉一点点（选中态的底色不动）——
+   手感跟滑块组件一致：背景是滑块在动，字只是跟着「按一下」。
+   两个子元素都是 flex item（能 transform），不用额外包一层。 */
+.tone .mark, .tone .name { transition: transform 0.09s ease; }
+
+.tone:not(:disabled):active .mark,
+.tone:not(:disabled):active .name { transform: translateY(1px) scale(0.94); }
 
 /* ── 按钮 ───────────────────────────────── */
 .actions {
@@ -1194,16 +1220,12 @@ html.js .js-fallback { display: none; }
   transition: transform 0.09s ease;
 }
 
-.btn:hover { background: var(--soft); }
+@media (hover: hover) {
+  .btn:hover { background: var(--soft); }
+}
 
 /* 按住的期间先收一点，点完再走 pulseTap */
 .btn:active { transform: scale(0.98); }
-
-.btn:disabled {
-  background: var(--card);
-  color: var(--muted);
-  cursor: default;
-}
 
 .btn.primary {
   background: var(--inv-bg);
@@ -1211,7 +1233,30 @@ html.js .js-fallback { display: none; }
   color: var(--inv-fg);
 }
 
-.btn.primary:hover { opacity: 0.86; }
+@media (hover: hover) {
+  .btn.primary:hover { opacity: 0.86; }
+}
+
+/* 灰掉 = 真的不能按：没有按压反馈。
+   这一段必须排在 .btn.primary 后面——「固定模式」那个按钮是 .btn.primary，
+   排在前面的话 primary 的深色底会把这里的灰底盖掉，看着还像一个能按的按钮
+   （用户报「固定模式下摁下按钮仍有反馈」就是这一条）。 */
+.btn:disabled,
+.btn:disabled:hover,
+.btn.primary:disabled,
+.btn.primary:disabled:hover {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--muted);
+  opacity: 1;
+  cursor: default;
+}
+
+.btn:disabled:active { transform: none; }
+
+/* 「随机组合 + ⇄」是拼接控件：灰掉那一半要用槽的底色（--soft），
+   不能留白——白块夹在灰槽和深色 ⇄ 中间，像贴了两块白药丸（用户说丑）。 */
+.split .btn:disabled { background: var(--soft); }
 
 kbd {
   margin-left: 8px;
@@ -1292,10 +1337,18 @@ kbd {
   -webkit-touch-callout: none;
 }
 
-/* 同样不在「选中的药丸」上再铺一层灰底：选中态的深色块由 aria-pressed 那条规则画 */
-.chip:hover:not([aria-pressed="true"]) { background: var(--soft); }
+/* 同样不在「选中的药丸」上再铺一层灰底：选中态的深色块由 aria-pressed 那条规则画。
+   只在带指针的设备上响应悬停：手机上点完 :hover 会粘住，浅色模式下就是一块去不掉的灰底。 */
+@media (hover: hover) {
+  .chip:hover:not([aria-pressed="true"]) { background: var(--soft); }
+}
 
 .chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
+
+/* 字块里的字单独一层：按下去只让字沉一点，选中态的深色药丸纹丝不动 */
+.chip-in { display: inline-flex; align-items: center; transition: transform 0.09s ease; }
+
+.chip:active .chip-in { transform: translateY(1px) scale(0.94); }
 
 .vowel-chip { font-size: 15px; min-width: 32px; }
 
@@ -1404,6 +1457,8 @@ kbd {
   left: 0;
   z-index: 0;
   background: var(--card);
+  /* 浅色下白滑块和浅灰槽挨得太近，加一条细细的边把轮廓勾出来（深色同理） */
+  border: 1px solid var(--line);
   border-radius: 8px;
   opacity: 0;
   pointer-events: none;
@@ -1413,6 +1468,7 @@ kbd {
 /* 声调那一排的滑块是深色药丸，圆角跟 .tone 一致 */
 #tones .seg-thumb {
   background: var(--inv-bg);
+  border: 0;   /* 深色药丸不需要那条勾轮廓的细边，会像套了个亮圈 */
   border-radius: 12px;
 }
 
@@ -1494,7 +1550,9 @@ kbd {
   text-decoration: underline dotted;
 }
 
-.foot a:hover { color: var(--fg); }
+@media (hover: hover) {
+  .foot a:hover { color: var(--fg); }
+}
 
 .link {
   padding: 0;
@@ -1506,7 +1564,9 @@ kbd {
   cursor: pointer;
 }
 
-.link:hover { color: var(--fg); }
+@media (hover: hover) {
+  .link:hover { color: var(--fg); }
+}
 
 /* ── 新手引导 ───────────────────────────── */
 .tour-mask,
@@ -1574,7 +1634,9 @@ kbd {
   cursor: pointer;
 }
 
-.tour-actions button:hover { background: var(--soft); color: var(--fg); }
+@media (hover: hover) {
+  .tour-actions button:hover { background: var(--soft); color: var(--fg); }
+}
 
 .tour-actions button.primary {
   background: var(--inv-bg);
@@ -1727,6 +1789,10 @@ html.js body { animation: pageIn 0.22s ease; }
   .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
   .seg-thumb { transition: none; }
   .btn:active { transform: none; }
+  .tone .mark, .tone .name, .chip-in { transition: none; }
+  .tone:not(:disabled):active .mark,
+  .tone:not(:disabled):active .name,
+  .chip:active .chip-in { transform: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
 }
@@ -1849,7 +1915,9 @@ html { scroll-behavior: smooth; }
   cursor: pointer;
 }
 
-.tut-search-clear:hover { background: var(--soft); color: var(--fg); }
+@media (hover: hover) {
+  .tut-search-clear:hover { background: var(--soft); color: var(--fg); }
+}
 
 .tut-results {
   position: absolute;
@@ -1878,7 +1946,11 @@ html { scroll-behavior: smooth; }
   cursor: pointer;
 }
 
-.res.active, .res:hover { background: var(--soft); }
+.res.active { background: var(--soft); }
+
+@media (hover: hover) {
+  .res:hover { background: var(--soft); }
+}
 
 .res-glyph {
   grid-row: span 2;
@@ -2012,13 +2084,20 @@ html { scroll-behavior: smooth; }
   font-size: 12px;
   text-decoration: none;
   white-space: nowrap;
+  /* 按下去字沉一下，跟练习页那几排控件同一套手感（高亮底色由 .toc-thumb 管，不动） */
+  transition: transform 0.09s ease;
 }
 
+.toc-link:active { transform: translateY(1px) scale(0.96); }
+
 /* 悬停不铺底色：选中背景已经交给 .toc-thumb 了，再叠一层灰底就是「药丸 + 方块」两块
-   （跟声调那排同一个毛病）。悬停只把字提亮，且不能盖掉当前这一节的反白字。 */
+   （跟声调那排同一个毛病）。悬停只把字提亮，且不能盖掉当前这一节的反白字。
+   手机上点完 :hover 会粘住，所以只在带指针的设备上生效。 */
 .toc-link:hover { background: transparent; }
 
-.toc-link:hover:not([aria-current="true"]) { color: var(--fg); }
+@media (hover: hover) {
+  .toc-link:hover:not([aria-current="true"]) { color: var(--fg); }
+}
 
 .toc-link[aria-current="true"] {
   /* 背景交给 .toc-thumb，这里只改字色 */
@@ -2328,6 +2407,8 @@ html { scroll-behavior: smooth; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .toc-link { transition: none; }
+  .toc-link:active { transform: none; }
   .tut-sec > h2.arrive { animation: none; }
   /* JS 在减少动效时不会再藏标题，这条是兜底：万一被藏住了也要能看见 */
   .tut-sec > h2.arrive-hidden { opacity: 1; }
@@ -4325,6 +4406,26 @@ const Seg = (() => {
     setTimeout(() => btn.classList.remove('pulse'), 400);
   }
 
+  /**
+   * 换字体 / 换外观会让整页重新排版：泰文在两种字体里宽度不一样，换行位置会变，
+   * 于是整页高度变了，手机上看着就是「按一下页面跳一下」。
+   * 这里按控件本身做锚定——重排之后把它挪回原来的屏幕位置，视觉上就不动。
+   * 用法：keepAnchored(控件, () => { 真正去改字体/外观 })
+   */
+  function keepAnchored(container, fn) {
+    if (!container) { fn(); return; }
+    const before = container.getBoundingClientRect().top;
+    fn();
+    const delta = container.getBoundingClientRect().top - before;
+    if (!delta || Math.abs(delta) < 0.5) return;
+    // 教学页开了 scroll-behavior: smooth，这里得瞬时跳，否则会看到页面自己滑一下
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+    window.scrollBy(0, delta);
+    root.style.scrollBehavior = prev;
+  }
+
   function prefersReduced() {
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
@@ -4334,7 +4435,7 @@ const Seg = (() => {
     for (const box of document.querySelectorAll('.seg, .tones')) sync(box);
   });
 
-  return { build, sync, select, pulse };
+  return { build, sync, select, pulse, keepAnchored };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Seg;
@@ -4668,15 +4769,20 @@ if (typeof window !== 'undefined') window.Seg = Seg;
     if (!segsBuilt) {
       segsBuilt = true;
       Seg.build(fontHost, FONTS, prefs.font, (id) => {
-        writePrefs({ font: id });
-        applyPrefs(readPrefs());
-        Seg.select(fontHost, id);
+        // 手机上换字体会让整页重新排版，锚住这一排控件，页面就不会跳一下
+        Seg.keepAnchored(fontHost, () => {
+          writePrefs({ font: id });
+          applyPrefs(readPrefs());
+          Seg.select(fontHost, id);
+        });
         Seg.pulse(fontHost, id);
       });
       Seg.build(themeHost, THEMES, prefs.theme, (id) => {
-        writePrefs({ theme: id });
-        applyPrefs(readPrefs());
-        Seg.select(themeHost, id);
+        Seg.keepAnchored(themeHost, () => {
+          writePrefs({ theme: id });
+          applyPrefs(readPrefs());
+          Seg.select(themeHost, id);
+        });
         Seg.pulse(themeHost, id);
       });
       return;
@@ -4766,17 +4872,40 @@ if (typeof window !== 'undefined') window.Seg = Seg;
     }
     tocLinks = [...host.querySelectorAll('.toc-link')];
     setTocCurrent(secs[0].id, false);
-    window.addEventListener('resize', () => paintToc(false));
+    window.addEventListener('resize', () => {
+      if (tocLocked) paintToc(false);
+      else setTocCurrent(activeSection().id, false);
+    });
     if (!('IntersectionObserver' in window)) return;
-    const io = new IntersectionObserver((entries) => {
-      // 点目录跳章节时先锁住：从概览跳到声调要滚过四节，
+    // 判定交给 activeSection() 现算，观察器只负责「有变化时叫一声」。
+    // 早先是「谁出现在判定区里就把高亮给谁」，往上滚的时候，上面那一节会**新**进入
+    // 判定区（要上报），而目标那一节位置没变（不上报），于是高亮被带回上面那一节——
+    // 就是用户说的「从右往左点会多跳一格」。
+    const io = new IntersectionObserver(() => {
+      // 点目录跳章节期间先锁住：从概览跳到声调要滚过四节，
       // 不锁的话高亮会「元音 → 尾辅音 → 声调」一路扫过去
       if (tocLocked) return;
-      for (const entry of entries) {
-        if (entry.isIntersecting) setTocCurrent(entry.target.id);
-      }
-    }, { rootMargin: '-72px 0px -60% 0px' });
+      setTocCurrent(activeSection().id);
+    }, { rootMargin: '0px 0px -1px 0px' });
     for (const sec of secs) io.observe(sec);
+  }
+
+  // 比 CSS 里的 scroll-margin-top（130px）大一点：跳过去之后目标那一节的顶边正好
+  // 落在 130，算「已经越线」，高亮才会停在目标上而不是退回去一节。
+  const TOC_LINE = 132;
+
+  /** 现在该高亮哪一节：顶边越过吸顶栏的最后一节（页面滚到底就取最后一节） */
+  function activeSection() {
+    const secs = [...document.querySelectorAll('.tut-sec')];
+    const scrolledToEnd = window.scrollY + window.innerHeight
+      >= document.documentElement.scrollHeight - 2;
+    if (scrolledToEnd) return secs[secs.length - 1];
+    let best = secs[0];
+    for (const sec of secs) {
+      if (sec.getBoundingClientRect().top <= TOC_LINE) best = sec;
+      else break;
+    }
+    return best;
   }
 
   /** 把高亮挪到某一节；animate=false 用于首次渲染（别让它从左上角飞过来） */

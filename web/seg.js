@@ -104,6 +104,26 @@ const Seg = (() => {
     setTimeout(() => btn.classList.remove('pulse'), 400);
   }
 
+  /**
+   * 换字体 / 换外观会让整页重新排版：泰文在两种字体里宽度不一样，换行位置会变，
+   * 于是整页高度变了，手机上看着就是「按一下页面跳一下」。
+   * 这里按控件本身做锚定——重排之后把它挪回原来的屏幕位置，视觉上就不动。
+   * 用法：keepAnchored(控件, () => { 真正去改字体/外观 })
+   */
+  function keepAnchored(container, fn) {
+    if (!container) { fn(); return; }
+    const before = container.getBoundingClientRect().top;
+    fn();
+    const delta = container.getBoundingClientRect().top - before;
+    if (!delta || Math.abs(delta) < 0.5) return;
+    // 教学页开了 scroll-behavior: smooth，这里得瞬时跳，否则会看到页面自己滑一下
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+    window.scrollBy(0, delta);
+    root.style.scrollBehavior = prev;
+  }
+
   function prefersReduced() {
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
@@ -113,7 +133,7 @@ const Seg = (() => {
     for (const box of document.querySelectorAll('.seg, .tones')) sync(box);
   });
 
-  return { build, sync, select, pulse };
+  return { build, sync, select, pulse, keepAnchored };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Seg;

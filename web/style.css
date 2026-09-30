@@ -64,6 +64,13 @@ html[data-theme="dark"] {
 
 * { box-sizing: border-box; }
 
+/* 手机上点一下，浏览器会自己铺一层灰高亮（浅色模式下特别明显，还会跟滑块、
+   选中底色叠成「两层底」）。整页关掉，按压反馈一律交给下面自己写的动画。
+   iOS 还认 -webkit-touch-callout：长按字块时别弹系统菜单（字块上已单独关过一次）。 */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -131,7 +138,12 @@ html.js .js-fallback { display: none; }
   white-space: nowrap;
 }
 
-.head-link:hover { color: var(--fg); }
+/* 触屏上没有「悬停」，而手机点完会把 :hover 粘在元素上。浅色模式下一块灰底
+   留在那儿，看着就像控件自己多了一层底色（用户报过：滑块 / 面板 / 字块都有）。
+   所以所有 hover 效果只写给真的带指针的设备。 */
+@media (hover: hover) {
+  .head-link:hover { color: var(--fg); }
+}
 
 .head .sub {
   margin: 6px 0 0;
@@ -323,7 +335,9 @@ html.js .js-fallback { display: none; }
   cursor: pointer;
 }
 
-.dict-word:hover { background: var(--soft); }
+@media (hover: hover) {
+  .dict-word:hover { background: var(--soft); }
+}
 
 .dw-thai {
   flex: none;
@@ -431,7 +445,9 @@ html.js .js-fallback { display: none; }
   cursor: pointer;
 }
 
-.mini:hover { background: var(--soft); color: var(--fg); }
+@media (hover: hover) {
+  .mini:hover { background: var(--soft); color: var(--fg); }
+}
 
 /* 固定模式下「全选 / 全不选」要藏起来，但**不能连高度一起收掉**：
    这两个按钮撑起「辅音 / 元音」两行的行高（22px），一收就掉到 19px，
@@ -484,8 +500,10 @@ html.js .js-fallback { display: none; }
    再叠一层灰底就是「白药丸 + 灰方块」两块，看着像叠影（用户报过） */
 .tone:hover { background: transparent; }
 
-.tone:hover:not([aria-pressed="true"]):not(:disabled) {
-  color: var(--fg);
+@media (hover: hover) {
+  .tone:hover:not([aria-pressed="true"]):not(:disabled) {
+    color: var(--fg);
+  }
 }
 
 .tone:hover:not([aria-pressed="true"]):not(:disabled) .name { color: var(--fg); }
@@ -509,6 +527,14 @@ html.js .js-fallback { display: none; }
 
 .tone .name { font-size: 11px; color: var(--muted); }
 .tone[aria-pressed="true"] .name { color: var(--inv-fg); opacity: 0.7; }
+
+/* 按下去的那一下，字往下沉一点点（选中态的底色不动）——
+   手感跟滑块组件一致：背景是滑块在动，字只是跟着「按一下」。
+   两个子元素都是 flex item（能 transform），不用额外包一层。 */
+.tone .mark, .tone .name { transition: transform 0.09s ease; }
+
+.tone:not(:disabled):active .mark,
+.tone:not(:disabled):active .name { transform: translateY(1px) scale(0.94); }
 
 /* ── 按钮 ───────────────────────────────── */
 .actions {
@@ -559,16 +585,12 @@ html.js .js-fallback { display: none; }
   transition: transform 0.09s ease;
 }
 
-.btn:hover { background: var(--soft); }
+@media (hover: hover) {
+  .btn:hover { background: var(--soft); }
+}
 
 /* 按住的期间先收一点，点完再走 pulseTap */
 .btn:active { transform: scale(0.98); }
-
-.btn:disabled {
-  background: var(--card);
-  color: var(--muted);
-  cursor: default;
-}
 
 .btn.primary {
   background: var(--inv-bg);
@@ -576,7 +598,30 @@ html.js .js-fallback { display: none; }
   color: var(--inv-fg);
 }
 
-.btn.primary:hover { opacity: 0.86; }
+@media (hover: hover) {
+  .btn.primary:hover { opacity: 0.86; }
+}
+
+/* 灰掉 = 真的不能按：没有按压反馈。
+   这一段必须排在 .btn.primary 后面——「固定模式」那个按钮是 .btn.primary，
+   排在前面的话 primary 的深色底会把这里的灰底盖掉，看着还像一个能按的按钮
+   （用户报「固定模式下摁下按钮仍有反馈」就是这一条）。 */
+.btn:disabled,
+.btn:disabled:hover,
+.btn.primary:disabled,
+.btn.primary:disabled:hover {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--muted);
+  opacity: 1;
+  cursor: default;
+}
+
+.btn:disabled:active { transform: none; }
+
+/* 「随机组合 + ⇄」是拼接控件：灰掉那一半要用槽的底色（--soft），
+   不能留白——白块夹在灰槽和深色 ⇄ 中间，像贴了两块白药丸（用户说丑）。 */
+.split .btn:disabled { background: var(--soft); }
 
 kbd {
   margin-left: 8px;
@@ -657,10 +702,18 @@ kbd {
   -webkit-touch-callout: none;
 }
 
-/* 同样不在「选中的药丸」上再铺一层灰底：选中态的深色块由 aria-pressed 那条规则画 */
-.chip:hover:not([aria-pressed="true"]) { background: var(--soft); }
+/* 同样不在「选中的药丸」上再铺一层灰底：选中态的深色块由 aria-pressed 那条规则画。
+   只在带指针的设备上响应悬停：手机上点完 :hover 会粘住，浅色模式下就是一块去不掉的灰底。 */
+@media (hover: hover) {
+  .chip:hover:not([aria-pressed="true"]) { background: var(--soft); }
+}
 
 .chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
+
+/* 字块里的字单独一层：按下去只让字沉一点，选中态的深色药丸纹丝不动 */
+.chip-in { display: inline-flex; align-items: center; transition: transform 0.09s ease; }
+
+.chip:active .chip-in { transform: translateY(1px) scale(0.94); }
 
 .vowel-chip { font-size: 15px; min-width: 32px; }
 
@@ -769,6 +822,8 @@ kbd {
   left: 0;
   z-index: 0;
   background: var(--card);
+  /* 浅色下白滑块和浅灰槽挨得太近，加一条细细的边把轮廓勾出来（深色同理） */
+  border: 1px solid var(--line);
   border-radius: 8px;
   opacity: 0;
   pointer-events: none;
@@ -778,6 +833,7 @@ kbd {
 /* 声调那一排的滑块是深色药丸，圆角跟 .tone 一致 */
 #tones .seg-thumb {
   background: var(--inv-bg);
+  border: 0;   /* 深色药丸不需要那条勾轮廓的细边，会像套了个亮圈 */
   border-radius: 12px;
 }
 
@@ -859,7 +915,9 @@ kbd {
   text-decoration: underline dotted;
 }
 
-.foot a:hover { color: var(--fg); }
+@media (hover: hover) {
+  .foot a:hover { color: var(--fg); }
+}
 
 .link {
   padding: 0;
@@ -871,7 +929,9 @@ kbd {
   cursor: pointer;
 }
 
-.link:hover { color: var(--fg); }
+@media (hover: hover) {
+  .link:hover { color: var(--fg); }
+}
 
 /* ── 新手引导 ───────────────────────────── */
 .tour-mask,
@@ -939,7 +999,9 @@ kbd {
   cursor: pointer;
 }
 
-.tour-actions button:hover { background: var(--soft); color: var(--fg); }
+@media (hover: hover) {
+  .tour-actions button:hover { background: var(--soft); color: var(--fg); }
+}
 
 .tour-actions button.primary {
   background: var(--inv-bg);
@@ -1092,6 +1154,10 @@ html.js body { animation: pageIn 0.22s ease; }
   .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
   .seg-thumb { transition: none; }
   .btn:active { transform: none; }
+  .tone .mark, .tone .name, .chip-in { transition: none; }
+  .tone:not(:disabled):active .mark,
+  .tone:not(:disabled):active .name,
+  .chip:active .chip-in { transform: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
 }

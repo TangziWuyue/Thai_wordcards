@@ -325,15 +325,20 @@
     if (!segsBuilt) {
       segsBuilt = true;
       Seg.build(fontHost, FONTS, prefs.font, (id) => {
-        writePrefs({ font: id });
-        applyPrefs(readPrefs());
-        Seg.select(fontHost, id);
+        // 手机上换字体会让整页重新排版，锚住这一排控件，页面就不会跳一下
+        Seg.keepAnchored(fontHost, () => {
+          writePrefs({ font: id });
+          applyPrefs(readPrefs());
+          Seg.select(fontHost, id);
+        });
         Seg.pulse(fontHost, id);
       });
       Seg.build(themeHost, THEMES, prefs.theme, (id) => {
-        writePrefs({ theme: id });
-        applyPrefs(readPrefs());
-        Seg.select(themeHost, id);
+        Seg.keepAnchored(themeHost, () => {
+          writePrefs({ theme: id });
+          applyPrefs(readPrefs());
+          Seg.select(themeHost, id);
+        });
         Seg.pulse(themeHost, id);
       });
       return;
@@ -423,17 +428,40 @@
     }
     tocLinks = [...host.querySelectorAll('.toc-link')];
     setTocCurrent(secs[0].id, false);
-    window.addEventListener('resize', () => paintToc(false));
+    window.addEventListener('resize', () => {
+      if (tocLocked) paintToc(false);
+      else setTocCurrent(activeSection().id, false);
+    });
     if (!('IntersectionObserver' in window)) return;
-    const io = new IntersectionObserver((entries) => {
-      // 点目录跳章节时先锁住：从概览跳到声调要滚过四节，
+    // 判定交给 activeSection() 现算，观察器只负责「有变化时叫一声」。
+    // 早先是「谁出现在判定区里就把高亮给谁」，往上滚的时候，上面那一节会**新**进入
+    // 判定区（要上报），而目标那一节位置没变（不上报），于是高亮被带回上面那一节——
+    // 就是用户说的「从右往左点会多跳一格」。
+    const io = new IntersectionObserver(() => {
+      // 点目录跳章节期间先锁住：从概览跳到声调要滚过四节，
       // 不锁的话高亮会「元音 → 尾辅音 → 声调」一路扫过去
       if (tocLocked) return;
-      for (const entry of entries) {
-        if (entry.isIntersecting) setTocCurrent(entry.target.id);
-      }
-    }, { rootMargin: '-72px 0px -60% 0px' });
+      setTocCurrent(activeSection().id);
+    }, { rootMargin: '0px 0px -1px 0px' });
     for (const sec of secs) io.observe(sec);
+  }
+
+  // 比 CSS 里的 scroll-margin-top（130px）大一点：跳过去之后目标那一节的顶边正好
+  // 落在 130，算「已经越线」，高亮才会停在目标上而不是退回去一节。
+  const TOC_LINE = 132;
+
+  /** 现在该高亮哪一节：顶边越过吸顶栏的最后一节（页面滚到底就取最后一节） */
+  function activeSection() {
+    const secs = [...document.querySelectorAll('.tut-sec')];
+    const scrolledToEnd = window.scrollY + window.innerHeight
+      >= document.documentElement.scrollHeight - 2;
+    if (scrolledToEnd) return secs[secs.length - 1];
+    let best = secs[0];
+    for (const sec of secs) {
+      if (sec.getBoundingClientRect().top <= TOC_LINE) best = sec;
+      else break;
+    }
+    return best;
   }
 
   /** 把高亮挪到某一节；animate=false 用于首次渲染（别让它从左上角飞过来） */

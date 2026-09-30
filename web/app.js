@@ -257,8 +257,12 @@
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = extraClass ? `chip ${extraClass}` : 'chip';
-    if (Array.isArray(content)) btn.append(...content);
-    else btn.textContent = content;
+    // 字块里的字单独包一层：按下去时只让「字」往下沉一点，不影响选中态的底色
+    const inner = document.createElement('span');
+    inner.className = 'chip-in';
+    if (Array.isArray(content)) inner.append(...content);
+    else inner.textContent = content;
+    btn.append(inner);
     btn._tipData = tipData;
     btn.setAttribute('aria-label', tipText(tipData));
     btn.setAttribute('aria-pressed', String(pressed));
@@ -624,17 +628,22 @@
 
   function renderSettings() {
     buildSeg(el.fontSeg, FONTS, state.font, (id) => {
-      state.font = id;
-      applyFont();
-      // 只改选中态，不重建按钮：滑块才会「滑过去」，也不会有一次重绘闪烁
-      Seg.select(el.fontSeg, id);
+      // 换字体会让整页重新排版（泰文宽窄变了、换行位置跟着变），锚住控件别让页面跳
+      Seg.keepAnchored(el.fontSeg, () => {
+        state.font = id;
+        applyFont();
+        // 只改选中态，不重建按钮：滑块才会「滑过去」，也不会有一次重绘闪烁
+        Seg.select(el.fontSeg, id);
+      });
       Seg.pulse(el.fontSeg, id);
       save();
     });
     buildSeg(el.themeSeg, THEMES, state.theme, (id) => {
-      state.theme = id;
-      applyTheme();
-      Seg.select(el.themeSeg, id);
+      Seg.keepAnchored(el.themeSeg, () => {
+        state.theme = id;
+        applyTheme();
+        Seg.select(el.themeSeg, id);
+      });
       Seg.pulse(el.themeSeg, id);
       save();
     });
@@ -1199,67 +1208,66 @@
   }
 
   // ── 面板展开 / 收起的衔接 ───────────────────────────────────────────
-  // <details> 是瞬间展开的，这里手动接管：内容用 max-height + 透明度过渡一下，
+  // <details> 是瞬间展开的，这里手动接管：只动 .panel-body 的 height，
   // 收起时等动画走完再真正 open=false。
-  // 之所以不用 <details> 自己的 height 动画：辞典内容是「展开之后才联网取、再填进去」的，
-  // 那一刻量到的目标高度是空的，动画结束就会「先滑到一半再跳到底」。
+  //
+  // 为什么不用 max-height（上一版就是那么写的）：max-height 只是个上限，
+  // 目标值一旦量得比真实高度大（词库是展开后才联网取的、泰文字体也可能晚到），
+  // 动画会在「空气」里白滑一段，结尾再「啪」地跳到真实高度——就是用户说的「结尾卡顿」。
+  // 现在直接量真实高度，动画结束后再核对一次：这 190ms 里长高的那截单独补一段滑完。
   const PANEL_MS = 190;
-  const panelTimers = new WeakMap();
+  const panelState = new WeakMap();
+
+  function panelFinish(body) {
+    body.style.height = '';
+    body.style.overflow = '';
+    body.style.willChange = '';
+  }
 
   function togglePanel(panel) {
     const body = panel.querySelector('.panel-body');
-    if (!body || prefersReducedMotion()) {
+    if (!body || prefersReducedMotion() || typeof body.animate !== 'function') {
       panel.open = !panel.open;
       return;
     }
     // 连点时先把上一次没走完的收尾做掉，别让两个动画叠在一起
-    const pending = panelTimers.get(panel);
-    if (pending) {
-      clearTimeout(pending.timer);
-      pending.finish();
-    }
+    const pending = panelState.get(panel);
+    if (pending) pending();
 
-    const finish = () => {
-      body.style.maxHeight = '';
-      body.style.opacity = '';
-      body.style.transition = '';
-      body.style.overflow = '';
-      panelTimers.delete(panel);
+    const opening = !panel.open;
+    const from = opening ? 0 : body.getBoundingClientRect().height;
+    if (opening) panel.open = true;   // 先让它显示出来，才量得到目标高度
+    body.style.overflow = 'hidden';
+    body.style.willChange = 'height';
+    // 目标高度必须在不被约束的状态下量（scrollHeight 含 padding，跟 height 的取值口径一致）
+    const to = opening ? body.scrollHeight : 0;
+    body.style.height = `${from}px`;
+
+    const anim = body.animate(
+      [{ height: `${from}px` }, { height: `${to}px` }],
+      { duration: PANEL_MS, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' }
+    );
+
+    const settle = () => {
+      anim.cancel();
+      panelState.delete(panel);
+      panelFinish(body);
+      if (!opening) panel.open = false;   // 收完了才真正关掉
     };
 
-    if (panel.open) {
-      // 收起：先把当前高度钉住，再过渡到 0，动画结束才真正关掉
-      const from = body.scrollHeight;
-      body.style.overflow = 'hidden';
-      body.style.maxHeight = `${from}px`;
-      const timer = setTimeout(() => {
-        panel.open = false;
-        finish();
-      }, PANEL_MS + 20);
-      panelTimers.set(panel, { timer, finish });
-      requestAnimationFrame(() => {
-        body.style.transition = `max-height ${PANEL_MS}ms ease, opacity ${PANEL_MS}ms ease`;
-        body.style.maxHeight = '0px';
-        body.style.opacity = '0.2';
-      });
-      return;
-    }
-
-    // 展开：先摆到 0，下一帧再量目标高度并过渡过去。
-    // 「下一帧」不是多余的：<details> 的 toggle 事件是异步派发的，辞典面板要等它跑完
-    // 才会去取词库、加上占位高度，同步量出来的高度是空的（会先滑一半再跳一下）。
-    panel.open = true;
-    body.style.overflow = 'hidden';
-    body.style.maxHeight = '0px';
-    body.style.opacity = '0.2';
-    const timer = setTimeout(finish, PANEL_MS + 20);
-    panelTimers.set(panel, { timer, finish });
-    requestAnimationFrame(() => {
-      const to = body.scrollHeight;
-      body.style.transition = `max-height ${PANEL_MS}ms ease, opacity ${PANEL_MS}ms ease`;
-      body.style.maxHeight = `${to}px`;
-      body.style.opacity = '1';
-    });
+    anim.onfinish = () => {
+      const grown = opening ? body.scrollHeight : 0;
+      settle();
+      // 动画期间内容又长高了（词库到货 / 字体晚到）：补一小段，别硬跳
+      if (opening && grown - to > 1) {
+        const extra = body.animate(
+          [{ height: `${to}px` }, { height: `${grown}px` }],
+          { duration: 130, easing: 'ease-out' }
+        );
+        extra.onfinish = () => extra.cancel();
+      }
+    };
+    panelState.set(panel, settle);
   }
 
   function setupPanels() {
@@ -1394,10 +1402,10 @@
   const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
   const WHATS_NEW = {
     // 版本号同时是 localStorage 的 key：改它老用户才会再看到一次通知。
-    version: '2.1.0',
+    version: '2.1.3',
     items: [
-      '选项改成滑块了：组合范围、字体、外观、声调选中时背景会滑过去，切换更顺手。',
-      '词表、辞典、选项三个面板展开收起有动画；教学页换字体也不再让整页上下跳。',
+      '手机上点过的控件不再留一层灰底；声调、词表字块、教学页目录按下去会往下沉一点。',
+      '固定模式下的按钮真的变灰了；词表、选项、辞典展开收起的结尾不再卡一下。',
     ],
   };
 

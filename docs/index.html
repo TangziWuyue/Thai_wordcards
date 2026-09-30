@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T07:55:26.960Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T12:46:34.841Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -84,7 +84,7 @@
 }
 
 /* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
-   界面中文用到的 2101 个字，按需切成 61 个子集。
+   界面中文用到的 2102 个字，按需切成 61 个子集。
    授权：SIL OFL 1.1，见 fonts/NOTICE.md。 */
 
 @font-face {
@@ -702,6 +702,13 @@ html[data-theme="dark"] {
 
 * { box-sizing: border-box; }
 
+/* 手机上点一下，浏览器会自己铺一层灰高亮（浅色模式下特别明显，还会跟滑块、
+   选中底色叠成「两层底」）。整页关掉，按压反馈一律交给下面自己写的动画。
+   iOS 还认 -webkit-touch-callout：长按字块时别弹系统菜单（字块上已单独关过一次）。 */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -769,7 +776,12 @@ html.js .js-fallback { display: none; }
   white-space: nowrap;
 }
 
-.head-link:hover { color: var(--fg); }
+/* 触屏上没有「悬停」，而手机点完会把 :hover 粘在元素上。浅色模式下一块灰底
+   留在那儿，看着就像控件自己多了一层底色（用户报过：滑块 / 面板 / 字块都有）。
+   所以所有 hover 效果只写给真的带指针的设备。 */
+@media (hover: hover) {
+  .head-link:hover { color: var(--fg); }
+}
 
 .head .sub {
   margin: 6px 0 0;
@@ -961,7 +973,9 @@ html.js .js-fallback { display: none; }
   cursor: pointer;
 }
 
-.dict-word:hover { background: var(--soft); }
+@media (hover: hover) {
+  .dict-word:hover { background: var(--soft); }
+}
 
 .dw-thai {
   flex: none;
@@ -1069,7 +1083,9 @@ html.js .js-fallback { display: none; }
   cursor: pointer;
 }
 
-.mini:hover { background: var(--soft); color: var(--fg); }
+@media (hover: hover) {
+  .mini:hover { background: var(--soft); color: var(--fg); }
+}
 
 /* 固定模式下「全选 / 全不选」要藏起来，但**不能连高度一起收掉**：
    这两个按钮撑起「辅音 / 元音」两行的行高（22px），一收就掉到 19px，
@@ -1122,8 +1138,10 @@ html.js .js-fallback { display: none; }
    再叠一层灰底就是「白药丸 + 灰方块」两块，看着像叠影（用户报过） */
 .tone:hover { background: transparent; }
 
-.tone:hover:not([aria-pressed="true"]):not(:disabled) {
-  color: var(--fg);
+@media (hover: hover) {
+  .tone:hover:not([aria-pressed="true"]):not(:disabled) {
+    color: var(--fg);
+  }
 }
 
 .tone:hover:not([aria-pressed="true"]):not(:disabled) .name { color: var(--fg); }
@@ -1147,6 +1165,14 @@ html.js .js-fallback { display: none; }
 
 .tone .name { font-size: 11px; color: var(--muted); }
 .tone[aria-pressed="true"] .name { color: var(--inv-fg); opacity: 0.7; }
+
+/* 按下去的那一下，字往下沉一点点（选中态的底色不动）——
+   手感跟滑块组件一致：背景是滑块在动，字只是跟着「按一下」。
+   两个子元素都是 flex item（能 transform），不用额外包一层。 */
+.tone .mark, .tone .name { transition: transform 0.09s ease; }
+
+.tone:not(:disabled):active .mark,
+.tone:not(:disabled):active .name { transform: translateY(1px) scale(0.94); }
 
 /* ── 按钮 ───────────────────────────────── */
 .actions {
@@ -1197,16 +1223,12 @@ html.js .js-fallback { display: none; }
   transition: transform 0.09s ease;
 }
 
-.btn:hover { background: var(--soft); }
+@media (hover: hover) {
+  .btn:hover { background: var(--soft); }
+}
 
 /* 按住的期间先收一点，点完再走 pulseTap */
 .btn:active { transform: scale(0.98); }
-
-.btn:disabled {
-  background: var(--card);
-  color: var(--muted);
-  cursor: default;
-}
 
 .btn.primary {
   background: var(--inv-bg);
@@ -1214,7 +1236,30 @@ html.js .js-fallback { display: none; }
   color: var(--inv-fg);
 }
 
-.btn.primary:hover { opacity: 0.86; }
+@media (hover: hover) {
+  .btn.primary:hover { opacity: 0.86; }
+}
+
+/* 灰掉 = 真的不能按：没有按压反馈。
+   这一段必须排在 .btn.primary 后面——「固定模式」那个按钮是 .btn.primary，
+   排在前面的话 primary 的深色底会把这里的灰底盖掉，看着还像一个能按的按钮
+   （用户报「固定模式下摁下按钮仍有反馈」就是这一条）。 */
+.btn:disabled,
+.btn:disabled:hover,
+.btn.primary:disabled,
+.btn.primary:disabled:hover {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--muted);
+  opacity: 1;
+  cursor: default;
+}
+
+.btn:disabled:active { transform: none; }
+
+/* 「随机组合 + ⇄」是拼接控件：灰掉那一半要用槽的底色（--soft），
+   不能留白——白块夹在灰槽和深色 ⇄ 中间，像贴了两块白药丸（用户说丑）。 */
+.split .btn:disabled { background: var(--soft); }
 
 kbd {
   margin-left: 8px;
@@ -1295,10 +1340,18 @@ kbd {
   -webkit-touch-callout: none;
 }
 
-/* 同样不在「选中的药丸」上再铺一层灰底：选中态的深色块由 aria-pressed 那条规则画 */
-.chip:hover:not([aria-pressed="true"]) { background: var(--soft); }
+/* 同样不在「选中的药丸」上再铺一层灰底：选中态的深色块由 aria-pressed 那条规则画。
+   只在带指针的设备上响应悬停：手机上点完 :hover 会粘住，浅色模式下就是一块去不掉的灰底。 */
+@media (hover: hover) {
+  .chip:hover:not([aria-pressed="true"]) { background: var(--soft); }
+}
 
 .chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
+
+/* 字块里的字单独一层：按下去只让字沉一点，选中态的深色药丸纹丝不动 */
+.chip-in { display: inline-flex; align-items: center; transition: transform 0.09s ease; }
+
+.chip:active .chip-in { transform: translateY(1px) scale(0.94); }
 
 .vowel-chip { font-size: 15px; min-width: 32px; }
 
@@ -1407,6 +1460,8 @@ kbd {
   left: 0;
   z-index: 0;
   background: var(--card);
+  /* 浅色下白滑块和浅灰槽挨得太近，加一条细细的边把轮廓勾出来（深色同理） */
+  border: 1px solid var(--line);
   border-radius: 8px;
   opacity: 0;
   pointer-events: none;
@@ -1416,6 +1471,7 @@ kbd {
 /* 声调那一排的滑块是深色药丸，圆角跟 .tone 一致 */
 #tones .seg-thumb {
   background: var(--inv-bg);
+  border: 0;   /* 深色药丸不需要那条勾轮廓的细边，会像套了个亮圈 */
   border-radius: 12px;
 }
 
@@ -1497,7 +1553,9 @@ kbd {
   text-decoration: underline dotted;
 }
 
-.foot a:hover { color: var(--fg); }
+@media (hover: hover) {
+  .foot a:hover { color: var(--fg); }
+}
 
 .link {
   padding: 0;
@@ -1509,7 +1567,9 @@ kbd {
   cursor: pointer;
 }
 
-.link:hover { color: var(--fg); }
+@media (hover: hover) {
+  .link:hover { color: var(--fg); }
+}
 
 /* ── 新手引导 ───────────────────────────── */
 .tour-mask,
@@ -1577,7 +1637,9 @@ kbd {
   cursor: pointer;
 }
 
-.tour-actions button:hover { background: var(--soft); color: var(--fg); }
+@media (hover: hover) {
+  .tour-actions button:hover { background: var(--soft); color: var(--fg); }
+}
 
 .tour-actions button.primary {
   background: var(--inv-bg);
@@ -1730,6 +1792,10 @@ html.js body { animation: pageIn 0.22s ease; }
   .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
   .seg-thumb { transition: none; }
   .btn:active { transform: none; }
+  .tone .mark, .tone .name, .chip-in { transition: none; }
+  .tone:not(:disabled):active .mark,
+  .tone:not(:disabled):active .name,
+  .chip:active .chip-in { transform: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
 }
@@ -3484,6 +3550,26 @@ const Seg = (() => {
     setTimeout(() => btn.classList.remove('pulse'), 400);
   }
 
+  /**
+   * 换字体 / 换外观会让整页重新排版：泰文在两种字体里宽度不一样，换行位置会变，
+   * 于是整页高度变了，手机上看着就是「按一下页面跳一下」。
+   * 这里按控件本身做锚定——重排之后把它挪回原来的屏幕位置，视觉上就不动。
+   * 用法：keepAnchored(控件, () => { 真正去改字体/外观 })
+   */
+  function keepAnchored(container, fn) {
+    if (!container) { fn(); return; }
+    const before = container.getBoundingClientRect().top;
+    fn();
+    const delta = container.getBoundingClientRect().top - before;
+    if (!delta || Math.abs(delta) < 0.5) return;
+    // 教学页开了 scroll-behavior: smooth，这里得瞬时跳，否则会看到页面自己滑一下
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+    window.scrollBy(0, delta);
+    root.style.scrollBehavior = prev;
+  }
+
   function prefersReduced() {
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
@@ -3493,7 +3579,7 @@ const Seg = (() => {
     for (const box of document.querySelectorAll('.seg, .tones')) sync(box);
   });
 
-  return { build, sync, select, pulse };
+  return { build, sync, select, pulse, keepAnchored };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Seg;
@@ -3759,8 +3845,12 @@ if (typeof window !== 'undefined') window.Seg = Seg;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = extraClass ? `chip ${extraClass}` : 'chip';
-    if (Array.isArray(content)) btn.append(...content);
-    else btn.textContent = content;
+    // 字块里的字单独包一层：按下去时只让「字」往下沉一点，不影响选中态的底色
+    const inner = document.createElement('span');
+    inner.className = 'chip-in';
+    if (Array.isArray(content)) inner.append(...content);
+    else inner.textContent = content;
+    btn.append(inner);
     btn._tipData = tipData;
     btn.setAttribute('aria-label', tipText(tipData));
     btn.setAttribute('aria-pressed', String(pressed));
@@ -4126,17 +4216,22 @@ if (typeof window !== 'undefined') window.Seg = Seg;
 
   function renderSettings() {
     buildSeg(el.fontSeg, FONTS, state.font, (id) => {
-      state.font = id;
-      applyFont();
-      // 只改选中态，不重建按钮：滑块才会「滑过去」，也不会有一次重绘闪烁
-      Seg.select(el.fontSeg, id);
+      // 换字体会让整页重新排版（泰文宽窄变了、换行位置跟着变），锚住控件别让页面跳
+      Seg.keepAnchored(el.fontSeg, () => {
+        state.font = id;
+        applyFont();
+        // 只改选中态，不重建按钮：滑块才会「滑过去」，也不会有一次重绘闪烁
+        Seg.select(el.fontSeg, id);
+      });
       Seg.pulse(el.fontSeg, id);
       save();
     });
     buildSeg(el.themeSeg, THEMES, state.theme, (id) => {
-      state.theme = id;
-      applyTheme();
-      Seg.select(el.themeSeg, id);
+      Seg.keepAnchored(el.themeSeg, () => {
+        state.theme = id;
+        applyTheme();
+        Seg.select(el.themeSeg, id);
+      });
       Seg.pulse(el.themeSeg, id);
       save();
     });
@@ -4701,67 +4796,66 @@ if (typeof window !== 'undefined') window.Seg = Seg;
   }
 
   // ── 面板展开 / 收起的衔接 ───────────────────────────────────────────
-  // <details> 是瞬间展开的，这里手动接管：内容用 max-height + 透明度过渡一下，
+  // <details> 是瞬间展开的，这里手动接管：只动 .panel-body 的 height，
   // 收起时等动画走完再真正 open=false。
-  // 之所以不用 <details> 自己的 height 动画：辞典内容是「展开之后才联网取、再填进去」的，
-  // 那一刻量到的目标高度是空的，动画结束就会「先滑到一半再跳到底」。
+  //
+  // 为什么不用 max-height（上一版就是那么写的）：max-height 只是个上限，
+  // 目标值一旦量得比真实高度大（词库是展开后才联网取的、泰文字体也可能晚到），
+  // 动画会在「空气」里白滑一段，结尾再「啪」地跳到真实高度——就是用户说的「结尾卡顿」。
+  // 现在直接量真实高度，动画结束后再核对一次：这 190ms 里长高的那截单独补一段滑完。
   const PANEL_MS = 190;
-  const panelTimers = new WeakMap();
+  const panelState = new WeakMap();
+
+  function panelFinish(body) {
+    body.style.height = '';
+    body.style.overflow = '';
+    body.style.willChange = '';
+  }
 
   function togglePanel(panel) {
     const body = panel.querySelector('.panel-body');
-    if (!body || prefersReducedMotion()) {
+    if (!body || prefersReducedMotion() || typeof body.animate !== 'function') {
       panel.open = !panel.open;
       return;
     }
     // 连点时先把上一次没走完的收尾做掉，别让两个动画叠在一起
-    const pending = panelTimers.get(panel);
-    if (pending) {
-      clearTimeout(pending.timer);
-      pending.finish();
-    }
+    const pending = panelState.get(panel);
+    if (pending) pending();
 
-    const finish = () => {
-      body.style.maxHeight = '';
-      body.style.opacity = '';
-      body.style.transition = '';
-      body.style.overflow = '';
-      panelTimers.delete(panel);
+    const opening = !panel.open;
+    const from = opening ? 0 : body.getBoundingClientRect().height;
+    if (opening) panel.open = true;   // 先让它显示出来，才量得到目标高度
+    body.style.overflow = 'hidden';
+    body.style.willChange = 'height';
+    // 目标高度必须在不被约束的状态下量（scrollHeight 含 padding，跟 height 的取值口径一致）
+    const to = opening ? body.scrollHeight : 0;
+    body.style.height = `${from}px`;
+
+    const anim = body.animate(
+      [{ height: `${from}px` }, { height: `${to}px` }],
+      { duration: PANEL_MS, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' }
+    );
+
+    const settle = () => {
+      anim.cancel();
+      panelState.delete(panel);
+      panelFinish(body);
+      if (!opening) panel.open = false;   // 收完了才真正关掉
     };
 
-    if (panel.open) {
-      // 收起：先把当前高度钉住，再过渡到 0，动画结束才真正关掉
-      const from = body.scrollHeight;
-      body.style.overflow = 'hidden';
-      body.style.maxHeight = `${from}px`;
-      const timer = setTimeout(() => {
-        panel.open = false;
-        finish();
-      }, PANEL_MS + 20);
-      panelTimers.set(panel, { timer, finish });
-      requestAnimationFrame(() => {
-        body.style.transition = `max-height ${PANEL_MS}ms ease, opacity ${PANEL_MS}ms ease`;
-        body.style.maxHeight = '0px';
-        body.style.opacity = '0.2';
-      });
-      return;
-    }
-
-    // 展开：先摆到 0，下一帧再量目标高度并过渡过去。
-    // 「下一帧」不是多余的：<details> 的 toggle 事件是异步派发的，辞典面板要等它跑完
-    // 才会去取词库、加上占位高度，同步量出来的高度是空的（会先滑一半再跳一下）。
-    panel.open = true;
-    body.style.overflow = 'hidden';
-    body.style.maxHeight = '0px';
-    body.style.opacity = '0.2';
-    const timer = setTimeout(finish, PANEL_MS + 20);
-    panelTimers.set(panel, { timer, finish });
-    requestAnimationFrame(() => {
-      const to = body.scrollHeight;
-      body.style.transition = `max-height ${PANEL_MS}ms ease, opacity ${PANEL_MS}ms ease`;
-      body.style.maxHeight = `${to}px`;
-      body.style.opacity = '1';
-    });
+    anim.onfinish = () => {
+      const grown = opening ? body.scrollHeight : 0;
+      settle();
+      // 动画期间内容又长高了（词库到货 / 字体晚到）：补一小段，别硬跳
+      if (opening && grown - to > 1) {
+        const extra = body.animate(
+          [{ height: `${to}px` }, { height: `${grown}px` }],
+          { duration: 130, easing: 'ease-out' }
+        );
+        extra.onfinish = () => extra.cancel();
+      }
+    };
+    panelState.set(panel, settle);
   }
 
   function setupPanels() {
@@ -4896,10 +4990,10 @@ if (typeof window !== 'undefined') window.Seg = Seg;
   const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
   const WHATS_NEW = {
     // 版本号同时是 localStorage 的 key：改它老用户才会再看到一次通知。
-    version: '2.1.0',
+    version: '2.1.3',
     items: [
-      '选项改成滑块了：组合范围、字体、外观、声调选中时背景会滑过去，切换更顺手。',
-      '词表、辞典、选项三个面板展开收起有动画；教学页换字体也不再让整页上下跳。',
+      '手机上点过的控件不再留一层灰底；声调、词表字块、教学页目录按下去会往下沉一点。',
+      '固定模式下的按钮真的变灰了；词表、选项、辞典展开收起的结尾不再卡一下。',
     ],
   };
 
