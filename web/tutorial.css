@@ -186,7 +186,8 @@ html { scroll-behavior: smooth; }
   left: 0;
   z-index: 0;
   background: var(--inv-bg);
-  border-radius: 999px;
+  /* 方形圆角，跟其它滑块（.seg-thumb 8px）一致；用户说不要椭圆胶囊 */
+  border-radius: 8px;
   opacity: 0;
   pointer-events: none;
   transition: transform 0.18s ease, width 0.18s ease, height 0.18s ease, opacity 0.12s ease;
@@ -210,8 +211,8 @@ html { scroll-behavior: smooth; }
 
 .toc-link {
   flex: none;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: 5px 10px;
+  border-radius: 8px;
   color: var(--muted);
   font-size: 12px;
   text-decoration: none;
