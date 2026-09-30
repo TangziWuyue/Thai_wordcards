@@ -125,13 +125,33 @@ function loadVocab() {
     } else {
       const entry = map.get(word);
       if (pos) entry.pos = pos;
-      // 释义正常不改（免得覆盖上游的写法），只订正「释义串了行」的那种：
-      // 上游有极个别条目的释义里混进了泰文（กล่าว 的释义写成了「说；กล่าว述（较正式）」），
-      // 这种情况用人工订正的那条盖掉。
-      if (zh && /[\u0E00-\u0E7F]/.test(entry.zh || '')) entry.zh = zh;
+      // 已经有中文释义就不动（免得覆盖上游的写法），只处理两种该修的情况：
+      //   ① 释义串了行：上游极个别条目里混进了泰文（กล่าว 写成了「说；กล่าว述（较正式）」）
+      //   ② 压根没有中文释义（只有维基词典的英文，如 ชื่อ=name），这时人工条目来补
+      if (zh && (!entry.zh || /[\u0E00-\u0E7F]/.test(entry.zh))) entry.zh = zh;
     }
   }
   return map;
+}
+
+/**
+ * 反查用的同义词表：key 是学习者可能打的说法，value 是词库里实际用的释义写法。
+ * 只影响「中→泰」的查词，不改界面上显示的释义。
+ * 这里带一层校验：value 必须真的在词库的某个义项里出现过，写错了直接报出来。
+ */
+function loadSynonyms(zhSegments) {
+  const raw = JSON.parse(readFileSync(join(HERE, 'synonyms.json'), 'utf8'));
+  const ok = {};
+  const missing = [];
+  for (const [alias, target] of Object.entries(raw)) {
+    if (!zhSegments.has(target)) missing.push(`${alias} → ${target}`);
+    else ok[alias] = target;
+  }
+  if (missing.length) {
+    console.warn(`⚠️ synonyms.json 里有 ${missing.length} 条指向了词库里没有的释义（已跳过）：`);
+    for (const m of missing) console.warn(`   · ${m}`);
+  }
+  return ok;
 }
 
 /** WordNet 式词性 → 界面用的短代码；fn = 虚词（没有实义，只起语法或语气作用） */
@@ -288,6 +308,17 @@ async function main() {
   const common = entries.filter((e) => e[4]).length;
   log(`· 出典 ${entries.length} 条：中文释义 ${withZh}，只有英文 ${withEn}，标为常用 ${common}，有罗马注音 ${entries.filter((e) => e[1]).length}`);
 
+  // 反查同义词：先看这些说法在不在词库的义项里，写错了会警告（见 loadSynonyms）
+  const zhSegments = new Set();
+  for (const [, v] of vocab) {
+    for (const seg of String(v.zh || '').split(/[；;，,、／/（）()【】\[\]]+/)) {
+      const t = seg.trim();
+      if (t) zhSegments.add(t);
+    }
+  }
+  const synonyms = loadSynonyms(zhSegments);
+  log(`· 反查同义词 ${Object.keys(synonyms).length} 条`);
+
   mkdirSync(OUT, { recursive: true });
   writeFileSync(
     join(OUT, 'dict.js'),
@@ -297,7 +328,8 @@ async function main() {
       note: '中文释义来自中文作者整理的中泰对照词表，未做机翻；未收录时给英文释义并标「英文」。',
       commonLabel: 'B1 常用档',
       words: entries,
-    }) + ';\n',
+    }) + ';\n'
+      + 'window.ThaiDictSynonyms=' + JSON.stringify(synonyms) + ';\n',
   );
   log('· 已写 web/data/dict.js');
 }

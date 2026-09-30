@@ -101,3 +101,50 @@ test('辞典抽测：查词时完全相同的排第一，返回的每一条都�
   assert.deepEqual(D.search('   '), []);
   assert.deepEqual(D.search(null), []);
 });
+
+/** 把一条释义按跟构建脚本一样的规则切成义项 */
+const segments = (zh) => String(zh || '')
+  .split(/[；;，,、／/（）()【】\[\]]+/)
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+test('辞典抽测：500 条的中文释义都能反查回它自己，且不返回不相干的词', async () => {
+  await D.loadWords();
+  const words = globalThis.ThaiDictData.words;
+  const stride = Math.floor(words.length / SAMPLE_SIZE);
+  const sample = [];
+  for (let i = 0; i < words.length && sample.length < SAMPLE_SIZE; i += stride) sample.push(words[i]);
+
+  const missing = [];
+  const wrong = [];
+  let checked = 0;
+  for (const entry of sample) {
+    const segs = segments(entry[2]);
+    if (!segs.length) continue; // 没有中文释义的（只有英文）跳过
+    checked += 1;
+    // 用最长的那个义项查（最具体，最不容易被别的词挤掉）
+    const seg = segs.slice().sort((a, b) => b.length - a.length)[0];
+    const res = D.search(seg, 30);
+    if (!res.includes(entry)) missing.push(`${seg} 查不到 ${entry[0]}`);
+    for (const hit of res) {
+      const ok = segments(hit[2]).some((s) => s === seg || s.includes(seg) || s.startsWith(seg));
+      if (!ok) wrong.push(`查「${seg}」返回了释义对不上的词：${hit[0]}(${hit[2]})`);
+    }
+  }
+  assert.ok(checked > 80, `样本里带中文释义的太少（${checked}），这个测试没意义`);
+  assert.deepEqual(missing.slice(0, 8), [], `${checked} 条里反查不到自己的有 ${missing.length} 条`);
+  assert.deepEqual(wrong.slice(0, 8), [], `反查结果里有 ${wrong.length} 条对不上`);
+});
+
+test('辞典：同义词表指向的释义必须真的存在（谢谢→感谢 这种）', async () => {
+  await D.loadWords();
+  const syn = globalThis.ThaiDictSynonyms || {};
+  assert.ok(Object.keys(syn).length >= 5, '同义词表没加载出来');
+  const glosses = new Set();
+  for (const entry of globalThis.ThaiDictData.words) for (const s of segments(entry[2])) glosses.add(s);
+  const bad = Object.entries(syn).filter(([, target]) => !glosses.has(target)).map(([a, t]) => `${a} → ${t}`);
+  assert.deepEqual(bad, [], '同义词指向了词库里不存在的释义');
+  // 抽两个最常用的口语说法，确认能查到词
+  assert.ok(D.search('谢谢', 3).some((e) => e[0] === 'ขอบคุณ'), '查「谢谢」应该出 ขอบคุณ');
+  assert.ok(D.search('对不起', 3).some((e) => e[0] === 'ขอโทษ'), '查「对不起」应该出 ขอโทษ');
+});

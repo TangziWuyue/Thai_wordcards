@@ -362,6 +362,9 @@
   const DICT_ROWS = 5;
   const dictState = { ready: false, failed: false, loading: false };
   const hasThaiText = (t) => /[\u0E00-\u0E7F]/.test(t);
+  const hasCJKText = (t) => /[\u3400-\u9fff]/.test(t);
+  /** 够长的拉丁串才拿去反查释义（打 k / kh / ai 只查字母和注音，不然一捞一大把） */
+  const isGlossWord = (t) => /^[a-zA-Z]{4,}$/.test(t.trim());
 
   const findMatches = (query) => S.findMatches(INDEX, query);
 
@@ -419,9 +422,11 @@
     search.clear.hidden = !query;
     const found = findMatches(query);
     const q = query.trim();
-    // 查词：只有泰文才去辞典里找（罗马注音、中文都不是词的拼写）
-    const words = dictState.ready ? dict.search(q, DICT_ROWS) : [];
-    if (hasThaiText(q)) ensureDict();
+    // 查词：泰文查拼写，中文（和够长的英文）查释义；
+    // 短的拉丁串（k / kh / ai）不查词典——那是注音，一查能捞出一堆含它的释义
+    const wantDict = hasThaiText(q) || hasCJKText(q) || isGlossWord(q);
+    const words = dictState.ready && wantDict ? dict.search(q, DICT_ROWS) : [];
+    if (wantDict) ensureDict();
     search.nodes = [];
     search.active = -1;
     let seq = 0;
@@ -432,7 +437,7 @@
     }
     if (!found.list.length && !words.length) {
       // 词库还在下载时别说「没找到」，免得刚好卡在这个瞬间的人以为查不到
-      const loading = hasThaiText(q) && !dictState.ready && !dictState.failed;
+      const loading = wantDict && !dictState.ready && !dictState.failed;
       const empty = el('li', 'res empty', loading
         ? '正在查词库…'
         : '没找到，换个写法试试（可以搜泰文字母、罗马注音、中文意思）');
