@@ -628,8 +628,45 @@
     renderSettings();
     buildSearch();
     buildToc();
+    buildTour();
     // 跳到练习页时先淡出一下，别硬切（pagefx.js，两边共用）
     if (window.PageFX) window.PageFX.setup();
+  }
+
+  // ── 新手引导 ────────────────────────────────────────────────────────
+  // 引导本体在 web/tour.js（练习页共用同一份），这里只写「教学页要讲哪几步」。
+  // 存储键跟练习页分开：两页各看各的引导，互不影响。
+  const TOUR_KEY = 'thai-wordcards.tutTourDone';
+  const TOUR_STEPS = [
+    {
+      sel: '.tut-search',
+      title: '搜一搜',
+      text: '字母、注音、中文都能搜，按 / 也能唤起；搜一个词会直接给出辞典结果。',
+    },
+    {
+      sel: '.toc',
+      title: '目录',
+      text: '点一节跳过去，滚到哪儿它会跟着亮。',
+    },
+    {
+      sel: '#consTable .trow',
+      title: '一行一个字母',
+      text: '左边是字形，右边是名称、注音和发音讲解——舌头怎么摆、像哪个汉语拼音。',
+    },
+    {
+      sel: '.foot',
+      title: '字体与外观',
+      text: '标准体 / 印刷衬线、深浅色都在这里；回练习页的入口也在下面。',
+    },
+  ];
+
+  function buildTour() {
+    if (!window.Tour) return;
+    const tour = window.Tour.create({ steps: TOUR_STEPS, storageKey: TOUR_KEY });
+    const btn = $('tutTourBtn');
+    if (btn) btn.addEventListener('click', () => tour.start());
+    // 第一次进教学页自动走一遍，之后可以在页脚点「新手引导」重看
+    tour.maybeAutoStart(600);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', main);

@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T06:17:28.890Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T06:22:24.366Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -2418,11 +2418,13 @@ html { scroll-behavior: smooth; }
         </span>
       </div>
       <div class="foot-row">
-        <span><a href="index.html">回练习页</a> ·
+        <span><button class="link" type="button" id="tutTourBtn">新手引导</button> ·
+          <a href="index.html">回练习页</a> ·
           反馈 bug、提供建议，发送至 <a href="mailto:1019853751@qq.com">1019853751@qq.com</a></span>
       </div>
     </footer>
   </main>
+
 
 
 
@@ -3980,6 +3982,191 @@ if (typeof window !== 'undefined') window.PageFX = PageFX;
 
 
 /**
+ * 新手引导（练习页、教学页共用）
+ *
+ * 做法：盖一层半透明遮罩，在要讲的那个控件上「挖一个洞」（`.tour-hole` 用超大
+ * box-shadow 遮住其余部分），旁边弹一张小卡（`.tour-tip`）。样式都在 style.css 里。
+ *
+ * 用法：
+ *   const tour = Tour.create({
+ *     steps: [{ sel, title, text, before? }],   // before 用来先把要讲的东西展开
+ *     storageKey: 'thai-wordcards.tourDone',    // 看过就记下来，不再自动弹
+ *     onStart: () => {},                        // 每次开始（页脚按钮也走这里）
+ *     onEnd:   () => {},                        // 退出引导（走完 / 跳过 / 点遮罩都算）
+ *   });
+ *   tour.start();              // 页脚按钮
+ *   tour.maybeAutoStart();     // 第一次访问时自动走一遍
+ *
+ * 注意：localStorage 不可用（无痕模式）时按「已经看过」处理，不要每次都弹。
+ */
+const Tour = (() => {
+  'use strict';
+
+  function create({ steps, storageKey, onStart, onEnd }) {
+    const state = { index: 0, active: false };
+    const hole = document.createElement('div');
+    const mask = document.createElement('div');
+    const tip = document.createElement('div');
+    hole.className = 'tour-hole';
+    mask.className = 'tour-mask';
+    tip.className = 'tour-tip';
+    hole.hidden = true;
+    mask.hidden = true;
+    tip.hidden = true;
+    document.body.append(mask, hole, tip);
+
+    function seen() {
+      try {
+        return !!localStorage.getItem(storageKey);
+      } catch {
+        return true;   // 存不了就别自动弹
+      }
+    }
+
+    function markSeen() {
+      try {
+        localStorage.setItem(storageKey, '1');
+      } catch { /* 无痕模式等场景下忽略 */ }
+    }
+
+    function end(mark = true) {
+      state.active = false;
+      mask.hidden = true;
+      hole.hidden = true;
+      tip.hidden = true;
+      if (mark) markSeen();
+      if (onEnd) onEnd();
+    }
+
+    /** 把洞和提示卡摆到当前这一步的目标元素上（窗口尺寸变了要重摆） */
+    function place() {
+      const step = steps[state.index];
+      const target = document.querySelector(step.sel);
+      if (!target) return;
+      const pad = 6;
+      const r = target.getBoundingClientRect();
+      const box = {
+        top: Math.max(4, r.top - pad),
+        left: Math.max(4, r.left - pad),
+        width: Math.min(window.innerWidth - 8, r.width + pad * 2),
+        height: Math.min(window.innerHeight - 8, r.height + pad * 2),
+      };
+      hole.style.top = `${box.top}px`;
+      hole.style.left = `${box.left}px`;
+      hole.style.width = `${box.width}px`;
+      hole.style.height = `${box.height}px`;
+
+      // 提示卡默认放在洞的下方；下面放不下就翻到上面；上下都放不下就贴屏幕底
+      const t = tip.getBoundingClientRect();
+      const gap = 12;
+      let top;
+      if (box.top + box.height + gap + t.height <= window.innerHeight - 8) {
+        top = box.top + box.height + gap;
+      } else if (box.top - gap - t.height >= 8) {
+        top = box.top - gap - t.height;
+      } else {
+        top = Math.max(8, window.innerHeight - t.height - 8);
+      }
+      const left = Math.max(8, Math.min(
+        box.left + box.width / 2 - t.width / 2,
+        window.innerWidth - t.width - 8,
+      ));
+      tip.style.top = `${top}px`;
+      tip.style.left = `${left}px`;
+    }
+
+    function show() {
+      const step = steps[state.index];
+      if (step.before) step.before();
+      const target = document.querySelector(step.sel);
+      if (target && target.scrollIntoView) {
+        target.scrollIntoView({ block: 'center', behavior: 'instant' });
+      }
+      const total = steps.length;
+      const last = state.index === total - 1;
+
+      const title = document.createElement('h4');
+      title.append(step.title);
+      const stepLabel = document.createElement('span');
+      stepLabel.className = 'tour-step';
+      stepLabel.textContent = `${state.index + 1}/${total}`;
+      title.append(stepLabel);
+
+      const text = document.createElement('p');
+      text.textContent = String(step.text || '').replace(/\*\*/g, '');
+
+      const actions = document.createElement('div');
+      actions.className = 'tour-actions';
+      const skip = document.createElement('button');
+      skip.type = 'button';
+      skip.textContent = '跳过';
+      skip.addEventListener('click', () => end());
+      const prev = document.createElement('button');
+      prev.type = 'button';
+      prev.textContent = '上一步';
+      prev.disabled = state.index === 0;
+      prev.addEventListener('click', () => {
+        state.index = Math.max(0, state.index - 1);
+        show();
+      });
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.className = 'primary';
+      next.textContent = last ? '开始使用' : '下一步';
+      next.addEventListener('click', () => {
+        if (last) { end(); return; }
+        state.index += 1;
+        show();
+      });
+      const spacer = document.createElement('span');
+      spacer.className = 'spacer';
+      actions.append(skip, spacer, prev, next);
+
+      tip.replaceChildren(title, text, actions);
+      mask.hidden = false;
+      hole.hidden = false;
+      tip.hidden = false;
+      place();
+    }
+
+    function start() {
+      if (state.active || !steps.length) return;
+      state.active = true;
+      state.index = 0;
+      if (onStart) onStart();
+      show();
+    }
+
+    /** 第一次打开时自动走一遍（延迟一点，等页面自己摆好） */
+    function maybeAutoStart(delay = 500) {
+      if (seen()) return false;
+      setTimeout(start, delay);
+      return true;
+    }
+
+    // 点遮罩 = 下一步；最后一步再点就结束
+    mask.addEventListener('click', () => {
+      if (state.index >= steps.length - 1) end();
+      else {
+        state.index += 1;
+        show();
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (state.active) place();
+    });
+
+    return { start, end, maybeAutoStart, seen, markSeen, isActive: () => state.active };
+  }
+
+  return { create };
+})();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = Tour;
+if (typeof window !== 'undefined') window.Tour = Tour;
+
+
+/**
  * 泰语拼读入门（教学页）
  *
  * 结构照搬 jyutping.io 的教学页：先讲「一个音节由哪几块组成」，
@@ -4609,8 +4796,45 @@ if (typeof window !== 'undefined') window.PageFX = PageFX;
     renderSettings();
     buildSearch();
     buildToc();
+    buildTour();
     // 跳到练习页时先淡出一下，别硬切（pagefx.js，两边共用）
     if (window.PageFX) window.PageFX.setup();
+  }
+
+  // ── 新手引导 ────────────────────────────────────────────────────────
+  // 引导本体在 web/tour.js（练习页共用同一份），这里只写「教学页要讲哪几步」。
+  // 存储键跟练习页分开：两页各看各的引导，互不影响。
+  const TOUR_KEY = 'thai-wordcards.tutTourDone';
+  const TOUR_STEPS = [
+    {
+      sel: '.tut-search',
+      title: '搜一搜',
+      text: '字母、注音、中文都能搜，按 / 也能唤起；搜一个词会直接给出辞典结果。',
+    },
+    {
+      sel: '.toc',
+      title: '目录',
+      text: '点一节跳过去，滚到哪儿它会跟着亮。',
+    },
+    {
+      sel: '#consTable .trow',
+      title: '一行一个字母',
+      text: '左边是字形，右边是名称、注音和发音讲解——舌头怎么摆、像哪个汉语拼音。',
+    },
+    {
+      sel: '.foot',
+      title: '字体与外观',
+      text: '标准体 / 印刷衬线、深浅色都在这里；回练习页的入口也在下面。',
+    },
+  ];
+
+  function buildTour() {
+    if (!window.Tour) return;
+    const tour = window.Tour.create({ steps: TOUR_STEPS, storageKey: TOUR_KEY });
+    const btn = $('tutTourBtn');
+    if (btn) btn.addEventListener('click', () => tour.start());
+    // 第一次进教学页自动走一遍，之后可以在页脚点「新手引导」重看
+    tour.maybeAutoStart(600);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', main);

@@ -1280,164 +1280,39 @@
       text: '常用词一次看几个，点词就放到主卡片上。',
       before: () => { el.dictPanel.open = true; ensureDict(); },
     },
+    {
+      sel: '.head-link',
+      title: '拼读教学',
+      text: '字母、元音、尾辅音、声调怎么读，这里逐条讲，还有发音讲解。',
+    },
   ];
 
-  const tour = {
-    index: 0,
-    // 记录进入引导前的模式：现在这几步都不切模式，但万一以后加了会切模式的演示步骤，
-    // endTour() 里那句恢复就是必需的，先留着
-    prevMode: 'random',
-    hole: document.createElement('div'),
-    mask: document.createElement('div'),
-    tip: document.createElement('div'),
-    active: false,
-  };
-  tour.hole.className = 'tour-hole';
-  tour.mask.className = 'tour-mask';
-  tour.tip.className = 'tour-tip';
-  tour.mask.hidden = true;
-  tour.hole.hidden = true;
-  tour.tip.hidden = true;
-  document.body.append(tour.mask, tour.hole, tour.tip);
-
-  function placeTour() {
-    const step = TOUR_STEPS[tour.index];
-    const target = document.querySelector(step.sel);
-    if (!target) return;
-    const pad = 6;
-    const r = target.getBoundingClientRect();
-    const hole = {
-      top: Math.max(4, r.top - pad),
-      left: Math.max(4, r.left - pad),
-      width: Math.min(window.innerWidth - 8, r.width + pad * 2),
-      height: Math.min(window.innerHeight - 8, r.height + pad * 2),
-    };
-    tour.hole.style.top = `${hole.top}px`;
-    tour.hole.style.left = `${hole.left}px`;
-    tour.hole.style.width = `${hole.width}px`;
-    tour.hole.style.height = `${hole.height}px`;
-
-    const t = tour.tip.getBoundingClientRect();
-    const gap = 12;
-    let top;
-    if (hole.top + hole.height + gap + t.height <= window.innerHeight - 8) {
-      top = hole.top + hole.height + gap;
-    } else if (hole.top - gap - t.height >= 8) {
-      top = hole.top - gap - t.height;
-    } else {
-      top = Math.max(8, window.innerHeight - t.height - 8);
-    }
-    const left = Math.max(8, Math.min(
-      hole.left + hole.width / 2 - t.width / 2,
-      window.innerWidth - t.width - 8,
-    ));
-    tour.tip.style.top = `${top}px`;
-    tour.tip.style.left = `${left}px`;
-  }
-
-  function showTourStep() {
-    const step = TOUR_STEPS[tour.index];
-    if (step.before) step.before();
-    const target = document.querySelector(step.sel);
-    if (target && target.scrollIntoView) {
-      target.scrollIntoView({ block: 'center', behavior: 'instant' });
-    }
-    const total = TOUR_STEPS.length;
-    const last = tour.index === total - 1;
-    const title = document.createElement('h4');
-    title.append(step.title);
-    const stepLabel = document.createElement('span');
-    stepLabel.className = 'tour-step';
-    stepLabel.textContent = `${tour.index + 1}/${total}`;
-    title.append(stepLabel);
-    const text = document.createElement('p');
-    text.textContent = step.text.replace(/\*\*/g, '');
-    const actions = document.createElement('div');
-    actions.className = 'tour-actions';
-    const skip = document.createElement('button');
-    skip.type = 'button';
-    skip.textContent = '跳过';
-    skip.addEventListener('click', () => endTour());
-    const prev = document.createElement('button');
-    prev.type = 'button';
-    prev.textContent = '上一步';
-    prev.disabled = tour.index === 0;
-    prev.addEventListener('click', () => {
-      tour.index = Math.max(0, tour.index - 1);
-      showTourStep();
-    });
-    const next = document.createElement('button');
-    next.type = 'button';
-    next.className = 'primary';
-    next.textContent = last ? '开始使用' : '下一步';
-    next.addEventListener('click', () => {
-      if (last) {
-        endTour();
-        return;
-      }
-      tour.index += 1;
-      showTourStep();
-    });
-    const spacer = document.createElement('span');
-    spacer.className = 'spacer';
-    actions.append(skip, spacer, prev, next);
-    setChildren(tour.tip, title, text, actions);
-
-    tour.mask.hidden = false;
-    tour.hole.hidden = false;
-    tour.tip.hidden = false;
-    placeTour();
-  }
-
-  function startTour() {
-    if (tour.active) return;
-    tour.active = true;
-    tour.index = 0;
-    tour.prevMode = state.mode;
-    hideTip();
-    showTourStep();
-  }
+  // 引导本体在 web/tour.js（教学页共用同一份）
+  let tourPrevMode = state.mode;
+  const tour = Tour.create({
+    steps: TOUR_STEPS,
+    storageKey: TOUR_KEY,
+    onStart: () => {
+      tourPrevMode = state.mode;
+      hideTip();
+    },
+    onEnd: () => {
+      // 万一以后加了「会切模式」的演示步骤，退出时统一切回来：
+      // 从中间某步点「跳过」就直接退出了，只写在最后一步的 before 里不够
+      if (state.mode !== tourPrevMode) setMode(tourPrevMode);
+      renderCard();
+      maybeShowWhatsNew();
+    },
+  });
 
   /** 第一次打开时自动走一遍引导；在页脚点「新手引导」可以随时重看 */
   function maybeStartTour() {
-    let seen = false;
-    try {
-      seen = !!localStorage.getItem(TOUR_KEY);
-    } catch { seen = true; }
-    // 顺序是：先走新手引导，结束之后再弹「更新内容」。
-    // 引导已经看过（或 localStorage 不可用）就直接弹。
-    if (!seen) setTimeout(startTour, 500);
-    else maybeShowWhatsNew();
+    // 顺序是：先走新手引导，结束之后再弹「更新内容」（onEnd 里接着调）。
+    // 引导已经看过（或 localStorage 不可用）就直接弹更新通知。
+    if (!tour.maybeAutoStart()) maybeShowWhatsNew();
   }
 
-  function endTour(markDone = true) {
-    tour.active = false;
-    tour.mask.hidden = true;
-    tour.hole.hidden = true;
-    tour.tip.hidden = true;
-    // 第 7 步会临时切到固定模式做演示，所以退出引导时统一切回来。
-    // 只写在最后一步的 before 里不够——从第 7 步点「跳过」就直接退了，模式会停在固定
-    if (state.mode !== (tour.prevMode || 'random')) setMode(tour.prevMode || 'random');
-    renderCard();
-    if (markDone) {
-      try {
-        localStorage.setItem(TOUR_KEY, '1');
-      } catch { /* 无痕模式等场景下忽略 */ }
-    }
-    maybeShowWhatsNew();
-  }
-
-  tour.mask.addEventListener('click', () => {
-    if (tour.index >= TOUR_STEPS.length - 1) endTour();
-    else {
-      tour.index += 1;
-      showTourStep();
-    }
-  });
-  window.addEventListener('resize', () => {
-    if (tour.active) placeTour();
-  });
-  el.tourBtn.addEventListener('click', () => startTour());
+  el.tourBtn.addEventListener('click', () => tour.start());
 
   // ── 更新内容通知 ────────────────────────────────────────────────────
   // 新手引导走完之后弹一次；看过就记下来，之后只在页脚留个入口。
@@ -1445,10 +1320,10 @@
   const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
   const WHATS_NEW = {
     // 版本号同时是 localStorage 的 key：改它老用户才会再看到一次通知。
-    version: '2.0.1',
+    version: '2.0.2',
     items: [
-      '配色与留白调整：改成中性灰（不再发褐）、小字更清楚；笔记本和手机上「任意 / 按规则 / 常用词」都不用滚动就能看到。',
-      '按钮点下去有反馈了：随机组合、播放发音、⇄ 切换都有按压动画。',
+      '新手引导多了一步：右上角那个「拼读教学」是字母、元音、声调怎么读的说明书。',
+      '拼读教学页也有引导了（搜索、目录、字母表怎么看），以后在页脚点「新手引导」可以重看。',
     ],
   };
 

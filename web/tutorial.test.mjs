@@ -276,30 +276,50 @@ test('搜索：中文按包含匹配，找不到才退到「讲解里提到」�
   assert.ok(both.list.every((i) => i.section === '辅音'), '「辅音 送气」只应出辅音那一节');
 });
 
-test('两页衔接：pagefx 两个页面都引了，顺序排在各自的脚本前面', () => {
+test('两页共用脚本（pagefx / tour）：两个页面都引了，顺序排在各自的脚本前面', () => {
   const index = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
   const tutorial = readFileSync(new URL('./tutorial.html', import.meta.url), 'utf8');
   const build = readFileSync(new URL('./build-standalone.mjs', import.meta.url), 'utf8');
   const fx = readFileSync(new URL('./pagefx.js', import.meta.url), 'utf8');
-  // 两个页面都要引，而且版本号跟页面上的其它资源一致（漏引就是整页硬切）
+  const tourSrc = readFileSync(new URL('./tour.js', import.meta.url), 'utf8');
+  const appSrc = readFileSync(new URL('./app.js', import.meta.url), 'utf8');
+  const tutSrc = readFileSync(new URL('./tutorial.js', import.meta.url), 'utf8');
+  // 两个页面都要引，而且版本号跟页面上的其它资源一致（漏引就是整页硬切 / 引导起不来）
   for (const [name, html] of [['index.html', index], ['tutorial.html', tutorial]]) {
-    const m = html.match(/pagefx\.js\?v=(\d+)/);
-    assert.ok(m, `${name} 没有引 pagefx.js`);
+    for (const file of ['pagefx.js', 'tour.js']) {
+      assert.ok(html.match(new RegExp(`${file.replace('.', '\\.')}\\?v=(\\d+)`)), `${name} 没有引 ${file}`);
+    }
     const versions = new Set([...html.matchAll(/\?v=(\d+)/g)].map((x) => x[1]));
     assert.equal(versions.size, 1, `${name} 里的 ?v= 号不统一：${[...versions].join(' / ')}`);
   }
 
-  // 单文件版是「按脚本清单顺序内联」的，pagefx 必须排在用它的 app.js / tutorial.js 之前
+  // 单文件版是「按脚本清单顺序内联」的，共用的两个脚本要排在用它们的 app.js / tutorial.js 之前
   const appLine = build.split('\n').find((l) => l.includes("'app.js'"));
   const tutLine = build.split('\n').find((l) => l.includes("'tutorial.js'"));
   for (const line of [appLine, tutLine]) {
     assert.ok(line, '打包清单里应该有 app.js / tutorial.js');
-    assert.ok(line.indexOf("'pagefx.js'") !== -1, `打包清单漏了 pagefx.js：${line.trim()}`);
-    assert.ok(line.indexOf("'pagefx.js'") < line.indexOf("'app.js'") || line.indexOf("'pagefx.js'") < line.indexOf("'tutorial.js'"),
-      `pagefx.js 要排在 app.js / tutorial.js 前面：${line.trim()}`);
+    for (const file of ['pagefx.js', 'tour.js']) {
+      const at = line.indexOf(`'${file}'`);
+      assert.ok(at !== -1, `打包清单漏了 ${file}：${line.trim()}`);
+      assert.ok(at < line.indexOf("'app.js'") || at < line.indexOf("'tutorial.js'"),
+        `${file} 要排在 app.js / tutorial.js 前面：${line.trim()}`);
+    }
   }
   // pagefx 本身：修饰键要放行（新标签页）、系统开了「减少动态效果」就直跳
   assert.match(fx, /prefers-reduced-motion/);
   assert.match(fx, /metaKey/);
   assert.match(fx, /pageshow/, '返回（bfcache）时要把淡出的类清掉');
+
+  // 引导：练习页多一步指向「拼读教学」入口，教学页有自己的引导 + 页脚重看按钮
+  assert.match(appSrc, /sel: '\.head-link'/, '练习页引导要有一步指向拼读教学入口');
+  assert.match(appSrc, /Tour\.create\(/, '练习页引导要走共用的 Tour');
+  assert.match(tutSrc, /Tour\.create\(/, '教学页也要有自己的引导');
+  assert.match(tutSrc, /maybeAutoStart/, '教学页第一次进来要自动走一遍引导');
+  assert.match(tutorial, /id="tutTourBtn"/, '教学页页脚要有重看引导的入口');
+  // 两页的引导各记各的，互不影响
+  assert.match(appSrc, /thai-wordcards\.tourDone/);
+  assert.match(tutSrc, /thai-wordcards\.tutTourDone/);
+  // Tour 自己：localStorage 不可用时按「看过」处理，别每次都弹
+  assert.match(tourSrc, /maybeAutoStart/);
+  assert.match(tourSrc, /return true; {3}\/\/ 存不了就别自动弹/);
 });
