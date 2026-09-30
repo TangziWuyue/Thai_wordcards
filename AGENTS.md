@@ -104,6 +104,7 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 - 辅音的传统例词在 `CONSONANT_EXAMPLES`（`ก ไก่` …），字段是 `example` + `gloss`；测试要求 44 个字母都有，漏一个会失败。
 - 词表字块的悬浮卡片（`.tip`）由 `app.js` 里 `chip()` 的 `tipData` 驱动：`{ glyph | glyphNodes, rows }`，鼠标悬浮和键盘聚焦都会弹，定位会自动避开视口边缘；重建词表（`buildConsonants`/`buildVowels`）时要先 `hideTip()`。
 - 排版：单列是默认，`@media (min-width: 820px)` 变两栏，`@media (max-height: 560px)` 收紧留白；字号用 `clamp(52px, min(17vw, 19vh), 104px)` 同时看宽度和高度。改布局要在这三档尺寸下各看一眼。
+- **首屏要装得下「任意 / 按规则 / 常用词」那一栏**（用户提过两次）。`style.css` 末尾按视窗高度分了四档收留白：`max-height: 940 / 800 / 700 / 640`（940 起收 padding 与字号上限，800 再收一轮、标题副标题在 700 以下隐藏，640 是最扁的窗口）。这几档**只改 padding / margin / `--syl-base`（字号上限）**，卡片里那些按最高情况定高的行（`.dict-hit` / `.parts` / `#toneHint`）一个都不碰——所以换音节、切模式时页面照样不会上下跳，这条底线不能破。改完至少量一遍 `1440×900 / 1280×800 / 1280×700 / 390×844 / 375×667`，确认 `#rangeSeg` 的底边 ≤ 视口高度。
 - 主题：`<html data-theme="auto|light|dark">` + `data-font`，全部走 CSS 变量（`--bg / --card / --fg / --muted / --line / --soft / --inv-bg / --inv-fg`）。加新颜色时同时补 light、dark 两组值，不要在组件里写死颜色。
 - 规则引擎同时兼容浏览器与 Node：文件末尾分别导出 `window.ThaiRules` 与 `module.exports`。
 - Python 3.12（见 `.python-version`），构建后端 `uv_build`；Python 侧目前只用于脚手架。

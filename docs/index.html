@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T05:49:36.431Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T05:55:03.613Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1705,6 +1705,68 @@ html.js body { animation: pageIn 0.22s ease; }
   .btn:active { transform: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
+}
+
+/* ── 视窗不高时把留白收一收 ───────────────────────────────────
+   笔记本去掉浏览器工具栏通常只剩 700~800，手机上还要再减掉工具栏，
+   而「卡片 + 声调 + 两个按钮 + 组合范围」原本要 920px，最后那栏就被挤到屏幕外。
+   这里只动 padding / margin / 字号上限——卡片里那几行是按最高情况定高的，
+   一个都不碰，所以换音节、切模式时页面照样不会上下跳。 */
+@media (max-height: 940px) {
+  .app {
+    padding-top: clamp(14px, 3.2vh, 40px);
+    padding-bottom: clamp(40px, 7vh, 72px);
+  }
+  .head { margin-bottom: clamp(10px, 2vh, 26px); }
+  .card {
+    padding: clamp(18px, 3.4vh, 40px) 26px clamp(16px, 2.6vh, 32px);
+    gap: clamp(10px, 1.5vh, 16px);
+    /* 音节字号也跟着高度收：卡片高度 = 字号 × 1.55，收了就整块变矮，同样不会跳 */
+    --syl-base: clamp(44px, min(17vw, 11vh), 96px);
+    min-height: clamp(170px, 30vh, 300px);
+  }
+  .block { margin-top: clamp(12px, 2.2vh, 24px); }
+  .label-row { margin-bottom: clamp(6px, 1.1vh, 10px); }
+  .tone { padding: clamp(6px, 1.1vh, 10px) 2px clamp(5px, 0.9vh, 8px); }
+  .actions { margin-top: clamp(10px, 1.8vh, 18px); }
+  .range-row { margin-top: clamp(6px, 1.1vh, 11px); }
+}
+
+/* 再矮一档（800 以下，笔记本去掉工具栏、手机带上工具栏都落在这一段）：
+   留白再收一轮，音节字号也跟着小一档 */
+@media (max-height: 800px) {
+  .app { padding-top: clamp(12px, 2.6vh, 24px); padding-bottom: clamp(28px, 5vh, 48px); }
+  .head { margin-bottom: clamp(8px, 1.5vh, 16px); }
+  .card {
+    padding: clamp(14px, 2.8vh, 24px) 24px clamp(12px, 2.2vh, 20px);
+    gap: clamp(8px, 1.2vh, 12px);
+    --syl-base: clamp(40px, min(17vw, 10vh), 88px);
+    min-height: clamp(150px, 26vh, 240px);
+  }
+  .block { margin-top: clamp(10px, 1.6vh, 18px); }
+  .label-row { margin-bottom: clamp(5px, 0.9vh, 8px); }
+  .tone { padding: clamp(5px, 0.9vh, 8px) 2px clamp(4px, 0.7vh, 6px); }
+  .actions { margin-top: clamp(8px, 1.4vh, 14px); }
+  .range-row { margin-top: clamp(5px, 0.8vh, 9px); }
+}
+
+/* 再矮一档（700 上下）：标题那句副标题也收掉，把位置留给控件 */
+@media (max-height: 700px) {
+  .head .sub { display: none; }
+}
+
+/* 最矮的一档（横屏手机、被压得很扁的窗口）：只保证控件都露出来 */
+@media (max-height: 640px) {
+  .app { padding-top: clamp(8px, 1.8vh, 16px); }
+  .head { margin-bottom: clamp(6px, 1vh, 10px); }
+  .card {
+    padding: clamp(10px, 2vh, 16px) 20px clamp(10px, 1.6vh, 14px);
+    gap: clamp(6px, 1vh, 10px);
+    --syl-base: clamp(40px, min(16vw, 9vh), 78px);
+  }
+  .block { margin-top: clamp(8px, 1.2vh, 14px); }
+  .actions { margin-top: clamp(6px, 1vh, 12px); }
+  .range-row { margin-top: clamp(4px, 0.7vh, 8px); }
 }
 
   </style>
