@@ -618,34 +618,9 @@ kbd {
 /* 辅音三行（中/高/低类）是三个独立行，行与行之间的空隙要单独给 */
 #consonants { display: flex; flex-direction: column; gap: 6px; }
 
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  /* 字块之间要留出缝，否则选中态的深色块会连成一片 */
-  gap: 6px;
-}
-
-.row .tag {
-  width: 34px;
-  color: var(--muted);
-  font-size: 11px;
-  flex: none;
-}
-
-/* 字块自己一列：换行时才会整列对齐（不然第二行会缩到左边类别名下面） */
-.row .chips { flex: 1 1 0; min-width: 0; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
-.chips .tag {
-  display: flex;
-  align-items: center;
-  width: 34px;
-  color: var(--muted);
-  font-size: 11px;
-  flex: none;
-}
 
 .chip {
   display: inline-flex;
@@ -679,10 +654,10 @@ kbd {
    这里不能把它变淡——组合符号会跟着一起变淡，字就看不清了。 */
 .ghost-base { opacity: 1; }
 
-/* 元音分组小标题 */
+/* 分组小标题（辅音的中/高/低类、元音的单元音/复合元音…共用一套） */
 .vowel-list { display: block; }
 
-.vowel-group {
+.chip-group {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -691,9 +666,9 @@ kbd {
   color: var(--muted);
 }
 
-.vowel-group:first-child { margin-top: 0; }
+.chip-group:first-child { margin-top: 0; }
 
-.vowel-group b { font-weight: 600; color: var(--fg); }
+.chip-group b { font-weight: 600; color: var(--fg); }
 
 /* ── 分段选择（字体 / 外观）──────────────────────── */
 .tip {
@@ -1029,16 +1004,6 @@ kbd {
   .row, .chips { gap: 5px; }
   .vowel-chip { font-size: 14px; }
   .chip { font-size: 17px; padding: 3px 6px; }
-}
-
-/* 手机上：类别名（中类 / 高类 / 低类）自己占一行，字块在下一行整行排。
-   原来是左边 34px 的竖排标签，字块一换行就缩到标签底下，看着乱（用户说「简直是灾难」） */
-@media (max-width: 640px) {
-  .row .tag {
-    flex-basis: 100%;
-    width: auto;
-    margin-bottom: 2px;
-  }
 }
 
 /* 手机上按钮里的键盘提示没用，还会把按钮撑成两行，直接隐藏 */

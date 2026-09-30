@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T06:49:53.455Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T06:57:04.363Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -84,7 +84,7 @@
 }
 
 /* 由 web/fonts/build-cjk-subset.mjs 生成，请勿手改。
-   界面中文用到的 2100 个字，按需切成 61 个子集。
+   界面中文用到的 2101 个字，按需切成 61 个子集。
    授权：SIL OFL 1.1，见 fonts/NOTICE.md。 */
 
 @font-face {
@@ -1256,34 +1256,9 @@ kbd {
 /* 辅音三行（中/高/低类）是三个独立行，行与行之间的空隙要单独给 */
 #consonants { display: flex; flex-direction: column; gap: 6px; }
 
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  /* 字块之间要留出缝，否则选中态的深色块会连成一片 */
-  gap: 6px;
-}
-
-.row .tag {
-  width: 34px;
-  color: var(--muted);
-  font-size: 11px;
-  flex: none;
-}
-
-/* 字块自己一列：换行时才会整列对齐（不然第二行会缩到左边类别名下面） */
-.row .chips { flex: 1 1 0; min-width: 0; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
-.chips .tag {
-  display: flex;
-  align-items: center;
-  width: 34px;
-  color: var(--muted);
-  font-size: 11px;
-  flex: none;
-}
 
 .chip {
   display: inline-flex;
@@ -1317,10 +1292,10 @@ kbd {
    这里不能把它变淡——组合符号会跟着一起变淡，字就看不清了。 */
 .ghost-base { opacity: 1; }
 
-/* 元音分组小标题 */
+/* 分组小标题（辅音的中/高/低类、元音的单元音/复合元音…共用一套） */
 .vowel-list { display: block; }
 
-.vowel-group {
+.chip-group {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -1329,9 +1304,9 @@ kbd {
   color: var(--muted);
 }
 
-.vowel-group:first-child { margin-top: 0; }
+.chip-group:first-child { margin-top: 0; }
 
-.vowel-group b { font-weight: 600; color: var(--fg); }
+.chip-group b { font-weight: 600; color: var(--fg); }
 
 /* ── 分段选择（字体 / 外观）──────────────────────── */
 .tip {
@@ -1667,16 +1642,6 @@ kbd {
   .row, .chips { gap: 5px; }
   .vowel-chip { font-size: 14px; }
   .chip { font-size: 17px; padding: 3px 6px; }
-}
-
-/* 手机上：类别名（中类 / 高类 / 低类）自己占一行，字块在下一行整行排。
-   原来是左边 34px 的竖排标签，字块一换行就缩到标签底下，看着乱（用户说「简直是灾难」） */
-@media (max-width: 640px) {
-  .row .tag {
-    flex-basis: 100%;
-    width: auto;
-    margin-bottom: 2px;
-  }
 }
 
 /* 手机上按钮里的键盘提示没用，还会把按钮撑成两行，直接隐藏 */
@@ -2022,6 +1987,8 @@ const ThaiRules = (() => {
   ];
 
   const CLASS_LABEL = { mid: '中类', high: '高类', low: '低类' };
+  // 泰文名：教学页的小标题和练习页词表的小标题共用这一份，别各写各的
+  const CLASS_THAI = { mid: 'อักษรกลาง', high: 'อักษรสูง', low: 'อักษรต่ำ' };
 
   // ── 元音（สระ 32 รูป）──────────────────────────────────────────────
   // 分组与名称、音标、例词对齐《基础泰语（1）》的元音表：
@@ -2825,6 +2792,7 @@ const ThaiRules = (() => {
     FINALS,
     FINAL_GROUPS,
     CLASS_LABEL,
+    CLASS_THAI,
     LEAD_VOWEL_CHARS,
     FOLLOW_VOWEL_CHARS,
     VOWEL_CHARS,
@@ -3662,18 +3630,22 @@ if (typeof window !== 'undefined') window.Tour = Tour;
     hideTip();
     setChildren(el.consonants);
     for (const cls of ['mid', 'high', 'low']) {
+      const list = R.CONSONANTS.filter((x) => x.cls === cls);
+      // 跟元音那边同一套排法：类别名单独一行，字块在下面整行排。
+      // （原来是左边 34px 的竖排标签，字块换行后会缩到标签底下，
+      //   两组的字块左边缘也和元音那边差 40px——用户说「电脑上不也对齐下」）
+      const head = document.createElement('div');
+      head.className = 'chip-group';
+      const thaiName = document.createElement('b');
+      thaiName.textContent = R.CLASS_THAI[cls];
+      const zhName = document.createElement('span');
+      zhName.textContent = `${R.CLASS_LABEL[cls]} ${list.length}`;
+      head.append(thaiName, zhName);
+
       const row = document.createElement('div');
-      row.className = 'row';
-      const tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.textContent = R.CLASS_LABEL[cls];
-      row.append(tag);
-      // 字块单独放一层：换行时它们对齐在第一块下面，而不是缩到左边类别名底下
-      // （窄屏是整行一条，见 style.css 里 .row .tag / .row .chips 的规则）
-      const chips = document.createElement('div');
-      chips.className = 'chips';
+      row.className = 'chips';
       const fixed = state.mode === 'fixed';
-      for (const c of R.CONSONANTS.filter((x) => x.cls === cls)) {
+      for (const c of list) {
         const flags = [c.rare && '罕用', c.obsolete && '已废弃'].filter(Boolean);
         const rows = [
           ['类别', [R.CLASS_LABEL[cls], ...flags].join(' · ')],
@@ -3681,7 +3653,7 @@ if (typeof window !== 'undefined') window.Tour = Tour;
           ['例词', c.example ? `${c.ch} ${c.example}${c.gloss ? `（${c.gloss}）` : ''}` : ''],
         ].filter(([, v]) => v);
         const on = fixed ? state.fixedOnset === c.ch : state.consonants.has(c.ch);
-        chips.append(chip(c.ch, on, { glyph: c.ch, rows }, '', () => {
+        row.append(chip(c.ch, on, { glyph: c.ch, rows }, '', () => {
           if (fixed) {
             // 固定模式：点一下选它，再点一下取消（可以只留元音，或者什么都不留）
             state.fixedOnset = state.fixedOnset === c.ch ? null : c.ch;
@@ -3696,8 +3668,7 @@ if (typeof window !== 'undefined') window.Tour = Tour;
           save();
         }));
       }
-      row.append(chips);
-      el.consonants.append(row);
+      el.consonants.append(head, row);
     }
   }
 
@@ -3730,7 +3701,7 @@ if (typeof window !== 'undefined') window.Tour = Tour;
       const inGroup = R.VOWELS.filter((v) => v.group === group.id && R.isSelectableVowel(v));
       if (!inGroup.length) continue;
       const head = document.createElement('div');
-      head.className = 'vowel-group';
+      head.className = 'chip-group';
       const name = document.createElement('b');
       name.textContent = group.thai;
       const zh = document.createElement('span');

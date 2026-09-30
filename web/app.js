@@ -293,18 +293,22 @@
     hideTip();
     setChildren(el.consonants);
     for (const cls of ['mid', 'high', 'low']) {
+      const list = R.CONSONANTS.filter((x) => x.cls === cls);
+      // 跟元音那边同一套排法：类别名单独一行，字块在下面整行排。
+      // （原来是左边 34px 的竖排标签，字块换行后会缩到标签底下，
+      //   两组的字块左边缘也和元音那边差 40px——用户说「电脑上不也对齐下」）
+      const head = document.createElement('div');
+      head.className = 'chip-group';
+      const thaiName = document.createElement('b');
+      thaiName.textContent = R.CLASS_THAI[cls];
+      const zhName = document.createElement('span');
+      zhName.textContent = `${R.CLASS_LABEL[cls]} ${list.length}`;
+      head.append(thaiName, zhName);
+
       const row = document.createElement('div');
-      row.className = 'row';
-      const tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.textContent = R.CLASS_LABEL[cls];
-      row.append(tag);
-      // 字块单独放一层：换行时它们对齐在第一块下面，而不是缩到左边类别名底下
-      // （窄屏是整行一条，见 style.css 里 .row .tag / .row .chips 的规则）
-      const chips = document.createElement('div');
-      chips.className = 'chips';
+      row.className = 'chips';
       const fixed = state.mode === 'fixed';
-      for (const c of R.CONSONANTS.filter((x) => x.cls === cls)) {
+      for (const c of list) {
         const flags = [c.rare && '罕用', c.obsolete && '已废弃'].filter(Boolean);
         const rows = [
           ['类别', [R.CLASS_LABEL[cls], ...flags].join(' · ')],
@@ -312,7 +316,7 @@
           ['例词', c.example ? `${c.ch} ${c.example}${c.gloss ? `（${c.gloss}）` : ''}` : ''],
         ].filter(([, v]) => v);
         const on = fixed ? state.fixedOnset === c.ch : state.consonants.has(c.ch);
-        chips.append(chip(c.ch, on, { glyph: c.ch, rows }, '', () => {
+        row.append(chip(c.ch, on, { glyph: c.ch, rows }, '', () => {
           if (fixed) {
             // 固定模式：点一下选它，再点一下取消（可以只留元音，或者什么都不留）
             state.fixedOnset = state.fixedOnset === c.ch ? null : c.ch;
@@ -327,8 +331,7 @@
           save();
         }));
       }
-      row.append(chips);
-      el.consonants.append(row);
+      el.consonants.append(head, row);
     }
   }
 
@@ -361,7 +364,7 @@
       const inGroup = R.VOWELS.filter((v) => v.group === group.id && R.isSelectableVowel(v));
       if (!inGroup.length) continue;
       const head = document.createElement('div');
-      head.className = 'vowel-group';
+      head.className = 'chip-group';
       const name = document.createElement('b');
       name.textContent = group.thai;
       const zh = document.createElement('span');

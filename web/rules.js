@@ -68,6 +68,8 @@ const ThaiRules = (() => {
   ];
 
   const CLASS_LABEL = { mid: '中类', high: '高类', low: '低类' };
+  // 泰文名：教学页的小标题和练习页词表的小标题共用这一份，别各写各的
+  const CLASS_THAI = { mid: 'อักษรกลาง', high: 'อักษรสูง', low: 'อักษรต่ำ' };
 
   // ── 元音（สระ 32 รูป）──────────────────────────────────────────────
   // 分组与名称、音标、例词对齐《基础泰语（1）》的元音表：
@@ -871,6 +873,7 @@ const ThaiRules = (() => {
     FINALS,
     FINAL_GROUPS,
     CLASS_LABEL,
+    CLASS_THAI,
     LEAD_VOWEL_CHARS,
     FOLLOW_VOWEL_CHARS,
     VOWEL_CHARS,

@@ -1,6 +1,6 @@
 [project]
 name = "thai-wordcards"
-version = "2.0.4"
+version = "2.0.5"
 description = "Add your description here"
 readme = "README.md"
 authors = [

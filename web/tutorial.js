@@ -124,8 +124,7 @@
     currentSection = '辅音';
     for (const cls of ['mid', 'high', 'low']) {
       const list = R.CONSONANTS.filter((c) => c.cls === cls);
-      host.append(groupBox(cls === 'mid' ? 'อักษรกลาง' : cls === 'high' ? 'อักษรสูง' : 'อักษรต่ำ',
-        R.CLASS_LABEL[cls], list.length));
+      host.append(groupBox(R.CLASS_THAI[cls], R.CLASS_LABEL[cls], list.length));
       const rows = el('div', 'tut-rows');
       for (const c of list) {
         const meta = [thai('span', 't-name', `${c.ch}อ ${c.example}`)];
