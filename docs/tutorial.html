@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T12:51:46.071Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T12:56:16.271Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1260,7 +1260,10 @@ html.js .js-fallback { display: none; }
 /* 「随机组合 + ⇄」是拼接控件，固定模式下左边那一半按不了：
    底色跟 ⇄ 保持一致（整个控件还是同一块色），只用灰字表示「这一半不行」。
    留白会像贴了一块白药丸、换成槽的浅灰又会显得两块拼在一起（用户两个都嫌丑）。 */
-.split .btn:disabled {
+.split .btn:disabled,
+.split .btn.primary:disabled,
+.split .btn:disabled:hover,
+.split .btn.primary:disabled:hover {
   background: var(--inv-bg);
   color: var(--inv-muted);
 }
