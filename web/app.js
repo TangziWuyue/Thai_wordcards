@@ -253,10 +253,12 @@
     pressTimer = null;
   }
 
-  function chip(content, pressed, tipData, extraClass, onClick) {
+  function chip(content, pressed, tipData, extraClass, onClick, key) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = extraClass ? `chip ${extraClass}` : 'chip';
+    // 记一下这一块代表哪个字母/元音，syncChipStates() 靠它对号入座
+    if (key) btn.dataset.key = key;
     // 字块里的字单独包一层：按下去时只让「字」往下沉一点，不影响选中态的底色
     const inner = document.createElement('span');
     inner.className = 'chip-in';
@@ -324,16 +326,16 @@
           if (fixed) {
             // 固定模式：点一下选它，再点一下取消（可以只留元音，或者什么都不留）
             state.fixedOnset = state.fixedOnset === c.ch ? null : c.ch;
-            buildConsonants();
+            syncChipStates();
             applyFixed();
             save();
             return;
           }
           if (state.consonants.has(c.ch)) state.consonants.delete(c.ch);
           else state.consonants.add(c.ch);
-          buildConsonants();
+          syncChipStates();
           save();
-        }));
+        }, c.ch));
       }
       el.consonants.append(head, row);
     }
@@ -490,6 +492,20 @@
     setTimeout(() => node.classList.remove('in'), 300);
   }
 
+  /**
+   * 声调 / 词表字块点一下「字往下沉」。
+   * 不能用 CSS 的 :active——它只在「按住」的那一小会儿生效，触控板轻点（tap to click）
+   * 那一下就闪一两帧，看上去像没反应（用户拿 MacBook 试出来的）。
+   * 改成点击之后自己跑一次动画：轻触、按住都能看到，跟分段控件是同一套节拍。
+   */
+  function sinkTap(node) {
+    if (!node || prefersReducedMotion()) return;
+    node.classList.remove('sink');
+    void node.offsetWidth;          // 连点同一项也要能重头跑
+    node.classList.add('sink');
+    setTimeout(() => node.classList.remove('sink'), 300);
+  }
+
   /** 把还没落定的那次卡片过渡立刻做完（连点模式 / 档位时用，免得停在半路） */
   function settleSwap() {
     if (!pendingSwap) return;
@@ -602,16 +618,34 @@
       if (state.mode === 'fixed') {
         // 固定模式：点一下选它，再点一下取消（可以只留辅音，或者什么都不留）
         state.fixedVowelId = state.fixedVowelId === v.id ? null : v.id;
-        buildVowels();
+        syncChipStates();
         applyFixed();
         save();
         return;
       }
       if (state.vowels.has(v.id)) state.vowels.delete(v.id);
       else state.vowels.add(v.id);
-      buildVowels();
+      syncChipStates();
       save();
-    });
+    }, v.id);
+  }
+
+  /**
+   * 只更新字块的选中态，**不重建节点**。
+   * 原来点一下就 buildConsonants()/buildVowels() 整列重建：刚点的那一块当场被换掉，
+   * 点击动画（.sink）根本没机会播完（用户报「轻触看不到下沉」有一半是这个原因）。
+   * 顺便也少了一堆无谓的重排。
+   */
+  function syncChipStates() {
+    const fixed = state.mode === 'fixed';
+    for (const btn of el.consonants.querySelectorAll('.chip')) {
+      const ch = btn.dataset.key;
+      btn.setAttribute('aria-pressed', String(fixed ? state.fixedOnset === ch : state.consonants.has(ch)));
+    }
+    for (const btn of el.vowels.querySelectorAll('.chip')) {
+      const id = btn.dataset.key;
+      btn.setAttribute('aria-pressed', String(fixed ? state.fixedVowelId === id : state.vowels.has(id)));
+    }
   }
 
   // ── 字体与外观 ──────────────────────────────────────────────────────
@@ -1292,6 +1326,14 @@
   el.vowelAll.addEventListener('click', () => setAllVowels(true));
   el.vowelNone.addEventListener('click', () => setAllVowels(false));
   el.modeBtn.addEventListener('click', () => setMode(currentMode() === 'fixed' ? 'random' : 'fixed'));
+
+  // 声调 / 词表字块：点一下让「字」沉一下。挂在捕获阶段，
+  // 免得被字块自己的长按拦截（那条会 preventDefault）影响
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    const node = target && target.closest ? target.closest('.tone, .chip') : null;
+    if (node) sinkTap(node);
+  }, true);
 
   const bindings = [
     [el.optClusters, 'allowClusters'],

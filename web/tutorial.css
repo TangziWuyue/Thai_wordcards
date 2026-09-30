@@ -223,11 +223,11 @@ html { scroll-behavior: smooth; }
   font-size: 12px;
   text-decoration: none;
   white-space: nowrap;
-  /* 按下去字沉一下，跟练习页那几排控件同一套手感（高亮底色由 .toc-thumb 管，不动） */
-  transition: transform 0.09s ease;
 }
 
-.toc-link:active { transform: translateY(1px) scale(0.96); }
+/* 点一下字沉一下，跟练习页那几排控件同一套手感（高亮底色由 .toc-thumb 管，不动）。
+   动画是点击后由 tutorial.js 加 .sink 触发的，不用 :active——触控板轻点只闪一两帧。 */
+.toc-link.sink { animation: sinkTap 0.24s ease; }
 
 /* 悬停不铺底色：选中背景已经交给 .toc-thumb 了，再叠一层灰底就是「药丸 + 方块」两块
    （跟声调那排同一个毛病）。悬停只把字提亮，且不能盖掉当前这一节的反白字。
@@ -546,8 +546,7 @@ html { scroll-behavior: smooth; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .toc-link { transition: none; }
-  .toc-link:active { transform: none; }
+  .toc-link.sink { animation: none; }
   .tut-sec > h2.arrive { animation: none; }
   /* JS 在减少动效时不会再藏标题，这条是兜底：万一被藏住了也要能看见 */
   .tut-sec > h2.arrive-hidden { opacity: 1; }

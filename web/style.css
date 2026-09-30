@@ -531,13 +531,19 @@ html.js .js-fallback { display: none; }
 .tone .name { font-size: 11px; color: var(--muted); }
 .tone[aria-pressed="true"] .name { color: var(--inv-fg); opacity: 0.7; }
 
-/* 按下去的那一下，字往下沉一点点（选中态的底色不动）——
-   手感跟滑块组件一致：背景是滑块在动，字只是跟着「按一下」。
-   两个子元素都是 flex item（能 transform），不用额外包一层。 */
-.tone .mark, .tone .name { transition: transform 0.09s ease; }
+/* 点一下让「字」往下沉一点点（选中态的底色不动），手感跟滑块组件一致。
+   注意：这里用点击后跑的动画（.sink 由 app.js 加），**不要用 :active**——
+   :active 只在「按住」那一小会儿生效，触控板轻点（tap to click）只闪一两帧，
+   看上去像没反应（用户拿 MacBook 试出来的，滑块那套就没这问题，因为它也是点击后跑的动画）。 */
+@keyframes sinkTap {
+  0% { transform: none; }
+  45% { transform: translateY(1px) scale(0.94); }
+  100% { transform: none; }
+}
 
-.tone:not(:disabled):active .mark,
-.tone:not(:disabled):active .name { transform: translateY(1px) scale(0.94); }
+.tone.sink .mark,
+.tone.sink .name,
+.chip.sink .chip-in { animation: sinkTap 0.24s ease; }
 
 /* ── 按钮 ───────────────────────────────── */
 .actions {
@@ -720,10 +726,9 @@ kbd {
 
 .chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
 
-/* 字块里的字单独一层：按下去只让字沉一点，选中态的深色药丸纹丝不动 */
-.chip-in { display: inline-flex; align-items: center; transition: transform 0.09s ease; }
-
-.chip:active .chip-in { transform: translateY(1px) scale(0.94); }
+/* 字块里的字单独一层：点一下只让字沉一点（.sink 动画见上面），
+   选中态的深色药丸纹丝不动 */
+.chip-in { display: inline-flex; align-items: center; }
 
 .vowel-chip { font-size: 15px; min-width: 32px; }
 
@@ -1164,10 +1169,7 @@ html.js body { animation: pageIn 0.22s ease; }
   .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
   .seg-thumb { transition: none; }
   .btn:active { transform: none; }
-  .tone .mark, .tone .name, .chip-in { transition: none; }
-  .tone:not(:disabled):active .mark,
-  .tone:not(:disabled):active .name,
-  .chip:active .chip-in { transform: none; }
+  .tone.sink .mark, .tone.sink .name, .chip.sink .chip-in { animation: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
 }

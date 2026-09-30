@@ -1,6 +1,6 @@
 <!--
   泰语拼读入门（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T12:56:16.271Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T13:01:06.614Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1166,13 +1166,19 @@ html.js .js-fallback { display: none; }
 .tone .name { font-size: 11px; color: var(--muted); }
 .tone[aria-pressed="true"] .name { color: var(--inv-fg); opacity: 0.7; }
 
-/* 按下去的那一下，字往下沉一点点（选中态的底色不动）——
-   手感跟滑块组件一致：背景是滑块在动，字只是跟着「按一下」。
-   两个子元素都是 flex item（能 transform），不用额外包一层。 */
-.tone .mark, .tone .name { transition: transform 0.09s ease; }
+/* 点一下让「字」往下沉一点点（选中态的底色不动），手感跟滑块组件一致。
+   注意：这里用点击后跑的动画（.sink 由 app.js 加），**不要用 :active**——
+   :active 只在「按住」那一小会儿生效，触控板轻点（tap to click）只闪一两帧，
+   看上去像没反应（用户拿 MacBook 试出来的，滑块那套就没这问题，因为它也是点击后跑的动画）。 */
+@keyframes sinkTap {
+  0% { transform: none; }
+  45% { transform: translateY(1px) scale(0.94); }
+  100% { transform: none; }
+}
 
-.tone:not(:disabled):active .mark,
-.tone:not(:disabled):active .name { transform: translateY(1px) scale(0.94); }
+.tone.sink .mark,
+.tone.sink .name,
+.chip.sink .chip-in { animation: sinkTap 0.24s ease; }
 
 /* ── 按钮 ───────────────────────────────── */
 .actions {
@@ -1355,10 +1361,9 @@ kbd {
 
 .chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
 
-/* 字块里的字单独一层：按下去只让字沉一点，选中态的深色药丸纹丝不动 */
-.chip-in { display: inline-flex; align-items: center; transition: transform 0.09s ease; }
-
-.chip:active .chip-in { transform: translateY(1px) scale(0.94); }
+/* 字块里的字单独一层：点一下只让字沉一点（.sink 动画见上面），
+   选中态的深色药丸纹丝不动 */
+.chip-in { display: inline-flex; align-items: center; }
 
 .vowel-chip { font-size: 15px; min-width: 32px; }
 
@@ -1799,10 +1804,7 @@ html.js body { animation: pageIn 0.22s ease; }
   .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
   .seg-thumb { transition: none; }
   .btn:active { transform: none; }
-  .tone .mark, .tone .name, .chip-in { transition: none; }
-  .tone:not(:disabled):active .mark,
-  .tone:not(:disabled):active .name,
-  .chip:active .chip-in { transform: none; }
+  .tone.sink .mark, .tone.sink .name, .chip.sink .chip-in { animation: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
 }
@@ -2094,11 +2096,11 @@ html { scroll-behavior: smooth; }
   font-size: 12px;
   text-decoration: none;
   white-space: nowrap;
-  /* 按下去字沉一下，跟练习页那几排控件同一套手感（高亮底色由 .toc-thumb 管，不动） */
-  transition: transform 0.09s ease;
 }
 
-.toc-link:active { transform: translateY(1px) scale(0.96); }
+/* 点一下字沉一下，跟练习页那几排控件同一套手感（高亮底色由 .toc-thumb 管，不动）。
+   动画是点击后由 tutorial.js 加 .sink 触发的，不用 :active——触控板轻点只闪一两帧。 */
+.toc-link.sink { animation: sinkTap 0.24s ease; }
 
 /* 悬停不铺底色：选中背景已经交给 .toc-thumb 了，再叠一层灰底就是「药丸 + 方块」两块
    （跟声调那排同一个毛病）。悬停只把字提亮，且不能盖掉当前这一节的反白字。
@@ -2417,8 +2419,7 @@ html { scroll-behavior: smooth; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .toc-link { transition: none; }
-  .toc-link:active { transform: none; }
+  .toc-link.sink { animation: none; }
   .tut-sec > h2.arrive { animation: none; }
   /* JS 在减少动效时不会再藏标题，这条是兜底：万一被藏住了也要能看见 */
   .tut-sec > h2.arrive-hidden { opacity: 1; }
@@ -4493,6 +4494,16 @@ if (typeof window !== 'undefined') window.Seg = Seg;
     return node;
   }
 
+  /** 目录点一下「字往下沉」：用点击后跑的动画，不用 :active（触控板轻点只闪一两帧） */
+  function sinkTap(node) {
+    if (!node || (window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    node.classList.remove('sink');
+    void node.offsetWidth;          // 连点同一项也要能重头跑
+    node.classList.add('sink');
+    setTimeout(() => node.classList.remove('sink'), 300);
+  }
+
   /**
    * 把一行登记进搜索索引。匹配规则本身在 tutorial-search.js 里（纯逻辑、可测）。
    * 手写行（尾辅音那几行）也要走这里，不然搜索会取不到这些字段。
@@ -4877,7 +4888,10 @@ if (typeof window !== 'undefined') window.Seg = Seg;
       const link = el('a', 'toc-link', sec.dataset.title);
       link.href = `#${sec.id}`;
       // 不拦默认行为：让浏览器带着 scroll-margin-top 平滑滚过去（CSS 里开了 smooth）
-      link.addEventListener('click', () => arriveAt(sec));
+      link.addEventListener('click', () => {
+        sinkTap(link);
+        arriveAt(sec);
+      });
       host.append(link);
     }
     tocLinks = [...host.querySelectorAll('.toc-link')];

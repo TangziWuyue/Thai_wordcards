@@ -39,6 +39,16 @@
     return node;
   }
 
+  /** 目录点一下「字往下沉」：用点击后跑的动画，不用 :active（触控板轻点只闪一两帧） */
+  function sinkTap(node) {
+    if (!node || (window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    node.classList.remove('sink');
+    void node.offsetWidth;          // 连点同一项也要能重头跑
+    node.classList.add('sink');
+    setTimeout(() => node.classList.remove('sink'), 300);
+  }
+
   /**
    * 把一行登记进搜索索引。匹配规则本身在 tutorial-search.js 里（纯逻辑、可测）。
    * 手写行（尾辅音那几行）也要走这里，不然搜索会取不到这些字段。
@@ -423,7 +433,10 @@
       const link = el('a', 'toc-link', sec.dataset.title);
       link.href = `#${sec.id}`;
       // 不拦默认行为：让浏览器带着 scroll-margin-top 平滑滚过去（CSS 里开了 smooth）
-      link.addEventListener('click', () => arriveAt(sec));
+      link.addEventListener('click', () => {
+        sinkTap(link);
+        arriveAt(sec);
+      });
       host.append(link);
     }
     tocLinks = [...host.querySelectorAll('.toc-link')];

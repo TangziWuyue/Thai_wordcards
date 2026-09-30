@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T12:56:16.244Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-09-30T13:01:06.588Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -1169,13 +1169,19 @@ html.js .js-fallback { display: none; }
 .tone .name { font-size: 11px; color: var(--muted); }
 .tone[aria-pressed="true"] .name { color: var(--inv-fg); opacity: 0.7; }
 
-/* 按下去的那一下，字往下沉一点点（选中态的底色不动）——
-   手感跟滑块组件一致：背景是滑块在动，字只是跟着「按一下」。
-   两个子元素都是 flex item（能 transform），不用额外包一层。 */
-.tone .mark, .tone .name { transition: transform 0.09s ease; }
+/* 点一下让「字」往下沉一点点（选中态的底色不动），手感跟滑块组件一致。
+   注意：这里用点击后跑的动画（.sink 由 app.js 加），**不要用 :active**——
+   :active 只在「按住」那一小会儿生效，触控板轻点（tap to click）只闪一两帧，
+   看上去像没反应（用户拿 MacBook 试出来的，滑块那套就没这问题，因为它也是点击后跑的动画）。 */
+@keyframes sinkTap {
+  0% { transform: none; }
+  45% { transform: translateY(1px) scale(0.94); }
+  100% { transform: none; }
+}
 
-.tone:not(:disabled):active .mark,
-.tone:not(:disabled):active .name { transform: translateY(1px) scale(0.94); }
+.tone.sink .mark,
+.tone.sink .name,
+.chip.sink .chip-in { animation: sinkTap 0.24s ease; }
 
 /* ── 按钮 ───────────────────────────────── */
 .actions {
@@ -1358,10 +1364,9 @@ kbd {
 
 .chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
 
-/* 字块里的字单独一层：按下去只让字沉一点，选中态的深色药丸纹丝不动 */
-.chip-in { display: inline-flex; align-items: center; transition: transform 0.09s ease; }
-
-.chip:active .chip-in { transform: translateY(1px) scale(0.94); }
+/* 字块里的字单独一层：点一下只让字沉一点（.sink 动画见上面），
+   选中态的深色药丸纹丝不动 */
+.chip-in { display: inline-flex; align-items: center; }
 
 .vowel-chip { font-size: 15px; min-width: 32px; }
 
@@ -1802,10 +1807,7 @@ html.js body { animation: pageIn 0.22s ease; }
   .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
   .seg-thumb { transition: none; }
   .btn:active { transform: none; }
-  .tone .mark, .tone .name, .chip-in { transition: none; }
-  .tone:not(:disabled):active .mark,
-  .tone:not(:disabled):active .name,
-  .chip:active .chip-in { transform: none; }
+  .tone.sink .mark, .tone.sink .name, .chip.sink .chip-in { animation: none; }
   .btn, body { transition: none; }
   html.page-leaving body { opacity: 1; }
 }
@@ -3851,10 +3853,12 @@ if (typeof window !== 'undefined') window.Seg = Seg;
     pressTimer = null;
   }
 
-  function chip(content, pressed, tipData, extraClass, onClick) {
+  function chip(content, pressed, tipData, extraClass, onClick, key) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = extraClass ? `chip ${extraClass}` : 'chip';
+    // 记一下这一块代表哪个字母/元音，syncChipStates() 靠它对号入座
+    if (key) btn.dataset.key = key;
     // 字块里的字单独包一层：按下去时只让「字」往下沉一点，不影响选中态的底色
     const inner = document.createElement('span');
     inner.className = 'chip-in';
@@ -3922,16 +3926,16 @@ if (typeof window !== 'undefined') window.Seg = Seg;
           if (fixed) {
             // 固定模式：点一下选它，再点一下取消（可以只留元音，或者什么都不留）
             state.fixedOnset = state.fixedOnset === c.ch ? null : c.ch;
-            buildConsonants();
+            syncChipStates();
             applyFixed();
             save();
             return;
           }
           if (state.consonants.has(c.ch)) state.consonants.delete(c.ch);
           else state.consonants.add(c.ch);
-          buildConsonants();
+          syncChipStates();
           save();
-        }));
+        }, c.ch));
       }
       el.consonants.append(head, row);
     }
@@ -4088,6 +4092,20 @@ if (typeof window !== 'undefined') window.Seg = Seg;
     setTimeout(() => node.classList.remove('in'), 300);
   }
 
+  /**
+   * 声调 / 词表字块点一下「字往下沉」。
+   * 不能用 CSS 的 :active——它只在「按住」的那一小会儿生效，触控板轻点（tap to click）
+   * 那一下就闪一两帧，看上去像没反应（用户拿 MacBook 试出来的）。
+   * 改成点击之后自己跑一次动画：轻触、按住都能看到，跟分段控件是同一套节拍。
+   */
+  function sinkTap(node) {
+    if (!node || prefersReducedMotion()) return;
+    node.classList.remove('sink');
+    void node.offsetWidth;          // 连点同一项也要能重头跑
+    node.classList.add('sink');
+    setTimeout(() => node.classList.remove('sink'), 300);
+  }
+
   /** 把还没落定的那次卡片过渡立刻做完（连点模式 / 档位时用，免得停在半路） */
   function settleSwap() {
     if (!pendingSwap) return;
@@ -4200,16 +4218,34 @@ if (typeof window !== 'undefined') window.Seg = Seg;
       if (state.mode === 'fixed') {
         // 固定模式：点一下选它，再点一下取消（可以只留辅音，或者什么都不留）
         state.fixedVowelId = state.fixedVowelId === v.id ? null : v.id;
-        buildVowels();
+        syncChipStates();
         applyFixed();
         save();
         return;
       }
       if (state.vowels.has(v.id)) state.vowels.delete(v.id);
       else state.vowels.add(v.id);
-      buildVowels();
+      syncChipStates();
       save();
-    });
+    }, v.id);
+  }
+
+  /**
+   * 只更新字块的选中态，**不重建节点**。
+   * 原来点一下就 buildConsonants()/buildVowels() 整列重建：刚点的那一块当场被换掉，
+   * 点击动画（.sink）根本没机会播完（用户报「轻触看不到下沉」有一半是这个原因）。
+   * 顺便也少了一堆无谓的重排。
+   */
+  function syncChipStates() {
+    const fixed = state.mode === 'fixed';
+    for (const btn of el.consonants.querySelectorAll('.chip')) {
+      const ch = btn.dataset.key;
+      btn.setAttribute('aria-pressed', String(fixed ? state.fixedOnset === ch : state.consonants.has(ch)));
+    }
+    for (const btn of el.vowels.querySelectorAll('.chip')) {
+      const id = btn.dataset.key;
+      btn.setAttribute('aria-pressed', String(fixed ? state.fixedVowelId === id : state.vowels.has(id)));
+    }
   }
 
   // ── 字体与外观 ──────────────────────────────────────────────────────
@@ -4890,6 +4926,14 @@ if (typeof window !== 'undefined') window.Seg = Seg;
   el.vowelAll.addEventListener('click', () => setAllVowels(true));
   el.vowelNone.addEventListener('click', () => setAllVowels(false));
   el.modeBtn.addEventListener('click', () => setMode(currentMode() === 'fixed' ? 'random' : 'fixed'));
+
+  // 声调 / 词表字块：点一下让「字」沉一下。挂在捕获阶段，
+  // 免得被字块自己的长按拦截（那条会 preventDefault）影响
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    const node = target && target.closest ? target.closest('.tone, .chip') : null;
+    if (node) sinkTap(node);
+  }, true);
 
   const bindings = [
     [el.optClusters, 'allowClusters'],
