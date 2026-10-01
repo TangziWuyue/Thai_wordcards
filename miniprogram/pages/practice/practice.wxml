@@ -1,0 +1,62 @@
+<view class="page">
+  <view class="card">
+    <text class="syl">{{syl}}</text>
+    <text class="roman">{{roman}}</text>
+    <view class="hit">
+      <text class="badge {{real ? 'real' : 'plain'}}">{{real ? '真词' : '无义'}}</text>
+      <text class="gloss" wx:if="{{gloss}}">{{gloss}}</text>
+    </view>
+    <view class="parts">
+      <view class="part" wx:for="{{parts}}" wx:key="label">
+        <text class="plabel">{{item.label}}</text>
+        <text class="ptext">{{item.text}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="tones">
+    <view
+      wx:for="{{tones}}" wx:key="id"
+      class="tone {{item.on ? 'on' : ''}} {{item.disabled ? 'off' : ''}}"
+      data-id="{{item.id}}" bindtap="pickTone">
+      <text>{{item.label}}</text>
+    </view>
+  </view>
+
+  <view class="actions">
+    <button class="btn primary" bindtap="randomize">随机组合</button>
+    <button class="btn" disabled="{{!canPlay}}" bindtap="play">播放发音</button>
+  </view>
+
+  <view class="ranges">
+    <view
+      wx:for="{{ranges}}" wx:key="id"
+      class="range {{range === item.id ? 'on' : ''}}"
+      data-id="{{item.id}}" bindtap="pickRange">{{item.label}}</view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-head">
+      <text class="label">辅音</text>
+      <view class="mini-group">
+        <text class="mini" bindtap="allCons">全选</text>
+        <text class="mini" bindtap="noneCons">全不选</text>
+      </view>
+    </view>
+    <view class="chips">
+      <view wx:for="{{consOn}}" wx:key="ch" class="chip {{item.on ? 'on' : ''}}"
+            data-ch="{{item.ch}}" bindtap="toggleCons">{{item.ch}}</view>
+    </view>
+    <view class="panel-head">
+      <text class="label">元音</text>
+      <view class="mini-group">
+        <text class="mini" bindtap="allVowels">全选</text>
+        <text class="mini" bindtap="noneVowels">全不选</text>
+      </view>
+    </view>
+    <view class="chips">
+      <view wx:for="{{vowelOn}}" wx:key="id" class="chip vowel {{item.on ? 'on' : ''}}"
+            data-id="{{item.id}}" bindtap="toggleVowel">{{item.label}}</view>
+    </view>
+  </view>
+</view>

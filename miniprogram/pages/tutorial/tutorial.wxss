@@ -1,0 +1,3 @@
+.page { padding: 24rpx; }
+.title { display: block; font-size: 34rpx; margin-bottom: 16rpx; }
+.desc { color: var(--muted); font-size: 28rpx; line-height: 1.8; }

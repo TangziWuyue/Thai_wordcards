@@ -1,0 +1,45 @@
+page {
+  --bg: #f5f5f5;
+  --card: #ffffff;
+  --fg: #404040;
+  --muted: #6b6b6b;
+  --line: #e5e5e5;
+  --soft: #ececec;
+  --inv-bg: #525252;
+  --inv-fg: #fafafa;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 28rpx;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 24rpx;
+  padding: 32rpx 28rpx;
+  box-sizing: border-box;
+}
+
+.btn {
+  background: var(--card);
+  color: var(--fg);
+  border: 2rpx solid var(--line);
+  border-radius: 20rpx;
+  font-size: 30rpx;
+  line-height: 2.6;
+  text-align: center;
+}
+
+.btn.primary {
+  background: var(--inv-bg);
+  color: var(--inv-fg);
+  border-color: var(--inv-bg);
+}
+
+.btn[disabled] {
+  color: #b5b5b5;
+  background: var(--card);
+  border-color: var(--line);
+}
+
+.muted { color: var(--muted); }
+.small { font-size: 24rpx; }

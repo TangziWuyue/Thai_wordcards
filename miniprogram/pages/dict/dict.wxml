@@ -1,0 +1,6 @@
+<view class="page">
+  <view class="card">
+    <text class="title">词汇页（下一个里程碑）</text>
+    <text class="desc">5,393 条带发音的词会在这里按字母/常用度浏览，点了直接播放。</text>
+  </view>
+</view>

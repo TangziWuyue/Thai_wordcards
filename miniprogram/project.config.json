@@ -1,0 +1,17 @@
+{
+  "description": "泰语拼读练习 · 小程序",
+  "miniprogramRoot": "./",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "appid": "touristappid",
+  "projectname": "thai-wordcards",
+  "compileType": "miniprogram",
+  "libVersion": "3.5.5",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "minified": true,
+    "urlCheck": false,
+    "postcss": true
+  },
+  "condition": {}
+}

@@ -1,0 +1,51 @@
+.page { padding: 24rpx; }
+
+.syl {
+  display: block;
+  font-size: 120rpx;
+  line-height: 1.5;
+  text-align: center;
+  min-height: 180rpx;
+}
+
+.roman { display: block; text-align: center; color: var(--muted); font-size: 30rpx; }
+
+.hit { display: flex; align-items: center; justify-content: center; gap: 16rpx; height: 72rpx; margin-top: 8rpx; }
+.badge { font-size: 24rpx; padding: 4rpx 18rpx; border-radius: 999rpx; }
+.badge.real { background: var(--inv-bg); color: var(--inv-fg); }
+.badge.plain { background: var(--soft); color: var(--muted); }
+.gloss { color: var(--muted); font-size: 28rpx; }
+
+.parts { min-height: 136rpx; margin-top: 12rpx; }
+.part { display: flex; gap: 16rpx; font-size: 26rpx; line-height: 1.8; }
+.plabel { color: var(--muted); flex: 0 0 96rpx; }
+.ptext { color: var(--fg); }
+
+.tones { display: flex; gap: 12rpx; margin: 24rpx 0 8rpx; }
+.tone {
+  flex: 1; text-align: center; padding: 16rpx 0; border-radius: 16rpx;
+  background: var(--soft); color: var(--fg); font-size: 30rpx;
+}
+.tone.on { background: var(--inv-bg); color: var(--inv-fg); }
+.tone.off { color: #b5b5b5; }
+
+.actions { display: flex; gap: 16rpx; margin-top: 16rpx; }
+.actions .btn { flex: 1; }
+
+.ranges { display: flex; gap: 12rpx; margin-top: 16rpx; }
+.range { flex: 1; text-align: center; padding: 14rpx 0; border-radius: 16rpx; background: var(--soft); color: var(--muted); }
+.range.on { background: var(--inv-bg); color: var(--inv-fg); }
+
+.panel { margin-top: 24rpx; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; margin: 20rpx 0 10rpx; }
+.label { font-size: 28rpx; color: var(--fg); }
+.mini-group { display: flex; gap: 20rpx; }
+.mini { font-size: 26rpx; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.chip {
+  width: 84rpx; height: 84rpx; line-height: 84rpx; text-align: center;
+  border-radius: 16rpx; background: var(--card); border: 2rpx solid var(--line);
+  font-size: 40rpx; color: var(--muted);
+}
+.chip.vowel { width: auto; padding: 0 20rpx; font-size: 30rpx; line-height: 80rpx; }
+.chip.on { background: var(--inv-bg); color: var(--inv-fg); border-color: var(--inv-bg); }
