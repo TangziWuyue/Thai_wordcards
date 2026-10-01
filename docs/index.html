@@ -1,6 +1,6 @@
 <!--
   泰语组合练习（单文件版）
-  由 web/build-standalone.mjs 生成于 2026-09-30T13:09:09.107Z，请勿手改；
+  由 web/build-standalone.mjs 生成于 2026-10-01T04:45:13.173Z，请勿手改；
   改源码后重新执行：node web/build-standalone.mjs
   字体：Sarabun / Noto Serif Thai / Noto Sans SC，SIL OFL 1.1，版权见 web/fonts/NOTICE.md
   用法：双击打开即可，不需要联网、不需要安装字体。
@@ -4295,6 +4295,9 @@ if (typeof window !== 'undefined') window.Seg = Seg;
       // 状态和按钮立刻更新：过渡那 150ms 里按空格随机、或者刷新，都得按新档位来
       state.range = id;
       syncRange();
+      // 提示行讲的是「这一档怎么拼」，必须当场跟着换；
+      // 之前只有 renderSettings() 末尾和词库加载完才调，切档后提示会停在上一档
+      applyRangeHint();
       // 选到「常用词」就顺手把词表取回来，不然第一次点随机组合还得现等；
       // 取完（或失败）都要重画一次提示，因为提示文案跟「词库好没好」有关
       if (id === 'common') {
@@ -5075,10 +5078,10 @@ if (typeof window !== 'undefined') window.Seg = Seg;
   const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
   const WHATS_NEW = {
     // 版本号同时是 localStorage 的 key：改它老用户才会再看到一次通知。
-    version: '2.1.3',
+    version: '3.0.0',
     items: [
-      '手机上点过的控件不再留一层灰底；声调、词表字块、教学页目录按下去会往下沉一点。',
-      '固定模式下按不动的那一半改成同色灰字；词表、选项、辞典展开收起的结尾不再卡一下。',
+      '切换「组合范围」（任意 / 按规则 / 常用词）时，下面的说明会立刻跟着换了。',
+      '全量穷举、压力测试和真实浏览器点击复测后的其他修正；教学页内容与外部资料核对无误。',
     ],
   };
 
