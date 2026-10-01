@@ -33,8 +33,9 @@
     note: () => '',
   };
 
-  // 内置发音（AI 合成 + 声调校正）：清单里命中就播音频，没命中回退系统语音。
-  // audio.js 没加载出来（旧缓存等）时 A 为 null，功能静默回退。
+  // 内置发音（AI 合成 + 声调校正）：只有清单里有的真词才发音；
+  // 无义音节没有音频，「播放发音」按钮直接灰掉（不再用系统 TTS 兜底）。
+  // audio.js 没加载出来（旧缓存等）时 A 为 null，发音功能整体不可用。
   const A = window.ThaiAudio || null;
   let audioReady = false;
 
@@ -992,6 +993,20 @@
     num: '数', cls: '量', intj: '叹', fn: '虚词', x: '其它',
   };
 
+  /** 当前卡片有没有内置发音；没有（无义音节）就把「播放发音」灰掉，跟固定模式禁用按钮一个样式 */
+  function updateSpeakBtn() {
+    const text = currentText();
+    const has = !!(A && A.has(text));
+    el.speakBtn.disabled = !has;
+    if (has) {
+      el.speakBtn.title = '播放内置发音（AI 合成 + 声调校正）';
+    } else if (D.isWord(text)) {
+      el.speakBtn.title = '这个词没有内置发音';
+    } else {
+      el.speakBtn.title = '无义音节没有发音，先自己读';
+    }
+  }
+
   /** 卡片上现在是哪段泰文；还没生成时就是打招呼的那个词 */
   function currentText() {
     if (state.parts) return R.assemble(state.parts);
@@ -1051,6 +1066,7 @@
   /** 索引没加载好时不显示结论，加载完再重绘一次当前卡片 */
   function updateDictHit() {
     if (A) A.warm(currentText());   // 提前缓冲当前词的发音（没有就算了）
+    updateSpeakBtn();
     if (D.isWord(currentText()) === null) {
       // 这一行始终占位（见 style.css 里的 min-height），内容空着也不会让页面跳
       setChildren(el.dictHit);
@@ -1215,75 +1231,28 @@
     if (state.autoSpeak) speak();
   }
 
-  let thaiVoice = null;
-
+  /** 页脚发音状态：只用内置发音（不再使用系统 TTS 兜底） */
   function refreshVoices() {
-    if (audioReady) {
-      const n = (window.ThaiAudioData && window.ThaiAudioData.count) || 0;
-      el.voiceInfo.textContent = n
-        ? `语音：内置发音 ${n} 条（AI 合成）`
-        : '语音：内置发音（AI 合成）';
-      el.voiceInfo.title = '真词（含辞典里的词）用内置发音；随机生成的无义音节回退到本机系统语音。';
+    if (!A) {
+      el.voiceInfo.textContent = '语音：发音模块没加载出来';
+      el.voiceInfo.title = '页面缺少 audio.js，刷新一次试试';
       return;
     }
-    if (!('speechSynthesis' in window)) {
-      el.voiceInfo.textContent = '语音：当前浏览器不支持朗读';
-      return;
-    }
-    const voices = window.speechSynthesis.getVoices() || [];
-    thaiVoice = voices.find((v) => /^th([-_]|$)/i.test(v.lang)) || null;
-    if (thaiVoice) {
-      el.voiceInfo.textContent = `语音：${thaiVoice.name}（${thaiVoice.lang}）`;
-      el.voiceInfo.title = '';
-    } else if (voices.length) {
-      el.voiceInfo.textContent = '语音：未找到泰语语音，无法发音';
-      el.voiceInfo.title = '安装泰语语音：Windows → 设置 → 时间和语言 → 语言和区域 → 给泰语添加语音包；'
-        + 'macOS → 系统设置 → 辅助功能 → 朗读内容 → 系统声音 → 管理声音 → 下载泰语；'
-        + 'iPhone → 设置 → 辅助功能 → 朗读内容 → 声音 → 泰语';
-    } else {
-      el.voiceInfo.textContent = '语音：加载中…';
-    }
+    const n = (window.ThaiAudioData && window.ThaiAudioData.count) || 0;
+    el.voiceInfo.textContent = audioReady
+      ? `语音：内置发音 ${n} 条（AI 合成）`
+      : '语音：内置发音加载中…';
+    el.voiceInfo.title = audioReady
+      ? '真词（卡片标「真词」的词、辞典里的词）可以发音；无义音节没有发音，按钮是灰的。'
+      : '';
   }
 
-  /** 系统语音兜底：内置音频里没有这个词时用；没装泰语语音就把原因写在页脚 */
-  function fallbackSpeak(text) {
-    if (!text) return;
-    if (!('speechSynthesis' in window)) {
-      el.voiceInfo.textContent = '语音：当前浏览器不支持朗读';
-      return;
-    }
-    refreshVoices();  // 语音列表是异步加载的，点之前先刷一遍
-    if (!thaiVoice) {
-      // 安卓常见：系统没装泰语语音包，说了也是静音或乱读，不如直接说清楚
-      el.voiceInfo.textContent = '语音：这台设备没有泰语语音，暂时无法发音';
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'th-TH';
-    utter.rate = 0.75;
-    utter.voice = thaiVoice;
-    window.speechSynthesis.speak(utter);
-  }
-
-  /** 朗读一段泰文：优先内置音频（AI 合成 + 声调校正），没有就回退系统语音 */
+  /** 只有内置音频才发音；无义音节没有音频，播放按钮本来就是灰的 */
   function speakText(text) {
-    if (!text) return;
-    if (A && A.has(text)) {
-      A.play(text).catch(() => fallbackSpeak(text));
-      return;
-    }
-    if (A && !audioReady) {
-      // 清单还没加载完：等它一下，命中就播，否则用系统语音
-      A.ready().then((ok) => {
-        audioReady = ok;
-        refreshVoices();
-        if (ok && A.has(text)) A.play(text).catch(() => fallbackSpeak(text));
-        else fallbackSpeak(text);
-      });
-      return;
-    }
-    fallbackSpeak(text);
+    if (!text || !A || !A.has(text)) return;
+    A.play(text).catch(() => {
+      el.voiceInfo.textContent = '语音：音频没加载出来（把 audio 文件夹和页面放在一起）';
+    });
   }
 
   function speak() {
@@ -1433,6 +1402,8 @@
       randomize();
     } else if (event.key === 'Enter') {
       event.preventDefault();
+      // 无义音节时「播放发音」是灰的，键盘这条路也要拦住（跟空格键同理）
+      if (el.speakBtn.disabled) return;
       pulseButton(el.speakBtn);
       speak();
     }
@@ -1451,7 +1422,7 @@
     {
       sel: '.card',
       title: '卡片',
-      text: '点「随机组合」生成音节。标「真词」的是真实存在的词。',
+      text: '点「随机组合」生成音节。标「真词」的是真实存在的词，可以播放发音；无义音节不发音。',
     },
     {
       sel: '.split',
@@ -1625,11 +1596,8 @@
       A.ready().then((ok) => {
         audioReady = ok;
         refreshVoices();
+        updateSpeakBtn();
       });
-    }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
-      setTimeout(refreshVoices, 600);
     }
     // 跳到教学页时先淡出一下，别硬切（pagefx.js，两边共用）
     if (window.PageFX) window.PageFX.setup();
