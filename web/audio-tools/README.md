@@ -33,8 +33,10 @@ uv run --with edge-tts --with numpy --with soundfile --with praat-parselmouth \
 # 3. 生成主项目用的清单（写 web/data/audio.js）
 node web/audio-tools/make-manifest.mjs
 
-# 4. 音频放进部署目录（docs/audio 是提交进仓库的产物；web/audio 是指向它的软链接）
-mkdir -p docs/audio && cp .work/audio/*.mp3 docs/audio/
+# 4. 音频放进 web/audio（源目录，真实目录不要用软链接）与部署目录 docs/audio
+mkdir -p web/audio docs/audio
+cp .work/audio/*.mp3 web/audio/
+cp .work/audio/*.mp3 docs/audio/
 
 # 5. 重新打包（会内联清单，并把音频同步到 dist/audio）
 node web/build-standalone.mjs

@@ -96,7 +96,7 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 - 辞典数据由 `node web/dict/build-dict.mjs` 生成（需要联网，原始语料缓存在 `web/dict/.cache/`，不入库），产物 `web/data/dict.js` 入库。**改辞典要重跑构建脚本**；字体子集的取字范围包含 `data/dict.js`，所以**改完辞典还要重跑一次字体子集**。
 - **单词发音（3.1.0 起）**：常用词 ∪ 随机模式可拼真词共 **5,393 条**音频，规格与生成步骤见 `web/audio-tools/README.md`；三条硬约定：
   1. **音调按拼读规则校正**：声调来源优先辞典 IPA（`toneFromIPA`），没有 IPA 才用规则引擎 `spokenTone()`；曲线只铺「元音核心」（强度 > 75% 峰值）、幅度 ×1.25，五个调的目标曲线写死在 `web/audio-tools/generate.py` 的 `TARGET` 里（用户听过验收的 D 版：第2调 −3→−5.8、第3调 +6.9→−8.1、第4调 +2.5→+6.5、第5调 −4.75→+4.4）。**改曲线要重跑全量并重新试听**。
-  2. **文件位置**：音频产物在 `docs/audio/`（入库、Pages 直接服务），`web/audio` 是指向 `../docs/audio` 的软链接（本地调试用），`dist/audio/` 由打包脚本同步；清单 `web/data/audio.js`（约 180KB）由脚本生成，**不要手改**。`web/audio.js` 是播放器：清单命中就播 `<audio>`；**没命中（无义音节）时 `app.js` 把「播放发音」按钮 `disabled` 灰掉，键盘回车也拦掉——3.1.0 起已彻底移除系统 TTS 兜底**，不要再把 `speechSynthesis` 加回来。
+  2. **文件位置**：`web/audio/` 是**真实目录**（源，5,393 条 mp3），`docs/audio/` 是提交进仓库的部署产物（Pages 直接服务），`dist/audio/` 由打包脚本同步；**不要用软链接**——内置浏览器 / WKWebView 在 `file://` 下不跟随指向父目录的软链接，双击 `web/index.html` 会报「音频没加载出来」（踩过）。清单 `web/data/audio.js`（约 180KB）由脚本生成，**不要手改**。`web/audio.js` 是播放器：清单命中就播 `<audio>`；**没命中（无义音节）时 `app.js` 把「播放发音」按钮 `disabled` 灰掉，键盘回车也拦掉——3.1.0 起已彻底移除系统 TTS 兜底**，不要再把 `speechSynthesis` 加回来。
   3. **新增词要重新生成**：改辞典/常用词后跑 `web/audio-tools` 四步（见该目录 README），再 `node web/build-standalone.mjs` 重新打包；音频变了以后 `?v=` 不用动（清单在 HTML 里内联，音频 URL 带文件名）。
 - 单文件版由 `node web/build-standalone.mjs` **一次生成两个页面 × 两个目录**，字体与辞典数据全部内联：
 
