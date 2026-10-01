@@ -1,6 +1,0 @@
-<view class="page">
-  <view class="card">
-    <text class="title">教学页（下一个里程碑）</text>
-    <text class="desc">44 辅音 / 32 元音 / 尾辅音 / 声调规则的表格与讲解，数据已经在 core/tutorial-data.js 里，下一步移植到这里。</text>
-  </view>
-</view>

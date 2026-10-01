@@ -50,6 +50,10 @@ reports/              排查 / 测试记录（按发布版本号命名，见下�
 src/thai_wordcards/   Python 脚手架，暂无功能
 ```
 
+> **小程序已经拆到独立仓库**：`~/Projects/Thai_wordcards_miniprogram`
+> （GitHub `TangziWuyue/Thai_wordcards_miniprogram`，私有）。本仓库不再有小程序代码与
+> 相关工具；`web/` 仍是共享数据（规则引擎 / 教学数据 / 搜索规则 / 发音清单 / 辞典 / 音频）的**唯一来源**。
+
 ## 技术栈
 
 - 前端：原生 HTML/CSS/JS，无构建步骤、无第三方依赖；用普通 `<script>` 加载（不用 ES module），保证双击 `web/index.html` 也能打开。
@@ -82,6 +86,16 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 
 - **模式切换动画**（`app.js` 的 `swapCard()` / `setMode()` / `currentMode()`）：切随机/固定时卡片内容滑出 → 换内容 → 从另一侧滑入，只动 `opacity` / `transform`（卡片每行定高，动布局就会跳），并跳过 `prefers-reduced-motion`。模式按钮的 `.pulse` 是同一节拍的即时反馈。
   **连点必须先落定再开新的**：`state.mode` 要等动画结束（150ms）才更新，期间再点一次会算出同一个目标、第二次等于白点。所以 `setMode()` 开头会 `clearTimeout` + 立刻 `apply()` 上一次的待办，并且点击处理用的是 `currentMode()`（算的是「待办里的目标模式」，不是已生效的模式）。另外那条「已落定 → 这一次等于没动」的提前 return 里**要把 `swapping` 类摘掉**，否则卡片会卡在半透明状态。
+
+## 小程序（已迁到独立仓库）
+
+小程序代码在 `~/Projects/Thai_wordcards_miniprogram`（私有仓库），那边的 `AGENTS.md`
+记着小程序侧的约定（页面结构、tabBar 传参、云存储缓存、教学页搜索、暗色变量等）。
+
+从本仓库看只需要记住一条数据流：**`web/` 是共享数据的唯一来源**——
+`rules.js`、`tutorial-data.js`、`tutorial-search.js`、`data/audio.js`、`data/dict.js`、`audio/*.mp3`；
+改完这些之后，去小程序仓库跑 `node tools/pull-shared.mjs && node tools/sync.mjs` 拉齐，
+词库 / 音频有变还要重新上传云存储并把版本号 +1（步骤在小程序仓库 README）。
 
 ## 手工 / 自动测试注意事项
 
@@ -134,6 +148,9 @@ uv sync
 uv run thai-wordcards
 uv run python
 ```
+
+> 小程序（练习 / 教学 / 词汇三页）已拆到独立仓库 `~/Projects/Thai_wordcards_miniprogram`，
+> 运行、自测、云存储上传的命令都在那边的 README / AGENTS.md 里。
 
 ## 关键实现约定
 

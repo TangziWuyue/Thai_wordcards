@@ -221,6 +221,24 @@ dist/                     打包产物（在 .gitignore 里，不入库）
 src/thai_wordcards/       Python 脚手架，目前没有实际功能
 ```
 
+## 微信小程序
+
+小程序版（三个 tab：练习 / 教学 / 词汇）已经拆到**独立仓库**
+[TangziWuyue/Thai_wordcards_miniprogram](https://github.com/TangziWuyue/Thai_wordcards_miniprogram)
+（私有，本地在 `~/Projects/Thai_wordcards_miniprogram`），本仓库不再存放小程序代码。
+
+两个仓库的分工：
+
+- **本仓库**：网页版 + `web/` 里的共享数据（规则引擎 `rules.js`、教学数据 `tutorial-data.js`、
+  教学搜索 `tutorial-search.js`、发音清单 `data/audio.js`、辞典 `data/dict.js`），
+  以及那 5,393 条音频（`web/audio/`）。这里是**唯一数据源**；
+- **小程序仓库**：把这几个文件作为副本放在 `shared/`，用 `tools/sync.mjs` 生成小程序要用的
+  `core/`、`dist/miniprogram-dict.json` 和试听音频；主仓库数据更新后，在小程序仓库跑
+  `node tools/pull-shared.mjs && node tools/sync.mjs` 即可拉齐。
+
+小程序侧的搭建步骤、云存储上传命令、自测（26 项）与待办都写在小程序仓库的 README 里。
+历史记录见 [reports/小程序改造记录-2026-10-01.md](reports/小程序改造记录-2026-10-01.md)。
+
 ## 拼写规则与实现要点
 
 - 泰文的前引元音（เ แ โ ใ ไ）在 Unicode 里排在辅音**前面**，但显示在**左半边**，所以拼接顺序固定为
