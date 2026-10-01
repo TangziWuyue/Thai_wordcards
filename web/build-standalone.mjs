@@ -62,7 +62,7 @@ const PAGES = [
     name: '泰语组合练习',
     src: 'index.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css'],
-    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'pagefx.js', 'tour.js', 'seg.js', 'app.js'],
+    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'audio.js', 'data/audio.js', 'pagefx.js', 'tour.js', 'seg.js', 'app.js'],
   },
   {
     name: '泰语拼读入门',
@@ -157,6 +157,28 @@ try {
     }
     // 使用说明跟着产物目录走，发文件时两个一起发过去
     await fs.copyFile(GUIDE_SRC, path.join(target.dir, '使用说明.txt'));
+    // 发音音频：跟随产物目录（docs/ 是提交进仓库的部署目录，dist/ 是发人用的）
+    const audioSrc = path.join(WEB, 'audio');
+    let audioSrcOk = true;
+    try { await fs.access(audioSrc); } catch { audioSrcOk = false; }
+    if (audioSrcOk) {
+      const audioDst = path.join(target.dir, 'audio');
+      let same = false;
+      try { same = (await fs.realpath(audioSrc)) === (await fs.realpath(audioDst)); } catch { same = false; }
+      if (!same) {
+        await fs.mkdir(audioDst, { recursive: true });
+        const files = (await fs.readdir(audioSrc)).filter((f) => f.endsWith('.mp3'));
+        let copied = 0;
+        for (const f of files) {
+          const s = path.join(audioSrc, f);
+          const d = path.join(audioDst, f);
+          let need = true;
+          try { need = (await fs.stat(s)).size !== (await fs.stat(d)).size; } catch { need = true; }
+          if (need) { await fs.copyFile(s, d); copied += 1; }
+        }
+        if (copied) console.log(`  音频 ${audioDst.startsWith(ROOT) ? path.relative(ROOT, audioDst) : audioDst}：新增/更新 ${copied} 个（共 ${files.length}）`);
+      }
+    }
   }
   console.log('已生成各目录的 使用说明.txt');
 } catch (err) {

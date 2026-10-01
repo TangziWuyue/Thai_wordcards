@@ -33,6 +33,11 @@
     note: () => '',
   };
 
+  // 内置发音（AI 合成 + 声调校正）：清单里命中就播音频，没命中回退系统语音。
+  // audio.js 没加载出来（旧缓存等）时 A 为 null，功能静默回退。
+  const A = window.ThaiAudio || null;
+  let audioReady = false;
+
   const FONTS = [
     { id: 'sarabun', label: '标准体', sample: 'ก' },
     { id: 'serif', label: '印刷衬线', sample: 'ข' },
@@ -1045,6 +1050,7 @@
 
   /** 索引没加载好时不显示结论，加载完再重绘一次当前卡片 */
   function updateDictHit() {
+    if (A) A.warm(currentText());   // 提前缓冲当前词的发音（没有就算了）
     if (D.isWord(currentText()) === null) {
       // 这一行始终占位（见 style.css 里的 min-height），内容空着也不会让页面跳
       setChildren(el.dictHit);
@@ -1117,6 +1123,8 @@
     state.commonFallback = false;
     state.word = word;
     renderCard();
+    // 点辞典里的词就直接发音（有内置音频时）
+    if (A && A.has(word)) A.play(word).catch(() => { /* 浏览器拒绝播放时静默 */ });
     el.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
@@ -1210,6 +1218,14 @@
   let thaiVoice = null;
 
   function refreshVoices() {
+    if (audioReady) {
+      const n = (window.ThaiAudioData && window.ThaiAudioData.count) || 0;
+      el.voiceInfo.textContent = n
+        ? `语音：内置发音 ${n} 条（AI 合成）`
+        : '语音：内置发音（AI 合成）';
+      el.voiceInfo.title = '真词（含辞典里的词）用内置发音；随机生成的无义音节回退到本机系统语音。';
+      return;
+    }
     if (!('speechSynthesis' in window)) {
       el.voiceInfo.textContent = '语音：当前浏览器不支持朗读';
       return;
@@ -1229,8 +1245,8 @@
     }
   }
 
-  /** 朗读任意一段泰文；没装泰语语音时把原因写在页脚，而不是静默失败 */
-  function speakText(text) {
+  /** 系统语音兜底：内置音频里没有这个词时用；没装泰语语音就把原因写在页脚 */
+  function fallbackSpeak(text) {
     if (!text) return;
     if (!('speechSynthesis' in window)) {
       el.voiceInfo.textContent = '语音：当前浏览器不支持朗读';
@@ -1248,6 +1264,26 @@
     utter.rate = 0.75;
     utter.voice = thaiVoice;
     window.speechSynthesis.speak(utter);
+  }
+
+  /** 朗读一段泰文：优先内置音频（AI 合成 + 声调校正），没有就回退系统语音 */
+  function speakText(text) {
+    if (!text) return;
+    if (A && A.has(text)) {
+      A.play(text).catch(() => fallbackSpeak(text));
+      return;
+    }
+    if (A && !audioReady) {
+      // 清单还没加载完：等它一下，命中就播，否则用系统语音
+      A.ready().then((ok) => {
+        audioReady = ok;
+        refreshVoices();
+        if (ok && A.has(text)) A.play(text).catch(() => fallbackSpeak(text));
+        else fallbackSpeak(text);
+      });
+      return;
+    }
+    fallbackSpeak(text);
   }
 
   function speak() {
@@ -1584,6 +1620,13 @@
     if (state.mode === 'fixed') applyFixed();
     else renderCard();
     refreshVoices();
+    // 内置发音清单：加载成功后页脚改报「内置发音 N 条」
+    if (A) {
+      A.ready().then((ok) => {
+        audioReady = ok;
+        refreshVoices();
+      });
+    }
     if ('speechSynthesis' in window) {
       window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
       setTimeout(refreshVoices, 600);
