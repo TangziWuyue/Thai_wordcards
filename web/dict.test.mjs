@@ -10,6 +10,7 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -108,6 +109,18 @@ const segments = (zh) => String(zh || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
+// 反查会把同义词一起捞出来（喜爱 → 喜欢），而且是**串起来的**：查「爱」会命中释义「喜爱」，
+// 再顺着同义词表带出释义「喜欢」的词。所以「相不相干」要按这张表一起判，不只看字面。
+const SYNONYMS = JSON.parse(readFileSync(new URL('./dict/synonyms.json', import.meta.url), 'utf8'));
+const targetsOf = (seg) => {
+  const set = new Set([seg]);
+  for (const [key, value] of Object.entries(SYNONYMS)) {
+    if (key.includes(seg) || seg.includes(key)) set.add(value);
+    if (value.includes(seg) || seg.includes(value)) set.add(key);
+  }
+  return [...set];
+};
+
 test('辞典抽测：500 条的中文释义都能反查回它自己，且不返回不相干的词', async () => {
   await D.loadWords();
   const words = globalThis.ThaiDictData.words;
@@ -124,10 +137,11 @@ test('辞典抽测：500 条的中文释义都能反查回它自己，且不返�
     checked += 1;
     // 用最长的那个义项查（最具体，最不容易被别的词挤掉）
     const seg = segs.slice().sort((a, b) => b.length - a.length)[0];
-    const res = D.search(seg, 30);
+    const res = D.search(seg, 60);   // 机翻补进来之后同一个义项下的词多了，30 条会被挤掉
     if (!res.includes(entry)) missing.push(`${seg} 查不到 ${entry[0]}`);
+    const targets = targetsOf(seg);
     for (const hit of res) {
-      const ok = segments(hit[2]).some((s) => s === seg || s.includes(seg) || s.startsWith(seg));
+      const ok = segments(hit[2]).some((s) => targets.some((t) => s === t || s.includes(t) || s.startsWith(t)));
       if (!ok) wrong.push(`查「${seg}」返回了释义对不上的词：${hit[0]}(${hit[2]})`);
     }
   }

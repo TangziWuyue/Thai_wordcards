@@ -40,6 +40,9 @@ const TARGETS = [
     label: 'docs',
     dir: path.join(ROOT, 'docs'),
     names: { 'index.html': 'index.html', 'tutorial.html': 'tutorial.html' },
+    // docs/ 是给 GitHub Pages 部署的那一份，**不内联**：字体、词典、音频都按需加载 +
+    // 缓存，首屏从 2.5MB 降到几十 KB（国内网络下差别很大）。内联单文件版留给 dist/。
+    external: true,
   },
 ];
 
@@ -62,7 +65,7 @@ const PAGES = [
     name: '泰语组合练习',
     src: 'index.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css'],
-    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'audio.js', 'data/audio.js', 'pagefx.js', 'tour.js', 'seg.js', 'app.js'],
+    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'audio.js', 'data/audio.js', 'data/common.js', 'data/syllable-index.js', 'pagefx.js', 'tour.js', 'seg.js', 'app.js'],
   },
   {
     name: '泰语拼读入门',
@@ -148,12 +151,44 @@ async function buildPage(page, fontCache, target) {
 
 const fontCache = new Map();
 const kb = (n) => `${(n / 1024).toFixed(0)}KB`;
+
+/** 外链版要拷过去的文件（页面 + 样式 + 脚本 + 按需加载的数据） */
+const EXTERNAL_FILES = [
+  'index.html', 'tutorial.html',
+  'fonts.css', 'fonts-cjk.css', 'style.css', 'tutorial.css',
+  'rules.js', 'dict.js', 'audio.js', 'pagefx.js', 'tour.js', 'seg.js', 'app.js',
+  'tutorial-data.js', 'tutorial-search.js', 'tutorial.js',
+  'data/dict.js', 'data/audio.js', 'data/common.js', 'data/syllable-index.js',
+];
+
+/**
+ * 外链版：把 web/ 里那两个页面真正要用的文件原样摆进产物目录（不内联）。
+ * 两个页面在 docs/ 里的文件名和源码一致，所以不用改写链接；`?v=` 源码里已经带着。
+ */
+async function copyExternal(target) {
+  for (const rel of EXTERNAL_FILES) {
+    const dst = path.join(target.dir, rel);
+    await fs.mkdir(path.dirname(dst), { recursive: true });
+    await fs.copyFile(path.join(WEB, rel), dst);
+  }
+  const fontDir = path.join(WEB, 'fonts');
+  await fs.mkdir(path.join(target.dir, 'fonts'), { recursive: true });
+  for (const f of await fs.readdir(fontDir)) {
+    if (f.endsWith('.woff2')) await fs.copyFile(path.join(fontDir, f), path.join(target.dir, 'fonts', f));
+  }
+  console.log(`已生成 ${path.relative(ROOT, path.join(target.dir, 'index.html'))} 等外链版（页面 ${EXTERNAL_FILES.length} 个文件 + woff2）`);
+}
+
 try {
   for (const target of TARGETS) {
     await fs.mkdir(target.dir, { recursive: true });
-    for (const page of PAGES) {
-      const res = await buildPage(page, fontCache, target);
-      console.log(`已生成 ${path.relative(ROOT, res.outFile)}（内联字体 ${res.fontCount} 处，产物 ${kb(res.size)}）`);
+    if (target.external) {
+      await copyExternal(target);
+    } else {
+      for (const page of PAGES) {
+        const res = await buildPage(page, fontCache, target);
+        console.log(`已生成 ${path.relative(ROOT, res.outFile)}（内联字体 ${res.fontCount} 处，产物 ${kb(res.size)}）`);
+      }
     }
     // 使用说明跟着产物目录走，发文件时两个一起发过去
     await fs.copyFile(GUIDE_SRC, path.join(target.dir, '使用说明.txt'));

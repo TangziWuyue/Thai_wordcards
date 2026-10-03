@@ -1,0 +1,1237 @@
+/* 极简：只有黑白灰，不用阴影，线条只出现在卡片和分组处。
+   暗色由 <html data-theme="dark|light|auto"> 控制，auto 跟随系统。 */
+:root {
+  color-scheme: light;
+  /* 色板取 Tailwind 的 neutral（纯中性灰，不带任何色相）：
+     之前那套 stone 偏暖，手机上看发褐，用户说「太褐了」，所以回到无色相的灰。
+     要求：不用纯黑 / 纯白，正文 10:1 上下、次要文字 ≥4.5:1（旧版只有 3.3:1）。
+     角色：neutral-100 页底 / white 卡片 / neutral-700 正文 / 灰 500 一带的次要 /
+     neutral-200 线 / 更浅一档的浅底 / neutral-300 占位点 / neutral-600 主按钮 */
+  --bg: #f5f5f5;      /* 页底比卡片灰一档，白卡片才立得起来 */
+  --card: #fff;
+  --fg: #404040;      /* 正文：深灰，不用纯黑 */
+  --muted: #6b6b6b;   /* 次要文字：白底 5.3:1、灰底 4.9:1，都过 AA */
+  --line: #e5e5e5;
+  --soft: #ececec;    /* 浅底（分段控件槽、贴士框），比页底再深一点 */
+  --dot: #d4d4d4;
+  --inv-bg: #525252;  /* 主按钮：中深灰 */
+  --inv-fg: #fafafa;  /* 按钮上的字用米白，不用纯白 */
+  --inv-muted: #a3a3a3; /* 主按钮上的「灰字」：按不了的那一档用它（深底上仍然看得清） */
+  --radius: 14px;
+
+  /* 泰文字体只用打包进来的两种，不依赖系统是否装了泰文字体 */
+  --thai-sarabun: "Sarabun", sans-serif;
+  --thai-serif: "Noto Serif Thai", serif;
+  --thai: var(--thai-sarabun);
+
+  /* 界面中文用打包的 Noto Sans SC；中文没有的泰文字形落到打包的泰文字体上，
+     这样注释行里的泰文也不会去用系统字体 */
+  --ui: "Noto Sans SC", var(--thai), -apple-system, "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
+}
+
+html[data-font="sarabun"] { --thai: var(--thai-sarabun); }
+html[data-font="serif"] { --thai: var(--thai-serif); }
+
+html[data-theme="auto"] { color-scheme: light dark; }
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  /* 深端同样是无色相灰：neutral-900 页底 / neutral-800 卡片 /
+     neutral-200 正文（比纯白柔一点）/ neutral-400 次要 / neutral-700 线 */
+  --bg: #171717;
+  --card: #262626;
+  --fg: #e5e5e5;
+  --muted: #a3a3a3;
+  --line: #404040;
+  --soft: #333333;
+  --dot: #525252;
+  --inv-bg: #e5e5e5;  /* 深色模式下的「亮药丸」 */
+  --inv-fg: #171717;
+  --inv-muted: #808080;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    --bg: #171717;
+    --card: #262626;
+    --fg: #e5e5e5;
+    --muted: #a3a3a3;
+    --line: #404040;
+    --soft: #333333;
+    --dot: #525252;
+    --inv-bg: #e5e5e5;
+    --inv-fg: #171717;
+    --inv-muted: #808080;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* 手机上点一下，浏览器会自己铺一层灰高亮（浅色模式下特别明显，还会跟滑块、
+   选中底色叠成「两层底」）。整页关掉，按压反馈一律交给下面自己写的动画。
+   iOS 还认 -webkit-touch-callout：长按字块时别弹系统菜单（字块上已单独关过一次）。 */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--ui);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font: inherit; color: inherit; }
+
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 56px 20px 72px;
+}
+
+/* 单列：窄屏 / 竖屏 / 手机 */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); }
+
+.col-main, .col-side { min-width: 0; }
+
+/* ── 头部 ───────────────────────────────── */
+.notice {
+  margin: 0 0 28px;
+  padding: 14px 16px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.notice p { margin: 0 0 6px; }
+.notice p:last-child { margin-bottom: 0; }
+.notice-title { font-weight: 600; }
+.notice ul { margin: 6px 0; padding-left: 1.2em; }
+.notice li { margin: 2px 0; }
+
+/* 脚本跑起来了就不用看这段提示（head 里的脚本会给 html 加 .js） */
+html.js .js-fallback { display: none; }
+
+.head { margin-bottom: 28px; }
+
+.head h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* 标题右边放「拼读教学 →」这类跳转链接（练习页 ↔ 教学页） */
+.head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.head-link {
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: underline dotted;
+  white-space: nowrap;
+}
+
+/* 触屏上没有「悬停」，而手机点完会把 :hover 粘在元素上。浅色模式下一块灰底
+   留在那儿，看着就像控件自己多了一层底色（用户报过：滑块 / 面板 / 字块都有）。
+   所以所有 hover 效果只写给真的带指针的设备。 */
+@media (hover: hover) {
+  .head-link:hover { color: var(--fg); }
+}
+
+.head .sub {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ── 卡片 ───────────────────────────────── */
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  /* 音节的基础字号：取「视窗宽 vw」和「视窗高 vh」里较小的那个，横屏/矮屏也不会溢出 */
+  --syl-base: clamp(52px, min(17vw, 19vh), 104px);
+  /* 高度跟着视窗走：矮屏不会把卡片撑出屏幕，高屏也不会太空 */
+  min-height: clamp(190px, 32vh, 300px);
+  padding: 40px 24px 34px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  text-align: center;
+}
+
+.syllable {
+  margin: 0;
+  font-family: var(--thai);
+  /* --syl-scale 由 app.js 按音节长度设置：7 个码点的长组合在窄卡片上会折成两行，
+     折行会让卡片高度翻倍、整页跟着跳，所以字多的组合按比例缩小，永远占一行 */
+  font-size: calc(var(--syl-base) * var(--syl-scale, 1));
+  font-weight: 400;
+  /* 泰文字形上下都长（声调符号在上、ฎ ญ ฟ 这类有下伸部），
+     line-height 太小会让字形溢出到下面的注释行上 */
+  /* Sarabun 的行框约 1.51em（上伸部 1.06 + 下伸部 0.45），留得比它大才不会被压 */
+  line-height: 1.55;
+  /* 这一行的高度按「不缩放」的字号算：缩小的只是字形，行高不变，
+     这样音节长短不会改变卡片高度（否则下面还是会跳） */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--syl-base) * 1.55);
+  letter-spacing: 0.01em;
+  word-break: keep-all;
+  white-space: nowrap;
+}
+
+/* 不补位时孤立显示的组合符号：默认位置偏上，挪到卡片中间
+   （上方符号往下挪，ุ ู 这种下方符号往上挪） */
+.syllable .bare-mark {
+  display: inline-block;
+  transform: translateY(0.3em);
+}
+
+.syllable .bare-mark.below { transform: translateY(-0.42em); }
+
+/* ── 模式切换的衔接动画 ───────────────────────
+   随机 ↔ 固定切换时，卡片内容先滑出去、换好内容再滑进来，
+   新内容从切换方向的另一侧进场，看着像「翻到了另一面」。
+   卡片里每一行都是定高的，所以这里只用 opacity / transform，不碰布局。 */
+.card > * { transition: opacity 0.16s ease, transform 0.16s ease; }
+.card > *:nth-child(2) { transition-delay: 0.015s; }
+.card > *:nth-child(3) { transition-delay: 0.03s; }
+.card > *:nth-child(4) { transition-delay: 0.045s; }
+.card.swapping > * { opacity: 0; transform: translateX(var(--swap-x, 0px)); }
+
+/* 摆入场起点的那一瞬间不能有过渡，否则会被当成「滑过场」而不是「重新进来」 */
+.card.no-swap-anim > * { transition: none; }
+
+/* ⇄ 按下去时收一下，跟卡片换内容的节拍对上。
+   这里缩的是**整条控件**（不是 ⇄ 那一半）：⇄ 只缩自己的话，它外侧会缩进容器里，
+   把容器的底色露出来，看着像多了一条直角灰边（用户报过）。 */
+.split.pulse { animation: splitPulse 0.36s ease; }
+
+@keyframes splitPulse {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.965); }
+  100% { transform: scale(1); }
+}
+
+.split { transition: transform 0.09s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card > * { transition: none; }
+  .split.pulse { animation: none; }
+  .split { transition: none; }
+}
+
+.roman {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.parts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  /* 分解行按最高情况占位：普通音节是 1 行，但「辅音簇 + 尾辅音 + 声调例外 + 读音」
+     全凑齐时能到 5 行（80 字左右），按 5 行预留，避免被裁
+     （原来 68px = 4 行，加了「读音」和借词例外两段之后不够） */
+  min-height: 85px;
+  align-content: flex-start;
+}
+
+.parts span + span::before {
+  content: "·";
+  margin-right: 12px;
+  color: var(--dot);
+}
+
+.parts b {
+  font-weight: 500;
+  color: var(--fg);
+}
+
+/* ── 卡片上的「真词」提示 ─────────────────── */
+.dict-hit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px 8px;
+  margin: 0;
+  font-size: 13px;
+  /* 同理：这一行在「空 / 真词 / 真词 + 两行英文」之间变化，按最多的那种固定高度。
+     两栏布局下卡片会变窄、英文换行更多，所以留得比单栏宽裕一些 */
+  height: 68px;
+  align-content: flex-start;
+  overflow: hidden;
+}
+
+.dh-mark {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* 「无义」比「真词」弱一档：不是真词是常态，不该抢视线 */
+.dh-mark.plain {
+  background: transparent;
+  color: var(--muted);
+}
+
+.dh-zh { font-weight: 500; }
+
+.dh-en {
+  /* 英文释义最长 60 个字符，独占一行并最多显示两行——否则会把卡片撑破 */
+  flex: 1 1 100%;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.dh-pos {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ── 辞典：常用词，一次几个 ───────────────── */
+.dict-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.dict-word {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 6px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .dict-word:hover { background: var(--soft); }
+}
+
+.dw-thai {
+  flex: none;
+  min-width: 4.2em;
+  font-family: var(--thai);
+  /* 泰文字形上下都长，行高留够，免得和上下两行贴在一起 */
+  font-size: 19px;
+  line-height: 1.6;
+}
+
+.dw-meta {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 5.5em;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dw-pos {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.dw-zh {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.dw-en {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--muted);
+}
+
+.dw-en-tag {
+  margin-right: 5px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10px;
+  font-style: normal;
+}
+
+
+.dict-note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* .hint 是右对齐的，而且在本文件里排在后面，会盖掉这里的左对齐；
+   这两行是说明文字，用更具体的选择器压回去 */
+#dictPanel .dict-note,
+#dictPanel .dict-source {
+  text-align: left;
+}
+
+#dictPanel .dict-source {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--dot);
+}
+
+/* ── 分组标题 ───────────────────────────── */
+.block { margin-top: 28px; }
+
+.label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.label {
+  flex: none;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.row-end {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* 「全选 / 全不选」这类小操作按钮 */
+.mini {
+  padding: 2px 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .mini:hover { background: var(--soft); color: var(--fg); }
+}
+
+/* 固定模式下「全选 / 全不选」要藏起来，但**不能连高度一起收掉**：
+   这两个按钮撑起「辅音 / 元音」两行的行高（22px），一收就掉到 19px，
+   一切换模式整页下面所有内容都跟着上下跳。所以只是看不见，占位还在。 */
+.label-row .mini[hidden] {
+  display: inline-block;
+  visibility: hidden;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.tone-hint {
+  margin: 10px 0 0;
+  font-size: 11px;
+  text-align: left;
+  line-height: 1.5;
+  /* 这行说明时有时无（声调被禁用的原因、拼写规则提示、常用词兜底），
+     必须定高，否则它一出现一消失、或换行数变了，下面的按钮就跟着上下跳。
+     按三行预留：固定模式 + 按规则档下最长的一条是「必须带尾辅音 + 不写声调符号 +
+     只用中类辅音」三条叠一起，实测 390×844 下 86 个字、正好三行。
+     用 height 不是 min-height —— min-height 拦不住超长文案。 */
+  height: 4.5em;
+  overflow: hidden;
+}
+
+/* ── 声调 ───────────────────────────────── */
+.tones {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 2px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* 悬停不再铺底色：选中的背景已经交给滑块了，
+   再叠一层灰底就是「白药丸 + 灰方块」两块，看着像叠影（用户报过） */
+.tone:hover { background: transparent; }
+
+@media (hover: hover) {
+  .tone:hover:not([aria-pressed="true"]):not(:disabled) {
+    color: var(--fg);
+  }
+}
+
+.tone:hover:not([aria-pressed="true"]):not(:disabled) .name { color: var(--fg); }
+
+.tone[aria-pressed="true"] {
+  /* 背景交给滑块（.seg-thumb），这里只改字色 */
+  color: var(--inv-fg);
+}
+
+.tone:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.tone .mark {
+  font-family: var(--thai);
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.tone .name { font-size: 11px; color: var(--muted); }
+.tone[aria-pressed="true"] .name { color: var(--inv-fg); opacity: 0.7; }
+
+/* 点一下让「字」往下沉一点点（选中态的底色不动），手感跟滑块组件一致。
+   注意：这里用点击后跑的动画（.sink 由 app.js 加），**不要用 :active**——
+   :active 只在「按住」那一小会儿生效，触控板轻点（tap to click）只闪一两帧，
+   看上去像没反应（用户拿 MacBook 试出来的，滑块那套就没这问题，因为它也是点击后跑的动画）。 */
+@keyframes sinkTap {
+  0% { transform: none; }
+  45% { transform: translateY(1px) scale(0.94); }
+  100% { transform: none; }
+}
+
+.tone.sink .mark,
+.tone.sink .name,
+.chip.sink .chip-in { animation: sinkTap 0.24s ease; }
+
+/* ── 按钮 ───────────────────────────────── */
+.actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* 「随机组合」+「模式切换」合成一个按钮：中间一条细缝分开两个点击区 */
+.split {
+  display: flex;
+  gap: 1px;
+  background: var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.split .btn { border: 0; }
+
+/* 两半各带外侧的圆角：按下时的缩放动画只缩自己，
+   要是留着直角，容器（14px 圆角 + overflow: hidden）里就会顶出一个方角 */
+.split .split-main {
+  flex: 1;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.split .split-toggle {
+  padding: 13px 15px;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.split .split-toggle[aria-pressed="true"] {
+  background: var(--inv-bg);
+  color: var(--inv-fg);
+}
+
+.btn {
+  padding: 13px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  /* 按下 / 松开的那一下，跟 pulseTap 的节拍接得上 */
+  transition: transform 0.09s ease;
+}
+
+@media (hover: hover) {
+  .btn:hover { background: var(--soft); }
+}
+
+/* 按住的期间先收一点，点完再走 pulseTap */
+.btn:active { transform: scale(0.98); }
+
+.btn.primary {
+  background: var(--inv-bg);
+  border-color: var(--inv-bg);
+  color: var(--inv-fg);
+}
+
+@media (hover: hover) {
+  .btn.primary:hover { opacity: 0.86; }
+}
+
+/* 灰掉 = 真的不能按：没有按压反馈。
+   这一段必须排在 .btn.primary 后面——「固定模式」那个按钮是 .btn.primary，
+   排在前面的话 primary 的深色底会把这里的灰底盖掉，看着还像一个能按的按钮
+   （用户报「固定模式下摁下按钮仍有反馈」就是这一条）。 */
+.btn:disabled,
+.btn:disabled:hover,
+.btn.primary:disabled,
+.btn.primary:disabled:hover {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--muted);
+  opacity: 1;
+  cursor: default;
+}
+
+.btn:disabled:active { transform: none; }
+
+/* 「随机组合 + ⇄」是拼接控件，固定模式下左边那一半按不了：
+   底色跟 ⇄ 保持一致（整个控件还是同一块色），只用灰字表示「这一半不行」。
+   留白会像贴了一块白药丸、换成槽的浅灰又会显得两块拼在一起（用户两个都嫌丑）。 */
+.split .btn:disabled,
+.split .btn.primary:disabled,
+.split .btn:disabled:hover,
+.split .btn.primary:disabled:hover {
+  background: var(--inv-bg);
+  color: var(--inv-muted);
+}
+
+kbd {
+  margin-left: 8px;
+  padding: 1px 5px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--soft);
+  color: var(--muted);
+  font-family: var(--ui);
+  font-size: 10px;
+}
+
+.btn.primary kbd { background: rgba(127, 127, 127, 0.28); color: var(--inv-fg); }
+
+/* ── 折叠面板 ───────────────────────────── */
+.panel { margin-top: 32px; border-top: 1px solid var(--line); }
+
+.panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  list-style: none;
+}
+
+.panel summary::-webkit-details-marker { display: none; }
+
+.panel summary::after {
+  content: "+";
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.panel[open] summary::after { content: "−"; }
+
+.panel-body { padding: 4px 2px 20px; }
+
+/* 词库是「展开之后才联网取」的（2.3MB），取回来那一下会把面板顶高一大截。
+   加载期间先按 5 条常用词的量占好位置（实测 6 行 ≈ 297px），展开动画和内容到货就不会打架。 */
+.dict-list.loading { min-height: 300px; }
+
+
+.panel-body .label-row { margin-top: 18px; }
+.panel-body .label-row:first-child { margin-top: 0; }
+
+/* ── 字块 ───────────────────────────────── */
+/* 辅音三行（中/高/低类）是三个独立行，行与行之间的空隙要单独给 */
+#consonants { display: flex; flex-direction: column; gap: 6px; }
+
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  font-family: var(--thai);
+  font-size: 19px;
+  line-height: 1.2;
+  cursor: pointer;
+  /* 触屏：长按用来弹说明卡片，别触发选择/系统菜单 */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* 同样不在「选中的药丸」上再铺一层灰底：选中态的深色块由 aria-pressed 那条规则画。
+   只在带指针的设备上响应悬停：手机上点完 :hover 会粘住，浅色模式下就是一块去不掉的灰底。 */
+@media (hover: hover) {
+  .chip:hover:not([aria-pressed="true"]) { background: var(--soft); }
+}
+
+.chip[aria-pressed="true"] { background: var(--inv-bg); color: var(--inv-fg); }
+
+/* 字块里的字单独一层：点一下只让字沉一点（.sink 动画见上面），
+   选中态的深色药丸纹丝不动 */
+.chip-in { display: inline-flex; align-items: center; }
+
+.vowel-chip { font-size: 15px; min-width: 32px; }
+
+/* 组合符号的载体：加一个 อ 让符号落在正常位置。
+   这里不能把它变淡——组合符号会跟着一起变淡，字就看不清了。 */
+.ghost-base { opacity: 1; }
+
+/* 分组小标题（辅音的中/高/低类、元音的单元音/复合元音…共用一套） */
+.vowel-list { display: block; }
+
+.chip-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 14px 0 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.chip-group:first-child { margin-top: 0; }
+
+.chip-group b { font-weight: 600; color: var(--fg); }
+
+/* ── 分段选择（字体 / 外观）──────────────────────── */
+.tip {
+  position: absolute;
+  z-index: 40;
+  max-width: 280px;
+  padding: 12px 14px 13px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--fg);
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.tip[hidden] { display: none; }
+
+/* 放大字形。行高同样要够，否则上下伸部会被切掉 */
+.tip .glyph {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--thai);
+  font-size: 46px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.tip dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  margin: 0;
+}
+
+.tip dt { color: var(--muted); white-space: nowrap; }
+.tip dd { margin: 0; }
+
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--soft);
+  border-radius: 10px;
+}
+
+.seg button {
+  padding: 5px 11px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seg button[aria-pressed="true"] {
+  /* 背景交给滑块（.seg-thumb），这里只改字色 —— 滑块滑过去才有「切换」的感觉 */
+  color: var(--fg);
+}
+
+/* 用不到的档位（固定模式下的「常用词」）灰掉，但保留选中状态，
+   切回随机组合还是原来那一档 */
+.seg button:disabled {
+  color: var(--dot);
+  cursor: default;
+}
+
+.seg button:disabled[aria-pressed="true"] {
+  background: transparent;
+  color: var(--dot);
+}
+
+/* ── 分段控件 / 声调的滑块 ─────────────────────────────
+   选中的背景由这个绝对定位的元素滑过去：只动 transform 与宽高，不碰布局，
+   所以切换时页面高度不变（用户要求「保持页面固定」）。 */
+.seg,
+.tones { position: relative; }
+
+.seg-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  background: var(--card);
+  /* 浅色下白滑块和浅灰槽挨得太近，加一条细细的边把轮廓勾出来（深色同理） */
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.18s ease, width 0.18s ease, height 0.18s ease, opacity 0.12s ease;
+}
+
+/* 声调那一排的滑块是深色药丸，圆角跟 .tone 一致 */
+#tones .seg-thumb {
+  background: var(--inv-bg);
+  border: 0;   /* 深色药丸不需要那条勾轮廓的细边，会像套了个亮圈 */
+  border-radius: 12px;
+}
+
+.seg > button,
+.tones > button { position: relative; z-index: 1; }
+
+/* 组合范围：跟「随机组合 / 固定模式」是同一类选择，摆在它正下方，
+   两种模式下都露在外面，不用展开「选项」去找 */
+.range-row { margin-top: 12px; }
+
+.range-row .seg {
+  display: flex;
+  width: 100%;
+}
+
+.range-row .seg button {
+  flex: 1;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.range-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--muted);
+}
+
+.sample {
+  margin-left: 10px;
+  font-family: var(--thai);
+  font-size: 17px;
+  color: var(--fg);
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  cursor: pointer;
+}
+
+.switch input { margin: 0; accent-color: var(--fg); }
+
+/* 固定模式下不适用的选项：灰掉且选不中 */
+.switch.off {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.options-hint {
+  margin: 12px 0 0;
+  font-size: 11px;
+  text-align: left;
+  line-height: 1.5;
+}
+
+/* ── 页脚 ───────────────────────────────── */
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 36px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.foot a {
+  color: var(--muted);
+  text-decoration: underline dotted;
+}
+
+@media (hover: hover) {
+  .foot a:hover { color: var(--fg); }
+}
+
+.link {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .link:hover { color: var(--fg); }
+}
+
+/* ── 新手引导 ───────────────────────────── */
+.tour-mask,
+.tour-hole,
+.tour-tip {
+  position: fixed;
+  z-index: 60;
+}
+
+.tour-mask {
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.tour-hole {
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42);
+  outline: 2px solid var(--inv-bg);
+  outline-offset: 0;
+  pointer-events: none;
+  transition: all 0.18s ease;
+}
+
+.tour-tip {
+  width: min(320px, calc(100vw - 24px));
+  padding: 14px 16px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.tour-tip h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tour-tip p { margin: 0; }
+
+.tour-tip .tour-step {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tour-actions .spacer { flex: 1; }
+
+.tour-actions button {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .tour-actions button:hover { background: var(--soft); color: var(--fg); }
+}
+
+.tour-actions button.primary {
+  background: var(--inv-bg);
+  border-color: var(--inv-bg);
+  color: var(--inv-fg);
+}
+
+/* ── 更新内容通知 ───────────────────────── */
+.wn-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+/* 这一条不能少：上面写了 display:flex，会把 hidden 属性顶掉 */
+.wn-mask[hidden] { display: none; }
+
+.wn-box {
+  width: min(360px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 18px 18px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.wn-box h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wn-box ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.wn-box li + li { margin-top: 5px; }
+
+.wn-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.wn-actions button {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wn-actions button.primary {
+  background: var(--inv-bg);
+  border-color: var(--inv-bg);
+  color: var(--inv-fg);
+}
+
+/* ── 宽屏：左右两栏，卡片在左、词表在右 ──────────────── */
+@media (min-width: 820px) {
+  /* 整块放宽一点，好给中间那条通道留位置 */
+  .app { max-width: 1160px; padding: 48px 32px 80px; }
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    /* 左边卡片和右边词表之间的通道：窄窗口 56px 起步，宽屏最多 104px。
+       用户提过「右边那一大块跟卡片挤一起了」——别改回固定的 48px */
+    column-gap: clamp(56px, 7vw, 104px);
+  }
+  .head { margin-bottom: 32px; }
+  .card { min-height: clamp(240px, 40vh, 340px); padding: 48px 32px 40px; }
+  .col-side .panel:first-child { margin-top: 0; border-top: 0; }
+  .col-side .panel-body { padding-bottom: 24px; }
+  .foot { grid-column: 1 / -1; padding-top: 28px; margin-top: 40px; border-top: 1px solid var(--line); }
+}
+
+/* ── 矮屏（横屏手机 / 小窗口）：收紧留白，卡片不再撑高 ── */
+@media (max-height: 560px) {
+  .app { padding-top: 24px; padding-bottom: 40px; }
+  .head { margin-bottom: 16px; }
+  .card { min-height: 150px; padding: 22px 20px 20px; gap: 8px; }
+  .card { --syl-base: clamp(44px, min(14vw, 26vh), 84px); }
+  .block { margin-top: 18px; }
+}
+
+@media (max-width: 420px) {
+  .app { padding: 36px 16px 64px; }
+  .tones { gap: 2px; }
+  .tone .mark { font-size: 26px; }
+  .tone .name { font-size: 10px; }
+  .parts { gap: 4px 8px; }
+  .row, .chips { gap: 5px; }
+  .vowel-chip { font-size: 14px; }
+  .chip { font-size: 17px; padding: 3px 6px; }
+}
+
+/* 手机上按钮里的键盘提示没用，还会把按钮撑成两行，直接隐藏 */
+@media (max-width: 480px) {
+  .actions kbd { display: none; }
+  .btn { padding: 13px 12px; }
+}
+
+/* ── 换内容的通用过渡 ─────────────────────────────────────────
+   分段控件（任意 / 按规则 / 常用词、字体、外观）点下去收一下，
+   给个即时反馈——跟「随机 ↔ 固定」那个 ⇄ 按钮是同一套节拍。 */
+.seg button.pulse { animation: pulseTap 0.36s ease; }
+
+.btn.pulse { animation: pulseTap 0.36s ease; }
+
+@keyframes pulseTap {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+/* 提示文案换了内容就淡入一下，别硬切 */
+.hint.in { animation: hintIn 0.24s ease; }
+
+@keyframes hintIn {
+  from { opacity: 0.15; transform: translateY(-3px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── 页面之间的衔接 ───────────────────────────────────────────
+   练习页 ↔ 教学页是整页重载，中间会闪一下白屏：
+   离开前整页淡出（pagefx.js 加 .page-leaving），进来时淡入。
+   只动 opacity、不动 transform——页面上有 position: fixed 的浮层（新手引导、
+   更新通知），祖先元素一带 transform 它们就会被重新定位。 */
+body { transition: opacity 0.18s ease; }
+html.page-leaving body { opacity: 0; }
+html.js body { animation: pageIn 0.22s ease; }
+
+@keyframes pageIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg button.pulse, .btn.pulse, .hint.in, html.js body { animation: none; }
+  .seg-thumb { transition: none; }
+  .btn:active { transform: none; }
+  .tone.sink .mark, .tone.sink .name, .chip.sink .chip-in { animation: none; }
+  .btn, body { transition: none; }
+  html.page-leaving body { opacity: 1; }
+}
+
+/* ── 视窗不高时把留白收一收 ───────────────────────────────────
+   笔记本去掉浏览器工具栏通常只剩 700~800，手机上还要再减掉工具栏，
+   而「卡片 + 声调 + 两个按钮 + 组合范围」原本要 920px，最后那栏就被挤到屏幕外。
+   这里只动 padding / margin / 字号上限——卡片里那几行是按最高情况定高的，
+   一个都不碰，所以换音节、切模式时页面照样不会上下跳。 */
+@media (max-height: 940px) {
+  .app {
+    padding-top: clamp(14px, 3.2vh, 40px);
+    padding-bottom: clamp(40px, 7vh, 72px);
+  }
+  .head { margin-bottom: clamp(10px, 2vh, 26px); }
+  .card {
+    padding: clamp(18px, 3.4vh, 40px) 26px clamp(16px, 2.6vh, 32px);
+    gap: clamp(10px, 1.5vh, 16px);
+    /* 音节字号也跟着高度收：卡片高度 = 字号 × 1.55，收了就整块变矮，同样不会跳 */
+    --syl-base: clamp(44px, min(17vw, 11vh), 96px);
+    min-height: clamp(170px, 30vh, 300px);
+  }
+  .block { margin-top: clamp(12px, 2.2vh, 24px); }
+  .label-row { margin-bottom: clamp(6px, 1.1vh, 10px); }
+  .tone { padding: clamp(6px, 1.1vh, 10px) 2px clamp(5px, 0.9vh, 8px); }
+  .actions { margin-top: clamp(10px, 1.8vh, 18px); }
+  .range-row { margin-top: clamp(6px, 1.1vh, 11px); }
+}
+
+/* 再矮一档（800 以下，笔记本去掉工具栏、手机带上工具栏都落在这一段）：
+   留白再收一轮，音节字号也跟着小一档 */
+@media (max-height: 800px) {
+  .app { padding-top: clamp(12px, 2.6vh, 24px); padding-bottom: clamp(28px, 5vh, 48px); }
+  .head { margin-bottom: clamp(8px, 1.5vh, 16px); }
+  .card {
+    padding: clamp(14px, 2.8vh, 24px) 24px clamp(12px, 2.2vh, 20px);
+    gap: clamp(8px, 1.2vh, 12px);
+    --syl-base: clamp(40px, min(17vw, 10vh), 88px);
+    min-height: clamp(150px, 26vh, 240px);
+  }
+  .block { margin-top: clamp(10px, 1.6vh, 18px); }
+  .label-row { margin-bottom: clamp(5px, 0.9vh, 8px); }
+  .tone { padding: clamp(5px, 0.9vh, 8px) 2px clamp(4px, 0.7vh, 6px); }
+  .actions { margin-top: clamp(8px, 1.4vh, 14px); }
+  .range-row { margin-top: clamp(5px, 0.8vh, 9px); }
+}
+
+/* 再矮一档（700 上下）：标题那句副标题也收掉，把位置留给控件 */
+@media (max-height: 700px) {
+  .head .sub { display: none; }
+}
+
+/* 最矮的一档（横屏手机、被压得很扁的窗口）：只保证控件都露出来 */
+@media (max-height: 640px) {
+  .app { padding-top: clamp(8px, 1.8vh, 16px); }
+  .head { margin-bottom: clamp(6px, 1vh, 10px); }
+  .card {
+    padding: clamp(10px, 2vh, 16px) 20px clamp(10px, 1.6vh, 14px);
+    gap: clamp(6px, 1vh, 10px);
+    --syl-base: clamp(40px, min(16vw, 9vh), 78px);
+  }
+  .block { margin-top: clamp(8px, 1.2vh, 14px); }
+  .actions { margin-top: clamp(6px, 1vh, 12px); }
+  .range-row { margin-top: clamp(4px, 0.7vh, 8px); }
+}

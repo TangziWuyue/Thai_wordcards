@@ -26,7 +26,7 @@ const WEB = join(HERE, '..');
 const CACHE = join(HERE, '.cache');
 const OUT = join(WEB, 'data');
 
-const SOURCES = {
+  const SOURCES = {
   vocab: {
     url: 'https://raw.githubusercontent.com/kinniuroudong-glitch/thai-vocabulary-studio/main/assets/data.json.gz',
     file: 'thai-vocab-studio.json.gz',
@@ -286,27 +286,41 @@ async function main() {
   const all = [...new Set([...vocab.keys(), ...indexSet])].filter(isUsableWord).sort();
   log(`入典词头 ${all.length} 条（有中文释义 ${vocab.size} 条）`);
 
+  // 机翻兜底（可选）：web/dict/translate-missing.mjs 逐词翻出来的中文。
+  // 没有这份文件也能构建，只是「没中文的词」仍然只有英文。
+  const mtFile = join(CACHE, 'zh-translated.json');
+  const MT = existsSync(mtFile) ? JSON.parse(readFileSync(mtFile, 'utf-8')) : {};
+  log(`机翻兜底 ${Object.keys(MT).filter((k) => MT[k]).length} 条`);
+
   const entries = all.map((w) => {
     const v = vocab.get(w);
     const k = kaikki.get(w) || { rom: '', pos: '', en: '', phon: '', ipa: '' };
+    // 中文来源优先级：人工词表（vocab / basic-words）→ 机翻兜底（.cache/zh-translated.json，
+    // 由 translate-missing.mjs 逐词翻、只取最常用的一个意思）→ 都没有才用英文。
+    // 第 9 位标 1 = 这条中文是机翻的（界面上只在生僻词上显示「机翻」，常规卡片不露）
+    const human = v ? v.zh : '';
+    // 机翻经常带句末句号（「尝试一下。」），卡片上很碍眼，去掉；顺带把多余空白收了
+    const machine = human ? '' : String(MT[w] || '').replace(/[。．.\s]+$/g, '').trim();
+    const isMt = !human && machine ? 1 : 0;
     // 人工补的基础词表里标了词性的（ครับ 这类语气词）优先用它
     // 第 6 位是英文释义：**只在没有中文释义时才存**，这样界面上不可能出现
     // 「这个词明明有中文却显示英文」。优先维基词典（LEXiTRON 的 eentry 会挑偏义项：
     // น้ำ 给的是 river、สวัสดี 给的是 safety）
-    const zhText = v ? v.zh : '';
+    const zhText = human || machine;
     let en = zhText ? '' : (k.en || lexitron.get(w) || '');
     if (en && EN_META.test(en)) en = ''; // LEXiTRON 偶尔也有参见条目，一并挡掉
     if (en && isRomanization(en, k.rom)) en = ''; // 只有罗马音、没有词义
     // 第 7、8 位是维基词典的发音：实际读音拼写（拼写和读音不一样时才有意义）与带声调的 IPA。
     // 拿不到就空着，界面按「没有发音信息」处理
     const phon = k.phon && k.phon !== w ? k.phon : '';
-    return [w, k.rom, zhText, v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0, en, phon, k.ipa || ''];
+    return [w, k.rom, zhText, v?.pos || k.pos || '', commonSet.has(w) ? 1 : 0, en, phon, k.ipa || '', isMt];
   });
 
   const withZh = entries.filter((e) => e[2]).length;
   const withEn = entries.filter((e) => !e[2] && e[5]).length;
   const common = entries.filter((e) => e[4]).length;
-  log(`· 出典 ${entries.length} 条：中文释义 ${withZh}，只有英文 ${withEn}，标为常用 ${common}，有罗马注音 ${entries.filter((e) => e[1]).length}`);
+  const mtCount = entries.filter((e) => e[8]).length;
+  log(`· 出典 ${entries.length} 条：中文释义 ${withZh}（其中机翻 ${mtCount}），只有英文 ${withEn}，标为常用 ${common}，有罗马注音 ${entries.filter((e) => e[1]).length}`);
 
   // 反查同义词：先看这些说法在不在词库的义项里，写错了会警告（见 loadSynonyms）
   const zhSegments = new Set();

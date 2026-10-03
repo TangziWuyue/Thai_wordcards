@@ -1,0 +1,575 @@
+/* 教学页专用样式。基础变量、字体、暗色都由 style.css 提供，这里只管排版。 */
+
+/* 点目录跳章节时平滑滚过去（pagefx 那句「到了闪一下」靠它才连贯）。
+   想关掉动画的系统设置里关，别把这条删了。 */
+html { scroll-behavior: smooth; }
+
+/* 表格类内容比练习页宽一些好读，但也别拉得太开（style.css 的媒体查询会给到 1060px） */
+.app.tut { max-width: 940px; }
+
+/* ── 顶部固定区：搜索框 + 目录 ─────────────────────────── */
+.tut-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 -8px 28px;
+  padding: 8px 8px 0;
+  background: var(--bg);
+}
+
+.tut-search { position: relative; margin-bottom: 10px; }
+
+.tut-search input {
+  width: 100%;
+  padding: 9px 34px 9px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.tut-search input:focus {
+  border-color: var(--fg);
+  outline: none;
+}
+
+.tut-search input::placeholder { color: var(--dot); }
+
+.tut-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .tut-search-clear:hover { background: var(--soft); color: var(--fg); }
+}
+
+.tut-results {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 62vh;
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.tut-results[hidden] { display: none; }
+
+.res {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 1fr);
+  gap: 1px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.res.active { background: var(--soft); }
+
+@media (hover: hover) {
+  .res:hover { background: var(--soft); }
+}
+
+.res-glyph {
+  grid-row: span 2;
+  align-self: center;
+  font-family: var(--thai);
+  font-size: 19px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.res-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.res-main b { font-weight: 600; }
+
+.res-roman { color: var(--muted); font-size: 11.5px; }
+
+.res-sec {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.res-snippet {
+  grid-column: 2;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.res.empty {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: default;
+}
+
+.res.note {
+  display: block;
+  padding: 7px 10px 8px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  cursor: default;
+}
+
+.res.empty:hover, .res.note:hover { background: transparent; }
+
+/* ── 搜索结果里的「辞典」那一组 ─────────────────────── */
+/* 分组标题：一条细线把词和上面的字母/元音结果分开 */
+.res.group {
+  display: block;
+  margin-top: 4px;
+  padding: 8px 10px 6px;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  cursor: default;
+}
+
+.res.group:hover { background: transparent; }
+
+/* 词条行：左边那一列放的是整个词，比单个字母宽，所以单独放宽 */
+.res.word { grid-template-columns: 6.5em minmax(0, 1fr); }
+
+.res.word .res-glyph { font-size: 17px; }
+
+.res.word .res-main { gap: 5px; }
+
+/* ── 目录：滚到哪一节哪一节变黑 ───────────────────────── */
+.toc {
+  display: flex;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  position: relative;
+}
+
+/* 目录的高亮也用一个滑块：滚动或跳章节时从旧的那一节滑过去。
+   直接给链接铺背景的话，跳远端章节时中间经过的那几节会一个个闪过来（用户报过）。 */
+.toc-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  background: var(--inv-bg);
+  /* 方形圆角，跟其它滑块（.seg-thumb 8px）一致；用户说不要椭圆胶囊 */
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.18s ease, width 0.18s ease, height 0.18s ease, opacity 0.12s ease;
+}
+
+.toc-link { position: relative; z-index: 1; }
+
+/* 搜索命中的那一行闪一下，让人看清落在哪 */
+.trow.hit { animation: tutHit 2.4s ease; }
+
+@keyframes tutHit {
+  0%, 72% {
+    background: var(--soft);
+    box-shadow: inset 3px 0 0 var(--fg);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
+}
+
+.toc-link {
+  flex: none;
+  padding: 5px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* 点一下字沉一下，跟练习页那几排控件同一套手感（高亮底色由 .toc-thumb 管，不动）。
+   动画是点击后由 tutorial.js 加 .sink 触发的，不用 :active——触控板轻点只闪一两帧。 */
+.toc-link.sink { animation: sinkTap 0.24s ease; }
+
+/* 悬停不铺底色：选中背景已经交给 .toc-thumb 了，再叠一层灰底就是「药丸 + 方块」两块
+   （跟声调那排同一个毛病）。悬停只把字提亮，且不能盖掉当前这一节的反白字。
+   手机上点完 :hover 会粘住，所以只在带指针的设备上生效。 */
+.toc-link:hover { background: transparent; }
+
+@media (hover: hover) {
+  .toc-link:hover:not([aria-current="true"]) { color: var(--fg); }
+}
+
+.toc-link[aria-current="true"] {
+  /* 背景交给 .toc-thumb，这里只改字色 */
+  color: var(--inv-fg);
+}
+
+/* ── 章节 ─────────────────────────────────────────────── */
+.tut-sec {
+  margin: 0 0 60px;
+  /* 点目录跳过来时别被吸顶的目录挡住标题 */
+  scroll-margin-top: 130px;
+}
+
+.tut-sec h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* 从目录跳过来：点击时先把标题原地藏起来（.arrive-hidden），滚动停下之后再让它
+   淡着落进来。不先藏的话，标题会先按正常样子露一帧、再跳回透明，看着像闪了一下 */
+.tut-sec > h2.arrive-hidden { opacity: 0; }
+
+.tut-sec > h2.arrive { animation: tutArrive 0.5s ease; }
+
+@keyframes tutArrive {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.tut-sec > p {
+  margin: 0 0 22px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.tut-sec > p b { color: var(--fg); font-weight: 600; }
+
+/* 两条都要写得比 `.tut-sec > p`（`margin: 0 0 22px`）更具体，
+   否则那一长串的 margin-top 会被它按掉：小字说明和上面的表格贴在一起、
+   「去练习页」按钮直接压在贴士框上（这两个坑都踩过） */
+.tut-sec > p.tut-note {
+  margin: 16px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.tut-sec > p.tut-cta { margin: 34px 0 0; }
+
+.tut-cta .btn { display: inline-block; text-decoration: none; }
+
+/* ── 分组小标题 ───────────────────────────────────────── */
+.tut-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 32px 0 4px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tut-group:first-child { margin-top: 0; }
+
+.tut-group b { color: var(--fg); font-weight: 600; font-size: 12px; }
+
+/* ── 表格：一行一个字母 / 一个音 ───────────────────────── */
+.tut-rows {
+  /* 字形那一列的宽度：元音写成 เอย + 元音的样子，比辅音宽 */
+  --t-glyph-w: 3.2em;
+  /* 名称列要放得下「สระ เอือ uae 长音 不写声调」这种组合，太窄会一直换行 */
+  --t-meta-w: 12em;
+}
+
+/* 最长的元音写法是 เอือะ（五个码点），这一列要留得下 */
+.tut-rows.vowels { --t-glyph-w: 5.4em; }
+
+.trow {
+  display: grid;
+  grid-template-columns: var(--t-glyph-w) minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.t-glyph {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: start;
+  text-align: center;
+  font-family: var(--thai);
+  font-size: 22px;
+  line-height: 1.5;
+  padding-top: 1px;
+}
+
+/* 元音那一列的 อ 是「占座」用的载体，和课本里 สระ เอา 的写法一致。
+   不要给它降透明度或改颜色：泰文组合符号会跟着载体一起变淡，字就看不清了。 */
+.t-glyph .t-carrier { opacity: 1; }
+
+.t-glyph.big, .plain .t-glyph { font-size: 30px; }
+
+.t-glyph .t-final-roman { font-size: 15px; }
+
+/* 「无」「—」这类占位是中文/符号，走 --ui（.t-glyph 上是泰文字体栈） */
+.t-none { font-family: var(--ui); color: var(--muted); font-size: 15px; }
+
+.t-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+/* 带标签的行（借词用字 / 已废弃）预留两行：衬线体比标准体宽一点，
+   这类行正好卡在换行边缘，不预留的话换字体会把整页顶下去（见 tutorial.js 的 row()） */
+.t-meta.has-tag { min-height: 45px; }
+
+/* 「名称」这一列混着泰文和中文（如「1 · 中平」「กอ ไก่」），走 --ui 的字体栈：
+   --ui 里已经挂着打包的泰文字体，混排时两边都不会掉到系统字体上 */
+.t-name {
+  font-family: var(--ui);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.t-gloss { color: var(--muted); font-size: 11px; }
+
+.t-roman {
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.t-tag {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.t-say {
+  grid-column: 2;
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.t-ex, .t-letters {
+  grid-column: 2;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.9;
+}
+
+.t-ex-word {
+  font-family: var(--thai);
+  font-size: 15px;
+  color: var(--fg);
+}
+
+/* 泰文和罗马注音连着排会黏在一起，中间要留一道缝 */
+.t-ex-roman { margin-left: 6px; color: var(--fg); }
+
+.t-ex-note { margin-left: 6px; }
+
+.t-letters span {
+  font-family: var(--thai);
+  font-size: 17px;
+  line-height: 2;
+  color: var(--fg);
+}
+
+/* 音节拆解那三行：左边是大字，右边一行说明。
+   这一块只有一行文字，不走上面那套「字形跨三行」的网格，
+   否则泰文大字的行框比文字高，两个会错开一截 */
+.tut-rows.plain .trow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 0;
+}
+
+.tut-rows.plain .t-glyph {
+  flex: none;
+  width: 3.4em;
+  grid-row: auto;
+}
+
+.tut-rows.plain .t-say {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 2px;
+}
+
+.t-piece { color: var(--muted); }
+
+.tut-rows.plain .t-name { font-family: var(--ui); font-weight: 500; }
+
+/* ── 小贴士 ───────────────────────────────────────────── */
+.tip-box {
+  margin: 32px 0 0;
+  padding: 18px 20px;
+  background: var(--soft);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  line-height: 2;
+}
+
+.tip-box p { margin: 0; }
+
+.tip-box p + p { margin-top: 12px; }
+
+.tip-box .tip-title {
+  margin-top: 18px;
+  font-weight: 600;
+}
+
+.tip-box .tip-title:first-child { margin-top: 0; }
+
+.tip-box b { font-weight: 600; }
+
+/* ── 声调规则表 ───────────────────────────────────────── */
+.tone-rules {
+  margin-top: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.trule {
+  display: grid;
+  grid-template-columns: 5em repeat(6, minmax(6.6em, 1fr));
+  min-width: 45em;
+}
+
+.trule > div {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.trule > div + div { border-left: 1px solid var(--line); }
+
+.trule.head > div {
+  color: var(--muted);
+  font-size: 11px;
+  border-bottom: 1px solid var(--fg);
+}
+
+/* 规则表第一列是「中类 / 高类 / 低类」，中文，走 --ui */
+.trule-cls { font-family: var(--ui); font-weight: 500; }
+
+.trule-cell { display: flex; flex-direction: column; gap: 2px; }
+
+.trule-one b { font-weight: 600; }
+
+.trule-one i {
+  margin-left: 5px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-style: normal;
+}
+
+/* ── 页脚 ─────────────────────────────────────────────── */
+/* 教学页的页脚只有「字体 / 外观」和联系方式两行。
+   上面一节自己带了 52px 的下边距，这里就别再加一大截；
+   标签和它那排按钮绑成一组，窄屏换行时不会被拆开 */
+.foot {
+  gap: 16px;
+  margin-top: 4px;
+  line-height: 1.9;
+}
+
+.foot-row { gap: 10px 20px; align-items: center; }
+
+.foot-row:first-child { justify-content: flex-start; }
+
+.foot-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 手机：留白比宽屏再松一点 ─────────────────────────── */
+@media (max-width: 640px) {
+  .tut-sec { margin-bottom: 52px; }
+  .tut-sec h2 { font-size: 17px; }
+  .trow { padding: 17px 0; row-gap: 3px; }
+  .tut-rows.plain .trow { padding: 16px 0; }
+  .t-say { margin-top: 7px; }
+  .t-ex, .t-letters { margin-top: 8px; }
+  .tip-box { padding: 16px; }
+  .tut-sec > p.tut-cta { margin-top: 38px; }
+  .foot { margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .toc-link.sink { animation: none; }
+  .tut-sec > h2.arrive { animation: none; }
+  /* JS 在减少动效时不会再藏标题，这条是兜底：万一被藏住了也要能看见 */
+  .tut-sec > h2.arrive-hidden { opacity: 1; }
+}
+
+/* ── 宽屏：名称与讲解并排，例词占满下面一行 ─────────────── */
+@media (min-width: 780px) {
+  .trow {
+    grid-template-columns: var(--t-glyph-w) var(--t-meta-w) minmax(0, 1fr);
+    column-gap: 20px;
+    row-gap: 2px;
+    padding: 13px 0;
+    align-items: baseline;
+  }
+
+  .t-glyph { grid-row: 1 / span 2; }
+  .t-say { grid-column: 3; margin-top: 0; }
+  .t-ex, .t-letters { grid-column: 2 / -1; }
+  .tut-rows.plain .t-say { grid-column: 2 / -1; }
+}
+
+@media (max-width: 420px) {
+  .t-glyph { font-size: 20px; }
+  .tut-rows.vowels { --t-glyph-w: 5em; }
+  .tut-group { margin-top: 20px; }
+}
