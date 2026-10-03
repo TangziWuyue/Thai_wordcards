@@ -22,3 +22,5 @@ web/audio-tools/.work/
 
 # 剩余词发音生成的工作目录
 web/audio-tools/.work-rest/
+# 第一批多音节重做的工作目录
+web/audio-tools/.work-fix/
