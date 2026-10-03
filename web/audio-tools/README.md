@@ -18,7 +18,14 @@
 
 ## 范围
 
-**常用词 ∪ 随机模式能拼出的真词 = 5,393 条**（单音节 3,900 条做校正，多音节 1,493 条自然合成）。
+**辞典全量 27,509 条**（3.1.0 的 5,393 条 + 3.2.0 补齐的 22,116 条）：
+- 第一批（`generate.py`）：常用词 ∪ 随机模式能拼出的真词，单音节校正 3,900 条、多音节自然 1,493 条；
+- 第二批（`generate-rest.py`）：剩余辞典词。声调来源：IPA 逐音节 8,829 条、**规则切分反解** 11,232 条、phon 反解 69 条、其余 1,990 条自然合成；
+- 16 个非词条（`ฃ ฦ ฦๅ ฿ ๅ ๏ ๐ ๒ ๒๐ ๓` …）不生成。
+
+**多音节处理**：按 IPA 的音节数，用「浊音段 + 能量谷」把朗读切成 N 段，再逐段套该音节声调的曲线（`generate-rest.py` 的 `boundaries()`）。
+
+**规则切分反解**（`derive-tones.mjs`）：枚举所有合法 parts 建「拼写 → 实读调」反查表（187,320 种拼写），再用动态规划把整词切成最少个数的可解析音节；同一位置出现两种不同调序列就判为歧义、不硬猜。
 
 ## 跑一遍
 
@@ -40,6 +47,17 @@ cp .work/audio/*.mp3 docs/audio/
 
 # 5. 重新打包（会内联清单，并把音频同步到 dist/audio）
 node web/build-standalone.mjs
+```
+
+## 补第二批（剩余辞典词）
+
+```bash
+node web/audio-tools/export-rest.mjs      # 导出剩余词（带每音节 IPA 调）
+node web/audio-tools/derive-tones.mjs     # 规则切分反解，给没 IPA 的词补调
+uv run --with edge-tts --with numpy --with soundfile --with praat-parselmouth \
+  python web/audio-tools/generate-rest.py # 合成 + 逐音节校正（可断点续跑；并发 TWC_CONCURRENCY=14）
+node web/audio-tools/merge-rest.mjs       # 合并进 web/data/audio.js，并拷贝到 web/audio 与 docs/audio
+node web/build-standalone.mjs             # 重新打包（会同步 dist/audio）
 ```
 
 `.work/` 不入库（原始 mp3 和中间产物，可由脚本重新生成）。

@@ -19,3 +19,6 @@ web/dict/.cache/
 
 # 发音生成的工作目录（原始 mp3 / 中间产物，可由 web/audio-tools 重新生成）
 web/audio-tools/.work/
+
+# 剩余词发音生成的工作目录
+web/audio-tools/.work-rest/
