@@ -857,6 +857,40 @@ const ThaiRules = (() => {
     };
   }
 
+  // ── 音节发音 key（按「声音」而不是写法去重）────────────────────────
+  // 用途：随机/固定模式拼出来的音节（大多没有词义）也要能听。
+  // 声音身份 = 引擎自己的 IPA（已含声母/尾音的实际读音、尾音去重、假簇等）
+  //          + 实读调 + 长短标记（复合元音的 IPA 按课本习惯不标长音，
+  //            但 อัว ≠ อัวะ、เอีย ≠ เอียะ、เอือ ≠ เอือะ 是真实听觉差别）。
+  // 这样 อำ 与 ั+ม、ไทย 的 ย 不发音、ฎ/ด、ศ/ษ/ส、o_implied/o_short 这些
+  // 等价关系都由引擎的发音逻辑统一处理，不会两边各写一份。
+  // 文件名用 FNV-1a（32 位双通道 → 12 位十六进制），从 parts 直接推导、零清单。
+  function soundInput(parts) {
+    const vowel = VOWEL_MAP.get(parts.vowelId);
+    if (!vowel || vowel.internal) return null;
+    return `${romanize(parts, 'ipa')}|${spokenTone(parts) || 0}|${vowel.short ? 'S' : 'L'}`;
+  }
+
+  /** 归一化的声音 key（12 位十六进制）；拿不到声音返回 null */
+  function soundKey(parts) {
+    const input = soundInput(parts);
+    if (!input) return null;
+    let h1 = 0x811c9dc5;
+    let h2 = 0x811c9dc5 ^ 0x9e3779b9;
+    for (let i = 0; i < input.length; i += 1) {
+      const c = input.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+      h2 = Math.imul(h2 ^ (c + i), 0x01000193) >>> 0;
+    }
+    return (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).slice(0, 12);
+  }
+
+  /** 音节音频的文件名（相对路径）；拿不到声音返回 null */
+  function soundFile(parts) {
+    const key = soundKey(parts);
+    return key ? `syl/v1/${key}.mp3` : null;
+  }
+
   return {
     CONSONANTS,
     VOWELS,
@@ -900,6 +934,8 @@ const ThaiRules = (() => {
     generate,
     describe,
     isShortVowel,
+    soundKey,
+    soundFile,
   };
 })();
 
