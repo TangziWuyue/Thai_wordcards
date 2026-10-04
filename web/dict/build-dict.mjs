@@ -291,6 +291,11 @@ async function main() {
   const mtFile = join(CACHE, 'zh-translated.json');
   const MT = existsSync(mtFile) ? JSON.parse(readFileSync(mtFile, 'utf-8')) : {};
   log(`机翻兜底 ${Object.keys(MT).filter((k) => MT[k]).length} 条`);
+  // 人工润色过的机翻条目（web/dict/polished-zh.json，格式 { "泰文": "中文" }）。
+  // 优先级：basic-words.json > polished-zh.json > 机翻缓存。润色过的就不再标「机翻」。
+  const polishedFile = join(HERE, 'polished-zh.json');
+  const POLISHED = existsSync(polishedFile) ? JSON.parse(readFileSync(polishedFile, 'utf-8')) : {};
+  log(`人工润色 ${Object.keys(POLISHED).length} 条`);
 
   const entries = all.map((w) => {
     const v = vocab.get(w);
@@ -299,14 +304,15 @@ async function main() {
     // 由 translate-missing.mjs 逐词翻、只取最常用的一个意思）→ 都没有才用英文。
     // 第 9 位标 1 = 这条中文是机翻的（界面上只在生僻词上显示「机翻」，常规卡片不露）
     const human = v ? v.zh : '';
+    const polished = human ? '' : String(POLISHED[w] || '').trim();
     // 机翻经常带句末句号（「尝试一下。」），卡片上很碍眼，去掉；顺带把多余空白收了
-    const machine = human ? '' : String(MT[w] || '').replace(/[。．.\s]+$/g, '').trim();
-    const isMt = !human && machine ? 1 : 0;
+    const machine = (human || polished) ? '' : String(MT[w] || '').replace(/[。．.\s]+$/g, '').trim();
+    const isMt = !human && !polished && machine ? 1 : 0;
     // 人工补的基础词表里标了词性的（ครับ 这类语气词）优先用它
     // 第 6 位是英文释义：**只在没有中文释义时才存**，这样界面上不可能出现
     // 「这个词明明有中文却显示英文」。优先维基词典（LEXiTRON 的 eentry 会挑偏义项：
     // น้ำ 给的是 river、สวัสดี 给的是 safety）
-    const zhText = human || machine;
+    const zhText = human || polished || machine;
     let en = zhText ? '' : (k.en || lexitron.get(w) || '');
     if (en && EN_META.test(en)) en = ''; // LEXiTRON 偶尔也有参见条目，一并挡掉
     if (en && isRomanization(en, k.rom)) en = ''; // 只有罗马音、没有词义
