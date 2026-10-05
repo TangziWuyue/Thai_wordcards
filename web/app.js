@@ -1222,6 +1222,9 @@
   // 抽到单音节词就摆到现在的音节卡上（声调还能自己改，改了就不再是真词、播放自动灰掉）；
   // 多音节词走辞典那边现有的词卡（大字 + 罗马注音 + 释义 + 读音 + 发音，声调行灰掉）。
   const COMMON_SET = new Set(Array.isArray(window.ThaiCommonWords) ? window.ThaiCommonWords : []);
+  // 不参与抽词的条目（缩写 / 变体 / 参见条目这类，人工润色时判定的口径）；
+  // 词典里仍然留着，只是随机模式不抽它们
+  const DROP_SET = new Set(Array.isArray(window.ThaiDropWords) ? window.ThaiDropWords : []);
   const audioWords = () => ((window.ThaiAudioData && window.ThaiAudioData.words) || {});
   let randomToken = 0;
   let poolCache = null;
@@ -1231,6 +1234,7 @@
     const all = [];
     const common = [];
     for (const word of Object.keys(audioWords())) {
+      if (DROP_SET.has(word)) continue;
       all.push(word);
       if (COMMON_SET.has(word)) common.push(word);
     }

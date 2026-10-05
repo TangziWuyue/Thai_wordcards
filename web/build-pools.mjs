@@ -40,6 +40,20 @@ window.ThaiCommonWords = ${JSON.stringify(common)};
 fs.writeFileSync(path.join(WEB, 'data', 'common.js'), commonOut);
 console.log(`data/common.js：${common.length} 条 / ${(Buffer.byteLength(commonOut) / 1024).toFixed(0)}KB`);
 
+// ── 1b) 不参与抽词的条目 ─────────────────────────────────────────────
+// 缩写 / 变体 / 参见条目这类「不是一个词义」的（人工润色的口径，见 dict/drop-words.json）。
+// 只在抽词时跳过，词典里仍然留着——查得到，只是随机模式不出它们。
+const dropFile = path.join(WEB, 'dict', 'drop-words.json');
+const dropList = fs.existsSync(dropFile) ? JSON.parse(fs.readFileSync(dropFile, 'utf-8')).words || [] : [];
+const dropOut = `/**
+ * 不参与抽词的条目（构建产物，由 web/build-pools.mjs 生成；不要手改）。
+ * 缩写 / 变体 / 参见条目这类——抽到它们对学习者没意义，词典里仍然查得到。
+ */
+window.ThaiDropWords = ${JSON.stringify(dropList)};
+`;
+fs.writeFileSync(path.join(WEB, 'data', 'drop-words.js'), dropOut);
+console.log(`data/drop-words.js：${dropList.length} 条 / ${(Buffer.byteLength(dropOut) / 1024).toFixed(1)}KB`);
+
 // ── 2) 单音节词的反查表 ──────────────────────────────────────────────
 // 表里存下标而不是字符串，体积小一半；字母顺序由文件自己带着，运行时不用猜 rules.js 的顺序
 const letters = R.CONSONANTS.map((c) => c.ch);

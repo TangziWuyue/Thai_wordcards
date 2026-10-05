@@ -65,7 +65,7 @@ const PAGES = [
     name: '泰语组合练习',
     src: 'index.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css'],
-    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'audio.js', 'data/audio.js', 'data/common.js', 'data/syllable-index.js', 'pagefx.js', 'tour.js', 'seg.js', 'app.js'],
+    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'audio.js', 'data/audio.js', 'data/common.js', 'data/syllable-index.js', 'data/drop-words.js', 'data/drop-words.js', 'pagefx.js', 'tour.js', 'seg.js', 'app.js'],
   },
   {
     name: '泰语拼读入门',
@@ -158,7 +158,7 @@ const EXTERNAL_FILES = [
   'fonts.css', 'fonts-cjk.css', 'style.css', 'tutorial.css',
   'rules.js', 'dict.js', 'audio.js', 'pagefx.js', 'tour.js', 'seg.js', 'app.js',
   'tutorial-data.js', 'tutorial-search.js', 'tutorial.js',
-  'data/dict.js', 'data/audio.js', 'data/common.js', 'data/syllable-index.js',
+  'data/dict.js', 'data/audio.js', 'data/common.js', 'data/syllable-index.js', 'data/drop-words.js',
 ];
 
 /**
