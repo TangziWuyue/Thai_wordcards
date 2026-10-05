@@ -51,8 +51,10 @@ test('辞典抽测：能加载，且抽 500 条每条都字段完整', async () 
     if (!zh && !en) noGloss += 1;
     // 罗马注音里有中文/泰文说明混进来，多半是抓取时串了列
     if (roman && /[\u0E00-\u0E7F\u4e00-\u9fff]/.test(roman)) problems.push(`罗马注音里混进别的字：${word} → ${roman}`);
-    // 中文释义里混进泰文，说明取错列了
-    if (zh && /[\u0E00-\u0E7F]/.test(zh)) problems.push(`中文释义里混进泰文：${word} → ${zh}`);
+    // 中文释义里**一个汉字都没有**（整条就是泰文或罗马音）才说明取错列了。
+    // 人工润色过的释义会故意夹泰文举例（「辅音字母 ก（中辅音，ก ไก่）」「日本（ญี่ปุ่น 变音）」），
+    // 只要还有中文就是正常的，别按「含泰文」一刀切
+    if (zh && !/[\u4e00-\u9fff]/.test(zh)) problems.push(`中文释义里没有汉字：${word} → ${zh}`);
     if (ipa && !ipa.startsWith('/')) problems.push(`IPA 格式不对：${word} → ${ipa}`);
     // 第 7 位是泰文的「实际读音拼写」（ไทย → ไท），不是 IPA；个别条目前面带 -（表示构词成分：-วะ-ดี）
     if (phon && !/^[\u0E00-\u0E7F-]/.test(phon)) problems.push(`实际读音格式不对：${word} → ${phon}`);
@@ -132,8 +134,10 @@ test('辞典抽测：500 条的中文释义都能反查回它自己，且不返�
   const wrong = [];
   let checked = 0;
   for (const entry of sample) {
-    const segs = segments(entry[2]);
-    if (!segs.length) continue; // 没有中文释义的（只有英文）跳过
+    // 释义里带泰文举例的那几条（「辅音字母 ก（中辅音，ก ไก่）」）没法反查自己——
+    // 查询里一出现泰文就按「拼写查询」走了（见 D.search 的路由），这是设计如此，不是 bug
+    const segs = segments(entry[2]).filter((s) => !/[\u0E00-\u0E7F]/.test(s));
+    if (!segs.length) continue; // 没有中文释义的（只有英文）或者整条都带泰文，跳过
     checked += 1;
     // 用最长的那个义项查（最具体，最不容易被别的词挤掉）
     const seg = segs.slice().sort((a, b) => b.length - a.length)[0];
