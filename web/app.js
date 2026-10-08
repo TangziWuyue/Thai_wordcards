@@ -575,12 +575,27 @@
         const vid = state.parts.vowelId;
         state.fixedVowelId = (vid !== 'o_long' && SELECTABLE_VOWELS.includes(vid)) ? vid : null;
       }
+      applyMode();
+      buildConsonants();
+      buildVowels();
+      applyFixed();
+      save();
+      return;
     }
+    // 切回随机模式：卡片上必须换回一张真词卡。固定模式拼的那个音节（大多没有
+    // 词义，声调那排也会跟着灰掉）如果留在卡上，就成了「随机模式里挂着一张
+    // 非法但还选中着」的状态——按当前档位和词表勾选重抽一张。
+    // 清单已经在页面上时 randomize() 是同步的，切模式的动画里不会先闪一下旧卡。
+    state.parts = null;
+    state.word = null;
+    state.commonFallback = false;
+    const drawn = randomize();
     applyMode();
     buildConsonants();
     buildVowels();
-    if (mode === 'fixed') applyFixed();
-    else renderCard();
+    // 音频清单还没加载出来时 randomize() 是异步的：先摆一张空卡，
+    // 抽到词以后 applyPick() 会自己重画（不能不动，那会把旧卡留着）
+    if (!drawn) renderCard();
     save();
   }
 
@@ -983,17 +998,39 @@
     num: '数', cls: '量', intj: '叹', fn: '虚词', x: '其它',
   };
 
-  /** 当前卡片有没有内置发音；没有（无义音节）就把「播放发音」灰掉，跟固定模式禁用按钮一个样式 */
+  // 固定模式「全组合」音节音频的条数（和 web/syllable-key.test.mjs 里钉的数字一起改）。
+  // 只用来写「语音：…」那行说明，不影响播放。
+  const SYLLABLE_COUNT = 2132;
+
+  /**
+   * 当前音节在音节音频包里的相对路径（syl/v1/{key}.mp3，由 rules.js 直接算出来）。
+   * 只有「固定模式能拼出来的合法音节」才有：没有辅音簇、没有尾音、元音在词表里、
+   * check() 也通过（缺尾音的 ั / เ-ิ / เ-็ 会提示「拼不完整」，不发音）。
+   */
+  function syllableFile() {
+    const p = state.parts;
+    if (!p || p.cluster || p.final) return null;
+    const vowel = R.VOWELS.find((v) => v.id === p.vowelId);
+    if (!vowel || !R.isSelectableVowel(vowel)) return null;
+    if (!p.onset && !vowel.canBeOnset) return null;
+    if (R.check(p).length) return null;
+    return R.soundFile(p);
+  }
+
+  /** 当前卡片有没有内置发音；没有（拼不完整的组合）就把「播放发音」灰掉 */
   function updateSpeakBtn() {
     const text = currentText();
-    const has = !!(A && A.has(text));
-    el.speakBtn.disabled = !has;
-    if (has) {
+    const hasWord = !!(A && A.has(text));
+    const syl = syllableFile();
+    el.speakBtn.disabled = !(hasWord || syl);
+    if (hasWord) {
       el.speakBtn.title = '播放内置发音（AI 合成 + 声调校正）';
+    } else if (syl) {
+      el.speakBtn.title = '播放这个音节的发音（AI 合成 + 声调校正）';
     } else if (D.isWord(text)) {
       el.speakBtn.title = '这个词没有内置发音';
     } else {
-      el.speakBtn.title = '无义音节没有发音，先自己读';
+      el.speakBtn.title = '这个组合拼不完整，没有发音';
     }
   }
 
@@ -1186,7 +1223,7 @@
 
   // ── 动作 ────────────────────────────────────────────────────────────
   function randomize() {
-    if (state.mode === 'fixed') return; // 固定模式下由词表点击驱动
+    if (state.mode === 'fixed') return true; // 固定模式下由词表点击驱动
     state.word = null;                  // 随机组合一按，辞典点过来的词就让位
     state.wordFromRandom = false;
     const vowelOnsetAvailable = state.allowVowelOnset
@@ -1196,11 +1233,17 @@
       renderCard();
       setSyllable('—');
       el.roman.textContent = '请先在词表里至少勾选一个辅音和一个元音';
-      return;
+      return true;
+    }
+    const token = (randomToken += 1);
+    // 清单已经在页面上（正常情况：打开页面时就加载了）：同步抽、同步画，
+    // 切模式时不会先闪一下上一张卡
+    if (window.ThaiAudioData && window.ThaiAudioData.words) {
+      applyPick();
+      return true;
     }
     // 清单要到了才知道池子里有什么；第一次会真的去取 data/audio.js，
     // 之后 load() 返回的是同一个已 resolve 的 promise，等于同步
-    const token = (randomToken += 1);
     A.load()
       .then(() => { if (token === randomToken) applyPick(); })
       .catch(() => {
@@ -1210,6 +1253,7 @@
         setSyllable('—');
         el.roman.textContent = '音频清单没加载出来（把 audio 文件夹和页面放在一起）';
       });
+    return false;
   }
 
   // ── 词池：直接从池子里抽真词 ────────────────────────────────────────
@@ -1363,10 +1407,11 @@
     }
     const n = (window.ThaiAudioData && window.ThaiAudioData.count) || 0;
     el.voiceInfo.textContent = audioReady
-      ? `语音：内置发音 ${n} 条（AI 合成）`
+      ? `语音：内置发音 ${n} 条 + 音节全组合 ${SYLLABLE_COUNT} 条（AI 合成）`
       : '语音：内置发音加载中…';
     el.voiceInfo.title = audioReady
-      ? '真词（卡片标「真词」的词、辞典里的词）可以发音；无义音节没有发音，按钮是灰的。'
+      ? '真词用单词发音；固定模式拼出的合法音节用音节发音（都是 AI 合成 + 声调校正）。'
+        + '拼不完整的组合（缺尾音的 ั / เ-ิ / เ-็）没有发音，按钮是灰的。'
       : '';
   }
 
@@ -1379,7 +1424,18 @@
   }
 
   function speak() {
-    speakText(currentText());
+    const text = currentText();
+    if (A && A.has(text)) {
+      speakText(text);
+      return;
+    }
+    // 无义但合法的音节（固定模式拼出来的）：走音节包
+    const syl = syllableFile();
+    if (syl && A) {
+      A.playUrl(A.fileUrl(syl)).catch(() => {
+        el.voiceInfo.textContent = '语音：音频没加载出来（把 audio 文件夹和页面放在一起）';
+      });
+    }
   }
 
   // ── 面板展开 / 收起的衔接 ───────────────────────────────────────────
@@ -1608,10 +1664,13 @@
   const WHATS_NEW_KEY = 'thai-wordcards.whatsNew';
   const WHATS_NEW = {
     // 版本号同时是 localStorage 的 key：改它老用户才会再看到一次通知。
-    version: '3.0.0',
+    version: '3.4.0',
     items: [
-      '切换「组合范围」（任意 / 按规则 / 常用词）时，下面的说明会立刻跟着换了。',
-      '全量穷举、压力测试和真实浏览器点击复测后的其他修正；教学页内容与外部资料核对无误。',
+      '固定模式：自己拼出来的音节现在都有发音了（2,132 条，声调按拼读规则校正）；'
+        + '拼不完整的组合（缺尾音的 ั / เ-ิ / เ-็）会提示「换一个元音」。',
+      '教学页：每个辅音、元音旁边加了小喇叭，点一下就能听这个字母的标准读法。',
+      '修掉一个模式切换的小毛病：切回随机模式时会重新抽一张真词卡，'
+        + '不会再留着固定模式拼的那个音节（它可能没有词义、声调那排也点不动）。',
     ],
   };
 

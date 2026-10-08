@@ -61,3 +61,30 @@ node web/build-standalone.mjs             # 重新打包（会同步 dist/audio�
 ```
 
 `.work/` 不入库（原始 mp3 和中间产物，可由脚本重新生成）。
+
+## 音节包（固定模式全组合 + 教学页字母发音，3.4.0 起）
+
+一套音频、两个用途：
+
+| 用在哪 | 内容 | 读法 | 条数 | 文件 |
+| --- | --- | --- | --- | --- |
+| 固定模式「一个辅音 + 一个元音」的全组合 | 合法音节（要能选声调、五个调分得开） | Premwadee −25% + **声调曲线校正**（规格同上表） | 2,132 | `rules.js` 的 `soundKey` 直接算文件名，零清单 |
+| 教学页 44 辅音 + 全部元音（一行一个「听发音」） | 辅音读字母名（กอ）、元音读「อ + 元音」 | 同上（**曾经试过自然合成的字母包，句尾会下滑，用户不要，已撤掉**） | 取其中的 58 条 | 同上 |
+
+两条硬约定：
+
+1. **按「声音」去重**：声母/尾音/调相同的写法共用一条（ฎา = ดา、ฃอ = ขอ、ฎอ = ดอ）；
+   能直接借现有真词音频的（同拼写、单音节、实读调一致，677 条）拷过来不重合成。
+   拼写变体元音（`ั` `เ-ิ` `เ-็`）在固定模式下拼不完整（卡片提示「换一个元音」），
+   **不生成**；教学页里它们按同音写法读（`tutorial-data.js` 的 `VOWEL_SAY`）。
+   没有实读调又借不到词音频的（只有 ฦ ฦๅ）：**铺平调曲线**，别让自然合成的句尾下滑。
+2. **真目录**（`web/audio/syl/`），不要用软链接；`docs/`、`dist/` 由
+   `node web/build-standalone.mjs` 递归同步。
+
+```bash
+node web/audio-tools/export-syllables.mjs        # → .work/syl-list.json（2132 条，借词 677）
+uv run --with edge-tts --with numpy --with soundfile --with praat-parselmouth \
+  python web/audio-tools/generate-syllables.py   # 合成 + 校正（断点续跑）
+node web/audio-tools/install-syllables.mjs       # → web/audio/syl/v1/
+node web/build-standalone.mjs                    # docs/audio、dist/audio 一起同步
+```

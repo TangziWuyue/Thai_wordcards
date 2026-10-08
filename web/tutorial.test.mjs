@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const R = require('./rules.js');
@@ -328,4 +328,37 @@ test('两页共用脚本（pagefx / tour）：两个页面都引了，顺序排�
   assert.match(tutSrc, /Seg\.(build|sync|pulse)/, '教学页也要用共用的 Seg');
   assert.match(segSrc, /container\.replaceChildren\(thumb/, '重建按钮时要保留同一个滑块元素');
   assert.match(segSrc, /prefers-reduced-motion/);
+});
+
+test('教学页：每个辅音 / 元音都有「听发音」按钮，音频文件真的在（和固定模式同一套 syl/）', () => {
+  const tutHtml = readFileSync(new URL('./tutorial.html', import.meta.url), 'utf8');
+  const tutSrc = readFileSync(new URL('./tutorial.js', import.meta.url), 'utf8');
+  const build = readFileSync(new URL('./build-standalone.mjs', import.meta.url), 'utf8');
+  // 教学页要引播放器（字母发音走 audio.js 的 playUrl），打包清单也不能漏
+  assert.match(tutHtml, /audio\.js\?v=\d+/, '教学页没有引 audio.js，字母发音点不响');
+  const tutLine = build.split('\n').find((l) => l.includes("'tutorial.js'"));
+  assert.ok(tutLine.indexOf("'audio.js'") !== -1, '打包清单里教学页漏了 audio.js');
+  assert.match(tutSrc, /playUrl\(/, '教学页要走 audio.js 的 playUrl 播字母音频');
+  assert.match(tutSrc, /VOWEL_SAY/, '教学页的变体元音要按 VOWEL_SAY 映射同音写法');
+
+  // 每一行（44 辅音 + 全部非内部元音）都要算得出一个真的存在的音频文件；
+  // 教学页和固定模式共用 syl/v1/（校正版，不句尾下滑），没有单独的 letters 包
+  assert.ok(!/letters\//.test(tutSrc), '教学页不应该再引用 letters/ 音频（已撤掉）');
+  const missing = [];
+  for (const c of R.CONSONANTS) {
+    const file = R.soundFile(R.fixedParts({ onset: c.ch, strict: true }));
+    if (!file || !existsSync(new URL(`./audio/${file}`, import.meta.url))) missing.push(`辅音 ${c.ch}`);
+  }
+  for (const v of R.VOWELS) {
+    if (v.internal) continue;
+    const sayId = D.VOWEL_SAY[v.id] || v.id;
+    assert.ok(R.VOWELS.some((x) => x.id === sayId), `${v.id} 的发音映射指向不存在的元音 ${sayId}`);
+    const file = R.soundFile(R.fixedParts({ vowelId: sayId, strict: true }));
+    if (!file || !existsSync(new URL(`./audio/${file}`, import.meta.url))) missing.push(`元音 ${v.id}`);
+  }
+  assert.deepEqual(missing, [], `这些行没有音频：${missing.join(' ')}`);
+  // 映射表不留孤儿：写错 id 会静默退回本音，但拼不出完整音节就点不响
+  const ids = new Set(R.VOWELS.map((v) => v.id));
+  assert.deepEqual(Object.keys(D.VOWEL_SAY).filter((k) => !ids.has(k)), [],
+    'VOWEL_SAY 里有不存在的元音 id');
 });

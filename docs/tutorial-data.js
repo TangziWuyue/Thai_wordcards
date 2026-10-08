@@ -207,8 +207,18 @@ const TutorialData = (() => {
     },
   ];
 
+  // 教学页每个元音的「听发音」按钮读哪个音。
+  // 拼写变体本身拼不出完整音节（必须有尾辅音）/ 没有字形，就按讲解里的说法
+  // 用同音的开放音节代替（讲解里也是这么写的：闭音节里的 อะ / 同一个音 / 读 โอะ）。
+  const VOWEL_SAY = {
+    a_short: 'a',         // 闭音节里的 อะ（如 กัน）
+    e_closed: 'oe',       // 跟开音节的 เออ 是同一个音（如 เกิด）
+    e_taikhu: 'e_short',  // 闭音节里的 เอ（如 เก็ง）
+    o_implied: 'o_short', // 不写元音符号的闭音节，读 โอะ（如 กบ）
+  };
+
   return {
-    SAY_CONS, SAY_VOWEL, SAY_FINAL,
+    SAY_CONS, SAY_VOWEL, VOWEL_SAY, SAY_FINAL,
     TONE_SIGN, TONE_HOW, TONE_EXAMPLE, TONE_RULES, TONE_COLS, CLS_PROBE,
     FINAL_EXAMPLES, ANATOMY,
   };

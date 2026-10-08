@@ -122,6 +122,60 @@
 
   const tag = (text) => el('span', 't-tag', text);
 
+  // ── 字母发音（一行一个「听发音」按钮）─────────────────────────────
+  // 用固定模式同一套音节音频 syl/v1/{key}.mp3（做过声调曲线校正）。
+  // 为什么不用自然合成：TTS 的自然读法句尾会往下滑（用户明确说不要下滑），
+  // 校正版按字母本身的调走（中/低辅音名读第 1 调、高辅音名读第 5 调），不滑。
+  // 辅音读字母名（กอ），元音读「อ + 元音」的样子；拼写变体本身拼不出完整音节，
+  // 按讲解里的同音写法读（见 tutorial-data.js 的 VOWEL_SAY）。
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function speakerIcon() {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '13');
+    svg.setAttribute('height', '13');
+    svg.setAttribute('aria-hidden', 'true');
+    const body = document.createElementNS(SVG_NS, 'path');
+    body.setAttribute('d', 'M4 9.5v5h3.5L12 18V6L7.5 9.5H4z');
+    body.setAttribute('fill', 'currentColor');
+    const wave = document.createElementNS(SVG_NS, 'path');
+    wave.setAttribute('d', 'M15.5 9a4.2 4.2 0 0 1 0 6');
+    wave.setAttribute('fill', 'none');
+    wave.setAttribute('stroke', 'currentColor');
+    wave.setAttribute('stroke-width', '1.8');
+    wave.setAttribute('stroke-linecap', 'round');
+    svg.append(body, wave);
+    return svg;
+  }
+
+  /** 教学页字母音频的路径（和固定模式同一个文件，见上面的说明） */
+  function letterFile(parts) {
+    return parts ? R.soundFile(parts) : null;
+  }
+
+  function soundButton(parts, label) {
+    const file = letterFile(parts);
+    const btn = el('button', 't-sound');
+    btn.type = 'button';
+    btn.append(speakerIcon());
+    btn.title = file ? `播放发音：${label}` : '这个音没有内置发音';
+    btn.setAttribute('aria-label', btn.title);
+    if (!file) {
+      btn.disabled = true;
+      return btn;
+    }
+    btn.addEventListener('click', () => {
+      sinkTap(btn);
+      const A = window.ThaiAudio;
+      if (!A) return;
+      A.playUrl(A.fileUrl(file)).catch(() => {
+        btn.title = '音频没加载出来（audio 文件夹要和页面放在一起）';
+      });
+    });
+    return btn;
+  }
+
   function groupBox(thaiTitle, zhTitle, count) {
     const head = el('div', 'tut-group');
     head.append(thai('b', '', thaiTitle), el('span', '', `${zhTitle} ${count} 个`));
@@ -141,7 +195,10 @@
       host.append(groupBox(R.CLASS_THAI[cls], R.CLASS_LABEL[cls], list.length));
       const rows = el('div', 'tut-rows');
       for (const c of list) {
-        const meta = [thai('span', 't-name', `${c.ch}อ ${c.example}`)];
+        const meta = [
+          soundButton(R.fixedParts({ onset: c.ch, strict: true }), `${c.ch}อ`),
+          thai('span', 't-name', `${c.ch}อ ${c.example}`),
+        ];
         if (c.gloss) meta.push(el('span', 't-gloss', c.gloss));
         meta.push(roman(c.roman || '—'));
         if (c.rare) meta.push(tag('借词用字'));
@@ -170,7 +227,11 @@
       for (const v of list) {
         const form = `${v.lead || ''}${v.follow || ''}${v.tail || ''}`;
         // 顺序按「念得出来」排：泰文名称 → 罗马注音 → 长短/限制 → 英文名称
-        const meta = [thai('span', 't-name', v.name), roman(v.roman)];
+        const meta = [
+          soundButton(R.fixedParts({ vowelId: D.VOWEL_SAY[v.id] || v.id, strict: true }), v.name),
+          thai('span', 't-name', v.name),
+          roman(v.roman),
+        ];
         // 超额元音里的 ฤ ฦ 系列按课本不算长短音，只标「自带声母」
         if (group.id !== 'extra') meta.push(tag(v.short ? '短音' : '长音'));
         if (v.canBeOnset) meta.push(tag('自带声母'));
@@ -743,7 +804,8 @@
     {
       sel: '#consTable .trow',
       title: '一行一个字母',
-      text: '左边是字形，右边是名称、注音和发音讲解——舌头怎么摆、像哪个汉语拼音。',
+      text: '左边是字形，右边是名称、注音和发音讲解——舌头怎么摆、像哪个汉语拼音；'
+        + '每一行的小喇叭都能点开听这个字母的发音。',
     },
     {
       sel: '.foot',

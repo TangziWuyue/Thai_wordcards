@@ -71,7 +71,7 @@ const PAGES = [
     name: '泰语拼读入门',
     src: 'tutorial.html',
     styles: ['fonts.css', 'fonts-cjk.css', 'style.css', 'tutorial.css'],
-    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'tutorial-data.js', 'tutorial-search.js', 'pagefx.js', 'tour.js', 'seg.js', 'tutorial.js'],
+    scripts: ['rules.js', 'dict.js', 'data/dict.js', 'audio.js', 'tutorial-data.js', 'tutorial-search.js', 'pagefx.js', 'tour.js', 'seg.js', 'tutorial.js'],
   },
 ];
 
@@ -201,17 +201,29 @@ try {
       let same = false;
       try { same = (await fs.realpath(audioSrc)) === (await fs.realpath(audioDst)); } catch { same = false; }
       if (!same) {
-        await fs.mkdir(audioDst, { recursive: true });
-        const files = (await fs.readdir(audioSrc)).filter((f) => f.endsWith('.mp3'));
-        let copied = 0;
-        for (const f of files) {
-          const s = path.join(audioSrc, f);
-          const d = path.join(audioDst, f);
-          let need = true;
-          try { need = (await fs.stat(s)).size !== (await fs.stat(d)).size; } catch { need = true; }
-          if (need) { await fs.copyFile(s, d); copied += 1; }
-        }
-        if (copied) console.log(`  音频 ${audioDst.startsWith(ROOT) ? path.relative(ROOT, audioDst) : audioDst}：新增/更新 ${copied} 个（共 ${files.length}）`);
+        // 顶层是单词音频，syl/v1/ 是固定模式全组合的音节音频（子目录一起同步）
+        const copyTree = async (srcDir, dstDir) => {
+          await fs.mkdir(dstDir, { recursive: true });
+          let copied = 0;
+          let total = 0;
+          for (const e of await fs.readdir(srcDir, { withFileTypes: true })) {
+            const s = path.join(srcDir, e.name);
+            const d = path.join(dstDir, e.name);
+            if (e.isDirectory()) {
+              const sub = await copyTree(s, d);
+              copied += sub.copied;
+              total += sub.total;
+            } else if (e.name.endsWith('.mp3')) {
+              total += 1;
+              let need = true;
+              try { need = (await fs.stat(s)).size !== (await fs.stat(d)).size; } catch { need = true; }
+              if (need) { await fs.copyFile(s, d); copied += 1; }
+            }
+          }
+          return { copied, total };
+        };
+        const { copied, total } = await copyTree(audioSrc, audioDst);
+        if (copied) console.log(`  音频 ${audioDst.startsWith(ROOT) ? path.relative(ROOT, audioDst) : audioDst}：新增/更新 ${copied} 个（共 ${total}）`);
       }
     }
   }

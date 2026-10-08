@@ -384,6 +384,41 @@ html { scroll-behavior: smooth; }
   line-height: 1.5;
 }
 
+/* 「听发音」小按钮：排在名称那一行的最前面，跟字形只隔一个列间距。
+   固定 22px、行内对齐，两种字体下都不改变行高（页面不许因为加按钮变高）。 */
+.t-sound {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.t-sound:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+
+.t-sound:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 1px;
+}
+
+.t-sound:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.t-sound svg { display: block; }
+
 .t-say {
   grid-column: 2;
   margin: 5px 0 0;
