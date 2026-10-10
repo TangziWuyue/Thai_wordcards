@@ -50,7 +50,7 @@ reports/              排查 / 测试记录（按发布版本号命名，见下�
 src/thai_wordcards/   Python 脚手架，暂无功能
 ```
 
-> **小程序已经拆到独立仓库**：`~/Projects/Thai_wordcards_miniprogram`
+> **小程序已经拆到独立仓库**：`~/Documents/Coding/Thai_wordcards_miniprogram`
 > （GitHub `TangziWuyue/Thai_wordcards_miniprogram`，私有）。本仓库不再有小程序代码与
 > 相关工具；`web/` 仍是共享数据（规则引擎 / 教学数据 / 搜索规则 / 发音清单 / 辞典 / 音频）的**唯一来源**。
 
@@ -90,7 +90,7 @@ src/thai_wordcards/   Python 脚手架，暂无功能
 
 ## 小程序（已迁到独立仓库）
 
-小程序代码在 `~/Projects/Thai_wordcards_miniprogram`（私有仓库），那边的 `AGENTS.md`
+小程序代码在 `~/Documents/Coding/Thai_wordcards_miniprogram`（私有仓库），那边的 `AGENTS.md`
 记着小程序侧的约定（页面结构、tabBar 传参、云存储缓存、教学页搜索、暗色变量等）。
 
 从本仓库看只需要记住一条数据流：**`web/` 是共享数据的唯一来源**——
@@ -170,7 +170,7 @@ uv run thai-wordcards
 uv run python
 ```
 
-> 小程序（练习 / 教学 / 词汇三页）已拆到独立仓库 `~/Projects/Thai_wordcards_miniprogram`，
+> 小程序（练习 / 教学 / 词汇三页）已拆到独立仓库 `~/Documents/Coding/Thai_wordcards_miniprogram`，
 > 运行、自测、云存储上传的命令都在那边的 README / AGENTS.md 里。
 
 ## 关键实现约定

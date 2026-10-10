@@ -4,7 +4,7 @@
 > **2.0.0 正式版**发布（2026-09-30），文件名与正文里的 beta4 指的是同一个版本。
 > 报告的处置结果记在本文件末尾的「修复结果」一节。
 
-**排查对象**：`/Users/b3r1in/Projects/Thai_wordcards/web/` 源码，以及 `docs/` `dist/` 的打包产物
+**排查对象**：`/Users/b3r1in/Documents/Coding/Thai_wordcards/web/` 源码，以及 `docs/` `dist/` 的打包产物
 **排查日期**：2026-09-29 ~ 2026-09-30
 **版本**：README 声称 beta4 / `WHATS_NEW.version = 'beta4'`，但仓库最新标签仍是 `beta3`（见 D-1）
 **上一份报告**：`bug排查报告.md`（beta3，13 条缺陷 + 复验 3 条，均已修复）
@@ -119,7 +119,7 @@ e_closed: '闭音节里的 เออ。后面跟尾辅音时写成 เ-ิ（如
 ### 复现
 
 ```bash
-cd /Users/b3r1in/Projects/Thai_wordcards && node -e "
+cd /Users/b3r1in/Documents/Coding/Thai_wordcards && node -e "
 globalThis.window=globalThis;
 require('./web/data/dict.js'); require('./web/dict.js');
 const R=require('./web/rules.js'); const D=globalThis.ThaiDict;
@@ -277,7 +277,7 @@ AGENTS.md:169 已经写了这条规则：
 ### 复现
 
 ```bash
-cd /Users/b3r1in/Projects/Thai_wordcards && node -e "
+cd /Users/b3r1in/Documents/Coding/Thai_wordcards && node -e "
 globalThis.window=globalThis;
 require('./web/data/dict.js'); require('./web/dict.js');
 const R=require('./web/rules.js'); const D=globalThis.ThaiDict;

@@ -232,7 +232,7 @@ src/thai_wordcards/       Python 脚手架，目前没有实际功能
 
 小程序版（三个 tab：练习 / 教学 / 词汇）已经拆到**独立仓库**
 [TangziWuyue/Thai_wordcards_miniprogram](https://github.com/TangziWuyue/Thai_wordcards_miniprogram)
-（私有，本地在 `~/Projects/Thai_wordcards_miniprogram`），本仓库不再存放小程序代码。
+（私有，本地在 `~/Documents/Coding/Thai_wordcards_miniprogram`），本仓库不再存放小程序代码。
 
 两个仓库的分工：
 
